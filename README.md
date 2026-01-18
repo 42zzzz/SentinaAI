@@ -1,6 +1,9 @@
 # SentinaAI
 SentinaAI is a full-stack edge–cloud platform designed to monitor, analyze, and manage IoT systems in large-scale environments such as convention centers. The platform combines real-time telemetry ingestion, behavioral analytics, interactive dashboards, and device-level control to provide operational visibility and rapid response capabilities. By leveraging synthetic IoT traffic derived from multiple public datasets, SentinaAI enables realistic testing and development without relying on sensitive real-world data, making it suitable for both research and practical deployment scenarios.
 
+## Architecture Diagram
+![SentinaAI High-Level Architecture](Documents/Images/high-level-architechture-overview.png)
+This diagram illustrates the interaction between IoT devices, edge nodes, backend services, analytics components, and the user-facing dashboards.
 
 
 ## Academic Context
