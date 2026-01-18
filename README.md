@@ -4,5 +4,5 @@ SentinaAI is a full-stack edge–cloud platform designed to monitor, analyze, an
 
 
 ## Academic Context
-This project was developed as part of the CSIT321 subject at the University of Wollongong.  
+This project was developed as part of the CSIT321 subject at the University of Wollongong in Dubai.  
 The scope and design have been extended beyond standard coursework requirements to explore real-world system design and deployment considerations.
