@@ -4,7 +4,13 @@ SentinaAI is a full-stack edge–cloud platform designed to monitor, analyze, an
 ## Architecture Diagram
 ![SentinaAI High-Level Architecture](Documents/Images/high-level-architechture-overview.png)
 This diagram illustrates the interaction between IoT devices, edge nodes, backend services, analytics components, and the user-facing dashboards.
-
+Definitions:
+- **Edge Devices:** Source of raw data
+- **WiFi Access Points:** Gateways connecting IoT devices using standard protocols
+- **Edge Node:** Performs local data processing, AI inference, & rule execution
+- **Local Data Layer:** Temporarily stores logs, model cache, & inference results for quick access
+- **Edge Data Layer:** Maintains device-related databases; credentials, config, registry, rules, API cache, OTA updates
+- **Cloud Layer:** Aggregates edge data for analytics, model management, visualization, & orchestration
 
 ## Academic Context
 This project was developed as part of the CSIT321 subject at the University of Wollongong in Dubai.  
