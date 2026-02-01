@@ -192,50 +192,42 @@ try {
         }
         this.app.stage.hitArea = this.app.screen;
 
-        // PANNING: do it at the DOM level so dragging works anywhere on the canvas,
-        // even when Pixi hit-testing misses (empty background areas / tiny gaps).
         let isDragging = false;
         let dragStartScreen = { x: 0, y: 0 };
         let startViewport = { x: 0, y: 0 };
-        let activePointerId = null;
 
-        const onDomPointerDown = (e) => {
-            // Only primary button / primary touch
-            if (typeof e.button === 'number' && e.button !== 0) return;
+        const getGlobal = (event) => (event?.data?.global || event?.global || { x: event.clientX, y: event.clientY });
+
+        const onPointerDown = (event) => {
             isDragging = true;
-            activePointerId = e.pointerId;
-            dragStartScreen = { x: e.clientX, y: e.clientY };
+            const g = getGlobal(event);
+            dragStartScreen = { x: g.x, y: g.y };
             startViewport = { x: this.viewport.x, y: this.viewport.y };
-            // Capture so we keep getting move events even if pointer leaves the canvas
-            try { this.app.view.setPointerCapture(e.pointerId); } catch (_) {}
         };
 
-        const onDomPointerMove = (e) => {
+        const onPointerMove = (event) => {
             if (!isDragging) return;
-            if (activePointerId !== null && e.pointerId !== activePointerId) return;
+            const g = getGlobal(event);
 
-            const dx = (e.clientX - dragStartScreen.x) / this.viewport.zoom;
-            const dy = (e.clientY - dragStartScreen.y) / this.viewport.zoom;
+            const dx = (g.x - dragStartScreen.x) / this.viewport.zoom;
+            const dy = (g.y - dragStartScreen.y) / this.viewport.zoom;
 
             this.viewport.x = startViewport.x + dx;
             this.viewport.y = startViewport.y + dy;
 
             this._clampViewportToMap();
             this.updateViewport();
-        };
+        this._clampViewportToMap();
+    };
 
-        const onDomPointerUp = (e) => {
-            if (activePointerId !== null && e.pointerId !== activePointerId) return;
+        const onPointerUp = () => {
             isDragging = false;
-            activePointerId = null;
-            try { this.app.view.releasePointerCapture(e.pointerId); } catch (_) {}
         };
 
-        // Attach DOM listeners on the canvas so panning works literally anywhere on the map/screen.
-        this.app.view.addEventListener('pointerdown', onDomPointerDown);
-        window.addEventListener('pointermove', onDomPointerMove);
-        window.addEventListener('pointerup', onDomPointerUp);
-        window.addEventListener('pointercancel', onDomPointerUp);
+        this.app.stage.on('pointerdown', onPointerDown);
+        this.app.stage.on('pointermove', onPointerMove);
+        this.app.stage.on('pointerup', onPointerUp);
+        this.app.stage.on('pointerupoutside', onPointerUp);
 
         // Zoom-to-cursor
         this.app.view.addEventListener('wheel', (event) => {
@@ -417,10 +409,9 @@ try {
                 if (corridor.polygon && corridor.polygon.length >= 3) {
                     const graphics = new PIXI.Graphics();
                     
-                    // Render corridor with a clearly visible outline
-                    // Fill stays subtle; outline is what the user needs to see.
-                    graphics.beginFill(0xff00ff, 0.12);
-                    graphics.lineStyle(3, 0xff00ff, 0.85);
+                    // Render corridor with magenta fill matching SVG
+                    graphics.beginFill(0xff00ff, 0.2); // Magenta with low opacity
+                    graphics.lineStyle(2, 0xcc00cc, 0.4); // Darker magenta border
                     
                     const polygon = corridor.polygon;
                     graphics.moveTo(polygon[0][0], polygon[0][1]);
@@ -429,9 +420,6 @@ try {
                     }
                     graphics.closePath();
                     graphics.endFill();
-
-                    // Keep corridors behind halls but above background
-                    graphics.zIndex = 10;
                     
                     this.layers.corridors.addChild(graphics);
                 }
@@ -474,27 +462,10 @@ try {
             }
             graphics.closePath();
             graphics.endFill();
-
-            // Make hover hit-testing reliable by providing an explicit polygon hitArea.
-            // Pixi's default Graphics hit-test can be finicky for complex/self-intersecting paths.
-            try {
-                const flat = [];
-                for (let i = 0; i < polygon.length; i++) {
-                    flat.push(polygon[i][0], polygon[i][1]);
-                }
-                graphics.hitArea = new PIXI.Polygon(flat);
-            } catch (_) {
-                // If a polygon is malformed, fall back to default hit testing.
-            }
             
             // Make interactive for event hover
-            try {
-                graphics.eventMode = 'static';
-                graphics.cursor = 'pointer';
-            } catch (_) {
-                graphics.interactive = true;
-                graphics.buttonMode = true;
-            }
+            graphics.interactive = true;
+            graphics.buttonMode = true;
             
             graphics.on('pointerover', () => {
                 graphics.tint = 0xaaffff;
@@ -520,9 +491,6 @@ try {
             });
             text.anchor.set(0.5);
             text.position.set(node.position.x, node.position.y);
-
-            // Ensure text never steals hover events from the hall polygon.
-            try { text.eventMode = 'none'; } catch (_) { text.interactive = false; }
             
             this.layers.rooms.addChild(text);
         });

@@ -2,6 +2,11 @@
 
 Flask backend for the Convention Center Navigation system.
 
+FIXES:
+- Automatically detect actual coordinate space from geometry
+- Correctly calculate meters_per_pixel based on real coordinate ranges
+- This fixes the "0.1 meters for all paths" bug
+
 This backend:
 - Parses an SVG floor plan into hall (room) polygons and corridor polygons.
 - Generates a navigation graph (navmesh).
@@ -168,6 +173,39 @@ def _extract_geometry_from_parser(parser: Any) -> Dict:
     )
 
 
+def _get_actual_coordinate_bounds(geometry_data: Dict) -> tuple[float, float]:
+    """
+    Extract the actual min/max coordinates used in the geometry.
+    Returns (actual_width, actual_height) based on coordinate ranges.
+    """
+    all_x = []
+    all_y = []
+    
+    # Collect from rooms
+    for room in geometry_data.get("rooms", []):
+        for point in room.get("polygon", []):
+            all_x.append(point[0])
+            all_y.append(point[1])
+    
+    # Collect from corridors
+    for corridor in geometry_data.get("corridors", []):
+        for point in corridor.get("polygon", []):
+            all_x.append(point[0])
+            all_y.append(point[1])
+    
+    if not all_x or not all_y:
+        # Fallback to reported dimensions
+        return (
+            geometry_data["dimensions"]["width"],
+            geometry_data["dimensions"]["height"]
+        )
+    
+    actual_width = max(all_x) - min(all_x)
+    actual_height = max(all_y) - min(all_y)
+    
+    return (actual_width, actual_height)
+
+
 def initialize_system() -> None:
     global navmesh_data, transformer, pathfinder
 
@@ -190,7 +228,19 @@ def initialize_system() -> None:
     if not corridors:
         print("WARNING: No corridors detected")
 
-    # 2) Setup coordinate transformer (GeoJSON bounds provide real-world scaling)
+    # 2) FIX: Get ACTUAL coordinate space from geometry
+    actual_width, actual_height = _get_actual_coordinate_bounds(geometry_data)
+    reported_width = geometry_data["dimensions"]["width"]
+    reported_height = geometry_data["dimensions"]["height"]
+    
+    print(f"\nCoordinate Space Analysis:")
+    print(f"  Reported viewBox: {reported_width} × {reported_height}")
+    print(f"  Actual coord space: {actual_width:.1f} × {actual_height:.1f}")
+    
+    # Use actual coordinate space for transformer (this is the FIX!)
+    svg_dims_for_scaling = (actual_width, actual_height)
+
+    # 3) Setup coordinate transformer (GeoJSON bounds provide real-world scaling)
     geojson_str = (
         '{"type":"FeatureCollection","features":[{"type":"Feature","properties":{},'
         '"geometry":{"coordinates":[[[55.28514167811778,25.221544615013386],'
@@ -205,14 +255,16 @@ def initialize_system() -> None:
     bounds = extract_geojson_bounds(geojson_data)
 
     transformer = CoordinateTransformer(
-        svg_dimensions=(
-            geometry_data["dimensions"]["width"],
-            geometry_data["dimensions"]["height"],
-        ),
+        svg_dimensions=svg_dims_for_scaling,  # Use actual coordinate space!
         geojson_bounds=bounds,
     )
 
-    # 3) Generate navmesh
+    print(f"\nScale Calculation:")
+    print(f"  GeoJSON building: {transformer.building_dimensions_m['width']:.1f}m × {transformer.building_dimensions_m['height']:.1f}m")
+    print(f"  meters_per_pixel: {transformer.meters_per_pixel:.4f}")
+    print(f"  Example: 1000px path = {1000 * transformer.meters_per_pixel:.1f} meters")
+
+    # 4) Generate navmesh
     generator = NavMeshGenerator(
         rooms=geometry_data.get("rooms", []),
         corridors=corridors,
@@ -224,10 +276,10 @@ def initialize_system() -> None:
     navmesh_data["transformer"] = transformer
     navmesh_data["generator"] = generator
 
-    # 4) Initialize pathfinder
+    # 5) Initialize pathfinder
     pathfinder = DijkstraPathfinder(navmesh_data["nodes"], navmesh_data["edges"])
 
-    print("System initialized")
+    print("\nSystem initialized")
     print(f"Nodes: {len(navmesh_data['nodes'])}")
     print(f"Edges: {len(navmesh_data['edges'])}")
     print(f"Rooms: {len(navmesh_data['rooms_metadata'])}")
@@ -346,7 +398,6 @@ def not_found(_):
     return send_from_directory(app.static_folder, "index.html")
 
 
-
 @app.errorhandler(404)
 def spa_fallback(e):
     path = request.path or ""
@@ -358,5 +409,5 @@ def spa_fallback(e):
 
 if __name__ == "__main__":
     initialize_system()
-    print("Starting Flask server on http://localhost:5000")
+    print("\nStarting Flask server on http://localhost:5000")
     app.run(debug=True, host="0.0.0.0", port=5000)
