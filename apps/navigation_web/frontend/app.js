@@ -1,0 +1,842 @@
+// app.js - PixiJS Convention Center Navigation with IoT Crowd Awareness
+
+const API_BASE = 'http://localhost:5000/api';
+
+class ConventionCenterApp {
+    constructor() {
+        this.app = null;
+        this.navmeshData = null;
+        this.currentPath = null;
+        this.iotSummary = null;
+        this.iotData = {};
+        this.crowdAvoidance = true; // NEW: toggle for crowd avoidance
+
+        this.viewport = {
+            zoom: 1,
+            x: 0,
+            y: 0
+        };
+
+        // Drag state and robust hover hit-testing (do not rely on Pixi hit tests)
+        this._isDragging = false;
+        this._roomHitTest = [];
+        this._hoveredRoomId = null;
+        this._robustHoverInitialized = false;
+        this._navmeshRetryCount = 0;
+
+        this.layers = {
+            background: null,
+            rooms: null,
+            corridors: null,
+            corridorOutlines: null,
+            heatmap: null,  // heat map layer for occupancy
+            path: null,
+            interactive: null
+        };
+        
+        this.init();
+    }
+
+    async init() {
+        this.setupPixi();
+        await this.loadNavmesh();
+        await this.loadIoTData();
+        this.setupUI();
+        this.renderMap();
+        this.updateStatus('Ready', false);
+    }
+
+    setupPixi() {
+        const canvas = document.getElementById('pixiCanvas');
+        const container = document.getElementById('canvas-container');
+        
+	        this.app = new PIXI.Application({
+	            view: canvas,
+	            width: container.clientWidth,
+	            height: container.clientHeight,
+	            // Background Color
+	            backgroundColor: 0xffffff,
+	            antialias: true,
+	            resolution: window.devicePixelRatio || 1,
+	        });
+        
+        try {
+            this.app.renderer.resolution = 1;
+        } catch (_) {}
+
+        this.app.stage.sortableChildren = true;
+        
+        // Create layers (added heatmap)
+        this.layers.background = new PIXI.Container();
+        this.layers.heatmap = new PIXI.Container();
+        this.layers.corridors = new PIXI.Container();
+        this.layers.corridorOutlines = new PIXI.Container();
+        this.layers.rooms = new PIXI.Container();
+        this.layers.path = new PIXI.Container();
+        this.layers.interactive = new PIXI.Container();
+
+        this.app.stage.addChild(this.layers.background);
+        this.app.stage.addChild(this.layers.heatmap);
+        this.app.stage.addChild(this.layers.corridors);
+        this.app.stage.addChild(this.layers.corridorOutlines);
+        this.app.stage.addChild(this.layers.rooms);
+        this.app.stage.addChild(this.layers.path);
+        this.app.stage.addChild(this.layers.interactive);
+
+        this.app.stage.interactive = true;
+        this.app.stage.hitArea = this.app.screen;
+
+        this.setupPanZoom();
+        window.addEventListener('resize', () => this.handleResize());
+    }
+
+    setupPanZoom() {
+        // Make the map draggable from ANY click location (including halls/corridors).
+        // We handle panning at the DOM level so interactive Pixi objects do not block dragging.
+        try {
+            this.app.stage.eventMode = 'static';
+        } catch (_) {
+            this.app.stage.interactive = true;
+        }
+        this.app.stage.hitArea = this.app.screen;
+
+        let isDragging = false;
+        let pointerId = null;
+        let dragStartScreen = { x: 0, y: 0 };
+        let startViewport = { x: 0, y: 0 };
+        let movedPx = 0;
+
+        const getLocalPoint = (e) => {
+            const rect = this.app.view.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top,
+            };
+        };
+
+        const onDown = (e) => {
+            // Left click / touch only
+            if (typeof e.button === 'number' && e.button !== 0) return;
+            isDragging = true;
+            this._isDragging = true;
+            movedPx = 0;
+            pointerId = e.pointerId;
+            const p = getLocalPoint(e);
+            dragStartScreen = { x: p.x, y: p.y };
+            startViewport = { x: this.viewport.x, y: this.viewport.y };
+            try {
+                this.app.view.setPointerCapture(pointerId);
+            } catch (_) {}
+        };
+
+        const onMove = (e) => {
+            if (!isDragging) return;
+            if (pointerId !== null && e.pointerId !== pointerId) return;
+            const p = getLocalPoint(e);
+            const dxScreen = p.x - dragStartScreen.x;
+            const dyScreen = p.y - dragStartScreen.y;
+            movedPx = Math.max(movedPx, Math.abs(dxScreen) + Math.abs(dyScreen));
+            const dx = dxScreen / this.viewport.zoom;
+            const dy = dyScreen / this.viewport.zoom;
+            this.viewport.x = startViewport.x + dx;
+            this.viewport.y = startViewport.y + dy;
+            this._clampViewportToMap();
+            this.updateViewport();
+            // Hide tooltip while actively dragging to avoid flicker
+            if (movedPx > 2) this.hideEventTooltip();
+        };
+
+        const onUp = (e) => {
+            if (pointerId !== null && e.pointerId !== pointerId) return;
+            isDragging = false;
+            this._isDragging = false;
+            pointerId = null;
+        };
+
+        this.app.view.addEventListener('pointerdown', onDown);
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+
+        this.app.view.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            const rect = this.app.view.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+            const oldZoom = this.viewport.zoom;
+            const zoomStep = 1.08;
+            const factor = event.deltaY > 0 ? 1 / zoomStep : zoomStep;
+            const newZoom = this._clamp(oldZoom * factor, 0.25, 6.0);
+            const worldX = (mouseX / oldZoom) - this.viewport.x;
+            const worldY = (mouseY / oldZoom) - this.viewport.y;
+            this.viewport.zoom = newZoom;
+            this.viewport.x = (mouseX / newZoom) - worldX;
+            this.viewport.y = (mouseY / newZoom) - worldY;
+            this._clampViewportToMap();
+            this.updateViewport();
+        }, { passive: false });
+    }
+
+    _clampViewportToMap() {
+        if (!this.navmeshData?.scale_info?.svg_dimensions) return;
+        const mapW = this.navmeshData.scale_info.svg_dimensions.width;
+        const mapH = this.navmeshData.scale_info.svg_dimensions.height;
+        const screenW = this.app.screen.width / this.viewport.zoom;
+        const screenH = this.app.screen.height / this.viewport.zoom;
+        const marginX = mapW * 0.1;
+        const marginY = mapH * 0.1;
+        const minX = Math.min(-mapW - marginX + screenW, marginX);
+        const maxX = Math.max(marginX, -mapW - marginX + screenW);
+        const minY = Math.min(-mapH - marginY + screenH, marginY);
+        const maxY = Math.max(marginY, -mapH - marginY + screenH);
+        this.viewport.x = this._clamp(this.viewport.x, minX, maxX);
+        this.viewport.y = this._clamp(this.viewport.y, minY, maxY);
+    }
+
+    resetView() {
+        if (this.navmeshData && this.navmeshData.scale_info) {
+            this.centerMap();
+            return;
+        }
+        this.viewport = { zoom: 1, x: 0, y: 0 };
+        this.updateViewport();
+    }
+
+    updateViewport() {
+        const maxSane = 1000000;
+        if (Math.abs(this.viewport.x) > maxSane || Math.abs(this.viewport.y) > maxSane) {
+            console.warn('[VIEWPORT] Detected escaped coordinates, resetting:', this.viewport);
+            this.viewport = { zoom: 1, x: 0, y: 0 };
+        }
+        this.app.stage.scale.set(this.viewport.zoom);
+        this.app.stage.position.set(
+            this.viewport.x * this.viewport.zoom,
+            this.viewport.y * this.viewport.zoom
+        );
+    }
+
+    handleResize() {
+        const container = document.getElementById('canvas-container');
+        this.app.renderer.resize(container.clientWidth, container.clientHeight);
+        this.app.stage.hitArea = this.app.screen;
+        this.centerMap();
+    }
+
+    _clamp(v, lo, hi) {
+        return Math.max(lo, Math.min(hi, v));
+    }
+
+    async loadNavmesh() {
+        this.updateStatus('Loading navigation mesh...', true);
+        try {
+            const response = await fetch(`${API_BASE}/navmesh`, { cache: 'no-store' });
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                const msg = (data && data.error) ? data.error : `HTTP ${response.status}`;
+                throw new Error(`Failed to load navmesh: ${msg}`);
+            }
+
+            // Defensive: if backend returns an unexpected payload, fail gracefully
+            if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.edges) || !Array.isArray(data.rooms)) {
+                throw new Error('Navmesh payload missing required fields (nodes/edges/rooms)');
+            }
+
+            this.navmeshData = data;
+            console.log('✓ Navmesh loaded:', this.navmeshData);
+
+            document.getElementById('node-count').textContent = this.navmeshData.nodes.length;
+            document.getElementById('edge-count').textContent = this.navmeshData.edges.length;
+            document.getElementById('room-count').textContent = this.navmeshData.rooms.length;
+
+            this.populateRoomDropdowns();
+        } catch (error) {
+            console.error('Error loading navmesh:', error);
+            const msg = error?.message || String(error);
+            this.updateStatus(`Error loading navmesh: ${msg}`, false);
+
+            // If backend is still warming up, retry a few times so the UI doesn't stay on "Initializing..." forever.
+            if (/system not initialized/i.test(msg) && this._navmeshRetryCount < 10) {
+                this._navmeshRetryCount += 1;
+                setTimeout(async () => {
+                    await this.loadNavmesh();
+                    if (this.navmeshData) {
+                        this.populateRoomDropdowns();
+                        this.renderMap();
+                        this.updateStatus('Ready', false);
+                    }
+                }, 1000);
+            }
+        }
+    }
+
+    _parseHexWithAlpha(hex) {
+        // Accepts: #RRGGBB or #RRGGBBAA
+        if (typeof hex !== 'string') return { color: 0xffffff, alpha: 1 };
+        const h = hex.trim().replace('#', '');
+        if (h.length === 6) {
+            return { color: parseInt(h, 16), alpha: 1 };
+        }
+        if (h.length === 8) {
+            const rgb = parseInt(h.slice(0, 6), 16);
+            const a = parseInt(h.slice(6, 8), 16);
+            return { color: rgb, alpha: Math.max(0, Math.min(1, a / 255)) };
+        }
+        return { color: 0xffffff, alpha: 1 };
+    }
+
+	_getHallStyleByName(hallName) {
+		// Returns { color: 0xRRGGBB, alpha: 0..1 }
+		const safe = (hallName ?? '').toString().trim();
+		const name = safe.toLowerCase();
+
+		// Core hall buckets (keep your same palette)
+		if (name.startsWith('north hall')) return { color: 0x9e2a2b, alpha: 0.4 };
+		if (name.startsWith('east hall')) return { color: 0x1f3a5f, alpha: 0.4 };
+		if (name.startsWith('south hall')) return { color: 0xe09f3e, alpha: 0.4 };
+
+		// Generic halls like "Hall 1", "Hall 8", etc.
+		if (name.startsWith('hall')) {
+			const num = parseInt(name.replace('hall', '').trim(), 10);
+			if (!Number.isNaN(num)) {
+				if (num >= 1 && num <= 6) return { color: 0x2f8f9d, alpha: 0.4 };
+				if (num >= 7 && num <= 10) return { color: 0x1f3a5f, alpha: 0.3 };
+			}
+		}
+
+		return { color: 0xcccccc, alpha: 0.3 };
+	}
+
+    async loadIoTData() {
+        this.updateStatus('Loading IoT telemetry...', true);
+        try {
+            // Load summary
+            const summaryResp = await fetch(`${API_BASE}/iot/summary`, { cache: 'no-store' });
+            this.iotSummary = await summaryResp.json().catch(() => null);
+            
+            // Load sensor data
+            const dataResp = await fetch(`${API_BASE}/iot/data`, { cache: 'no-store' });
+            this.iotData = await dataResp.json().catch(() => ({}));
+            
+            if (this.iotSummary.telemetry_enabled) {
+                console.log('✓ IoT Telemetry loaded:', this.iotSummary);
+                this.updateIoTDisplay();
+            } else {
+                console.log('⚠ IoT Telemetry not available');
+                const el = document.getElementById('iot-status');
+                if (el) el.textContent = 'Offline';
+                document.getElementById('iot-panel').style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error loading IoT data:', error);
+            const el = document.getElementById('iot-status');
+            if (el) el.textContent = 'Offline';
+            document.getElementById('iot-panel').style.display = 'none';
+        }
+    }
+
+    updateIoTDisplay() {
+        if (!this.iotSummary || !this.iotSummary.telemetry_enabled) return;
+        
+        document.getElementById('iot-status').textContent = 
+            this.iotSummary.telemetry_enabled ? 'Active' : 'Offline';
+        
+        document.getElementById('avg-occupancy').textContent = 
+            `${(this.iotSummary.avg_occupancy * 100).toFixed(1)}%`;
+        
+        document.getElementById('max-occupancy').textContent = 
+            `${(this.iotSummary.max_occupancy * 100).toFixed(1)}%`;
+        
+        // Show crowded halls
+        const crowdedList = document.getElementById('crowded-halls');
+        crowdedList.innerHTML = '';
+        
+        if (this.iotSummary.crowded_halls && this.iotSummary.crowded_halls.length > 0) {
+            this.iotSummary.crowded_halls.slice(0, 5).forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = `${item.hallId}: ${(item.occupancy * 100).toFixed(0)}%`;
+                li.style.color = item.occupancy > 0.75 ? '#ff6b6b' : '#ffa500';
+                crowdedList.appendChild(li);
+            });
+        } else {
+            const li = document.createElement('li');
+            li.textContent = 'No crowded halls';
+            li.style.color = '#4caf50';
+            crowdedList.appendChild(li);
+        }
+    }
+
+    populateRoomDropdowns() {
+        const startSelect = document.getElementById('startRoom');
+        const endSelect = document.getElementById('endRoom');
+        
+        startSelect.innerHTML = '<option value="">Select starting hall...</option>';
+        endSelect.innerHTML = '<option value="">Select destination...</option>';
+        
+        this.navmeshData.rooms.forEach(room => {
+            const option1 = document.createElement('option');
+            option1.value = room.id;
+            option1.textContent = room.name;
+            const option2 = option1.cloneNode(true);
+            startSelect.appendChild(option1);
+            endSelect.appendChild(option2);
+        });
+    }
+
+    renderMap() {
+        if (!this.navmeshData) return;
+        this.updateStatus('Rendering map...', true);
+        this.layers.rooms.removeChildren();
+        this.layers.corridors.removeChildren();
+        if (this.layers.corridorOutlines) this.layers.corridorOutlines.removeChildren();
+        this.layers.heatmap.removeChildren();
+        
+        this.renderCorridors();
+        this.renderRooms();
+
+        if (!this._robustHoverInitialized) {
+            this._setupRobustHoverTooltips();
+            this._robustHoverInitialized = true;
+        }
+        
+        // NEW: Render crowd heat map if IoT data available
+        if (this.iotData && Object.keys(this.iotData).length > 0) {
+            this.renderCrowdHeatmap();
+        }
+        
+        this.centerMap();
+        this.updateStatus('Map rendered', false);
+    }
+
+    renderCrowdHeatmap() {
+        // Overlay heat map on rooms based on occupancy
+        const roomNodes = this.navmeshData.nodes.filter(n => n.type === 'room');
+        
+        roomNodes.forEach(node => {
+            const occupancy = this.iotData[node.id] || 0;
+            if (occupancy === 0) return;
+            
+            const graphics = new PIXI.Graphics();
+            
+            // Color based on occupancy: green -> yellow -> red
+            let color;
+            let alpha = 0.3;
+            
+            if (occupancy < 0.3) {
+                color = 0x4caf50; // Green
+            } else if (occupancy < 0.5) {
+                color = 0xffa500; // Orange
+            } else if (occupancy < 0.7) {
+                color = 0xff6b6b; // Light red
+            } else {
+                color = 0xff0000; // Red
+                alpha = 0.4;
+            }
+            
+            graphics.beginFill(color, alpha);
+            graphics.lineStyle(0);
+            const polygon = node.polygon;
+            graphics.moveTo(polygon[0][0], polygon[0][1]);
+            for (let i = 1; i < polygon.length; i++) {
+                graphics.lineTo(polygon[i][0], polygon[i][1]);
+            }
+            graphics.closePath();
+            graphics.endFill();
+            
+            this.layers.heatmap.addChild(graphics);
+        });
+    }
+    renderCorridors() {
+        if (!this.navmeshData.corridor_polygons) return;
+
+        if (this.layers.corridorOutlines) this.layers.corridorOutlines.removeChildren();
+
+        this.navmeshData.corridor_polygons.forEach(corridor => {
+            const polygon = corridor?.polygon;
+            if (!polygon || polygon.length < 3) return;
+
+            // Fill (below rooms)
+            const fillG = new PIXI.Graphics();
+            fillG.zIndex = 10;
+            fillG.beginFill(0x9e2a2b, 0.30);
+            fillG.moveTo(polygon[0][0], polygon[0][1]);
+            for (let i = 1; i < polygon.length; i++) fillG.lineTo(polygon[i][0], polygon[i][1]);
+            fillG.closePath();
+            fillG.endFill();
+            this.layers.corridors.addChild(fillG);
+
+            // Outline (kept separate so it can't get covered by fill draw order)
+            const outG = new PIXI.Graphics();
+            outG.zIndex = 11;
+
+            // Outer dark stroke for visibility on light background
+            outG.lineStyle(12, 0x111111, 0.95);
+            outG.moveTo(polygon[0][0], polygon[0][1]);
+            for (let i = 1; i < polygon.length; i++) outG.lineTo(polygon[i][0], polygon[i][1]);
+            outG.closePath();
+
+            // Inner light stroke (gives a crisp edge against red fill)
+            outG.lineStyle(6, 0xffffff, 0.95);
+            outG.moveTo(polygon[0][0], polygon[0][1]);
+            for (let i = 1; i < polygon.length; i++) outG.lineTo(polygon[i][0], polygon[i][1]);
+            outG.closePath();
+
+            if (this.layers.corridorOutlines) this.layers.corridorOutlines.addChild(outG);
+        });
+    }
+
+
+    renderRooms() {
+        const roomNodes = this.navmeshData.nodes.filter(n => n.type === 'room');
+        this._roomHitTest = [];
+
+        roomNodes.forEach((node, index) => {
+            const graphics = new PIXI.Graphics();
+            const style = this._getHallStyleByName(node.name || `Hall ${index + 1}`);
+            graphics.beginFill(style.color, style.alpha);
+            // Required: black outline 4px width
+            graphics.lineStyle(4, 0x000000, 1);
+            
+            const polygon = node.polygon;
+            // Precompute bounding boxes for fast hover hit-testing
+            let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+            for (const pt of polygon) {
+                if (pt[0] < minX) minX = pt[0];
+                if (pt[0] > maxX) maxX = pt[0];
+                if (pt[1] < minY) minY = pt[1];
+                if (pt[1] > maxY) maxY = pt[1];
+            }
+            this._roomHitTest.push({ node, index, polygon, bbox: { minX, minY, maxX, maxY } });
+            graphics.moveTo(polygon[0][0], polygon[0][1]);
+            for (let i = 1; i < polygon.length; i++) {
+                graphics.lineTo(polygon[i][0], polygon[i][1]);
+            }
+            graphics.closePath();
+            graphics.endFill();
+
+            // Do not rely on Pixi per-polygon hover events; robust hover is handled at the canvas level.
+            try {
+                graphics.eventMode = 'none';
+            } catch (_) {
+                graphics.interactive = false;
+            }
+
+            this.layers.rooms.addChild(graphics);
+            
+            const text = new PIXI.Text(node.name || `Hall ${index + 1}`, {
+                fontFamily: 'Arial',
+                fontSize: 48,
+                fontWeight: '',
+                fill: 0x000000,
+                align: 'center',
+                stroke: 0xffffff,
+                strokeThickness: 4
+            });
+            text.anchor.set(0.5);
+            text.position.set(node.position.x, node.position.y);
+            this.layers.rooms.addChild(text);
+        });
+    }
+
+    _pointInPolygon(x, y, poly) {
+        // Ray-casting algorithm. poly is [[x,y], ...]
+        let inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+            const xi = poly[i][0], yi = poly[i][1];
+            const xj = poly[j][0], yj = poly[j][1];
+            const intersect = ((yi > y) !== (yj > y)) &&
+                (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-12) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+    _screenToWorld(clientX, clientY) {
+        const rect = this.app.view.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        const global = new PIXI.Point(x, y);
+        const local = this.app.stage.toLocal(global);
+        return { x: local.x, y: local.y };
+    }
+
+    _setupRobustHoverTooltips() {
+        // Robust hall hover detection that does NOT rely on Pixi hit-testing.
+        // Fixes cases where pointer events only fire on part of a polygon.
+        this.app.view.addEventListener('pointermove', (e) => {
+            if (this._isDragging) return;
+
+            const world = this._screenToWorld(e.clientX, e.clientY);
+            let hit = null;
+
+            for (const item of this._roomHitTest) {
+                const b = item.bbox;
+                if (world.x < b.minX || world.x > b.maxX || world.y < b.minY || world.y > b.maxY) continue;
+                if (this._pointInPolygon(world.x, world.y, item.polygon)) {
+                    hit = item;
+                    break;
+                }
+            }
+
+            if (!hit) {
+                if (this._hoveredRoomId !== null) {
+                    this._hoveredRoomId = null;
+                    this.hideEventTooltip();
+                }
+                return;
+            }
+
+            this._hoveredRoomId = hit.node.id;
+            this.showEventTooltip(hit.node, hit.index, e.clientX, e.clientY, true);
+        });
+
+        this.app.view.addEventListener('pointerleave', () => {
+            this._hoveredRoomId = null;
+            this.hideEventTooltip();
+        });
+    }
+
+    showEventTooltip(node, index, screenX, screenY, isClientCoords = false) {
+        const tooltip = document.getElementById('event-tooltip');
+        const title = document.getElementById('tooltip-title');
+        const content = document.getElementById('tooltip-content');
+
+        const occupancy = this.iotData[node.id] || 0;
+        const occupancyText = occupancy > 0
+            ? `<strong>Occupancy:</strong> ${(occupancy * 100).toFixed(0)}%<br>`
+            : '';
+
+        let crowdStatus = 'Normal';
+        if (occupancy > 0.7) crowdStatus = 'Very Crowded';
+        else if (occupancy > 0.5) crowdStatus = 'Crowded';
+        else if (occupancy > 0.3) crowdStatus = 'Moderate';
+
+        title.textContent = node.name || `Hall ${index + 1}`;
+        content.innerHTML = `
+            ${occupancyText}
+            ${occupancy > 0 ? `<strong>Status:</strong> ${crowdStatus}<br>` : ''}
+            <strong>Type:</strong> Exhibition Hall
+        `;
+
+        const container = document.getElementById('canvas-container');
+        const rect = container.getBoundingClientRect();
+        let x = (typeof screenX === 'number' ? screenX : rect.width / 2);
+        let y = (typeof screenY === 'number' ? screenY : rect.height / 2);
+        if (isClientCoords) {
+            x = x - rect.left;
+            y = y - rect.top;
+        }
+
+        const pad = 14;
+        let left = x + pad;
+        let top = y + pad;
+
+        tooltip.classList.add('visible');
+
+        // Clamp within container bounds
+        const tipRect = tooltip.getBoundingClientRect();
+        const maxLeft = rect.left + rect.width - tipRect.width - 8;
+        const maxTop = rect.top + rect.height - tipRect.height - 8;
+
+        const absLeft = Math.min(rect.left + left, maxLeft);
+        const absTop = Math.min(rect.top + top, maxTop);
+        tooltip.style.left = `${Math.max(rect.left + 8, absLeft)}px`;
+        tooltip.style.top = `${Math.max(rect.top + 8, absTop)}px`;
+    }
+
+	    hideEventTooltip() {
+        document.getElementById('event-tooltip').classList.remove('visible');
+    }
+
+    centerMap() {
+        if (!this.navmeshData || !this.navmeshData.scale_info) return;
+        const mapWidth = this.navmeshData.scale_info.svg_dimensions.width;
+        const mapHeight = this.navmeshData.scale_info.svg_dimensions.height;
+        const canvasWidth = this.app.screen.width;
+        const canvasHeight = this.app.screen.height;
+        const zoomX = canvasWidth / mapWidth;
+        const zoomY = canvasHeight / mapHeight;
+        this.viewport.zoom = Math.min(zoomX, zoomY) * 0.9;
+        this.viewport.x = (canvasWidth / this.viewport.zoom - mapWidth) / 2;
+        this.viewport.y = (canvasHeight / this.viewport.zoom - mapHeight) / 2;
+        this.updateViewport();
+    }
+
+    async findPath() {
+        const startId = document.getElementById('startRoom').value;
+        const endId = document.getElementById('endRoom').value;
+        
+        if (!startId || !endId) {
+            alert('Please select both start and destination');
+            return;
+        }
+        
+        if (startId === endId) {
+            alert('Start and destination cannot be the same');
+            return;
+        }
+        
+        this.updateStatus('Calculating route...', true);
+        
+        try {
+            const response = await fetch(`${API_BASE}/pathfind`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    start: startId, 
+                    end: endId,
+                    avoid_crowds: this.crowdAvoidance  // NEW: pass preference
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.currentPath = result;
+                this.renderPath();
+                this.showPathInfo();
+                
+                const crowdNote = result.crowd_avoidance_enabled ? ' (avoiding crowds)' : '';
+                this.updateStatus(`Route found: ${result.distance.meters.toFixed(1)}m${crowdNote}`, false);
+            } else {
+                this.updateStatus('No path found', false);
+            }
+        } catch (error) {
+            console.error('Error finding path:', error);
+            this.updateStatus('Error calculating route', false);
+        }
+    }
+
+    renderPath() {
+        if (!this.currentPath) return;
+        this.layers.path.removeChildren();
+        
+        const graphics = new PIXI.Graphics();
+        const coords = this.currentPath.path_coordinates;
+        
+        graphics.lineStyle(8, 0x00d4ff, 1);
+        graphics.moveTo(coords[0].x, coords[0].y);
+        for (let i = 1; i < coords.length; i++) {
+            graphics.lineTo(coords[i].x, coords[i].y);
+        }
+        this.layers.path.addChild(graphics);
+        
+        const startPoint = new PIXI.Graphics();
+        startPoint.beginFill(0x4caf50);
+        startPoint.drawCircle(coords[0].x, coords[0].y, 15);
+        startPoint.endFill();
+        this.layers.path.addChild(startPoint);
+        
+        const endPoint = new PIXI.Graphics();
+        endPoint.beginFill(0xf44336);
+        endPoint.drawCircle(coords[coords.length - 1].x, coords[coords.length - 1].y, 15);
+        endPoint.endFill();
+        this.layers.path.addChild(endPoint);
+        
+        for (let i = 1; i < coords.length - 1; i++) {
+            const point = new PIXI.Graphics();
+            point.beginFill(0x00d4ff, 0.8);
+            point.drawCircle(coords[i].x, coords[i].y, 6);
+            point.endFill();
+            this.layers.path.addChild(point);
+        }
+    }
+
+    showPathInfo() {
+        if (!this.currentPath) return;
+        
+        const pathInfo = document.getElementById('path-info');
+        const distanceMeters = document.getElementById('distance-meters');
+        const distancePixels = document.getElementById('distance-pixels');
+        const pathSteps = document.getElementById('pathSteps');
+        
+        distanceMeters.textContent = this.currentPath.distance.meters.toFixed(1);
+        distancePixels.textContent = this.currentPath.distance.pixels.toFixed(0);
+        
+        pathSteps.innerHTML = '';
+        this.currentPath.path.forEach((nodeId, index) => {
+            const step = document.createElement('div');
+            step.className = 'path-step';
+            const node = this.navmeshData.nodes.find(n => n.id === nodeId);
+            let nodeName = nodeId;
+            if (node && node.type === 'room') {
+                const roomIndex = this.navmeshData.nodes.filter(n => n.type === 'room').indexOf(node);
+                nodeName = node.name || `Hall ${roomIndex + 1}`;
+            }
+            step.textContent = `${index + 1}. ${nodeName}`;
+            pathSteps.appendChild(step);
+        });
+        
+        // NEW: Show crowd info if available
+        if (this.currentPath.path_crowding && this.currentPath.path_crowding.length > 0) {
+            const crowdInfo = document.createElement('div');
+            crowdInfo.style.marginTop = '10px';
+            crowdInfo.innerHTML = '<strong>Hall Occupancy:</strong>';
+            
+            this.currentPath.path_crowding.forEach(item => {
+                const crowdItem = document.createElement('div');
+                crowdItem.style.fontSize = '12px';
+                crowdItem.style.padding = '2px 5px';
+                const occ = (item.occupancy * 100).toFixed(0);
+                crowdItem.textContent = `${item.name}: ${occ}%`;
+                
+                if (item.occupancy > 0.7) crowdItem.style.color = '#ff6b6b';
+                else if (item.occupancy > 0.5) crowdItem.style.color = '#ffa500';
+                else crowdItem.style.color = '#4caf50';
+                
+                crowdInfo.appendChild(crowdItem);
+            });
+            
+            pathSteps.appendChild(crowdInfo);
+        }
+        
+        pathInfo.classList.add('visible');
+    }
+
+    clearPath() {
+        this.currentPath = null;
+        this.layers.path.removeChildren();
+        document.getElementById('path-info').classList.remove('visible');
+        document.getElementById('startRoom').value = '';
+        document.getElementById('endRoom').value = '';
+        this.updateStatus('Path cleared', false);
+    }
+
+    toggleCrowdAvoidance() {
+        this.crowdAvoidance = document.getElementById('crowdToggle').checked;
+        console.log('Crowd avoidance:', this.crowdAvoidance ? 'enabled' : 'disabled');
+    }
+
+    setupUI() {
+        document.getElementById('findPath').addEventListener('click', () => this.findPath());
+        document.getElementById('clearPath').addEventListener('click', () => this.clearPath());
+        document.getElementById('zoomIn').addEventListener('click', () => this.zoom(1.2));
+        document.getElementById('zoomOut').addEventListener('click', () => this.zoom(0.8));
+        document.getElementById('resetView').addEventListener('click', () => this.resetView());
+        
+        // NEW: Crowd avoidance toggle
+        document.getElementById('crowdToggle').addEventListener('change', () => this.toggleCrowdAvoidance());
+        
+        document.addEventListener('mousemove', (event) => {
+            const tooltip = document.getElementById('event-tooltip');
+            tooltip.style.left = (event.clientX + 20) + 'px';
+            tooltip.style.top = (event.clientY + 20) + 'px';
+        });
+    }
+
+    zoom(factor) {
+        this.viewport.zoom = this._clamp(this.viewport.zoom * factor, 0.25, 6);
+        this.updateViewport();
+    }
+
+    updateStatus(message, loading) {
+        const statusText = document.getElementById('status-text');
+        const loadingSpinner = document.querySelector('.loading');
+        statusText.textContent = message;
+        loadingSpinner.style.display = loading ? 'inline-block' : 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    new ConventionCenterApp();
+});
