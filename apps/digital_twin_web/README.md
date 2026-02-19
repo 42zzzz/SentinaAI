@@ -1,8 +1,8 @@
-# 🏢 SentinaAI - DWTC Digital Twin (React Project)
+# Digital Twin
 
 Complete React project for Dubai World Trade Centre digital twin visualization.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+ installed
@@ -20,48 +20,7 @@ npm run dev
 # Build for production
 npm run build
 ```
-
-## 📁 Project Structure
-
-```
-sentina-dwtc-react/
-├── src/
-│   ├── components/
-│   │   ├── Scene3D.jsx          # Main 3D scene
-│   │   ├── HallMesh.jsx          # Individual hall component
-│   │   ├── InfoPanel.jsx         # Stats panel
-│   │   ├── Controls.jsx          # View controls
-│   │   ├── Legend.jsx            # Color legend
-│   │   └── HallDetails.jsx       # Hall detail popup
-│   ├── data/
-│   │   └── hallsLayout.js        # Hall positions & config
-│   ├── hooks/
-│   │   └── useTelemetry.js       # Telemetry data hook
-│   ├── utils/
-│   │   └── dataGenerator.js      # Demo data generator
-│   ├── App.jsx                   # Main app component
-│   ├── App.css                   # App styles
-│   ├── main.jsx                  # Entry point
-│   └── index.css                 # Global styles
-├── public/
-├── index.html
-├── package.json
-├── vite.config.js
-└── README.md
-```
-
-## 🎮 Features
-
-- ✅ Real DWTC layout from your PNG
-- ✅ 26 halls properly positioned
-- ✅ 4 zones (North, East, South, Central)
-- ✅ Real-time occupancy visualization
-- ✅ Interactive 3D navigation
-- ✅ Telemetry data integration
-- ✅ Modular component structure
-- ✅ Easy team collaboration
-
-## 🔧 Configuration
+## Configuration
 
 ### Hall Layout
 Edit `src/data/hallsLayout.js` to modify hall positions, sizes, or colors.
@@ -73,14 +32,14 @@ The telemetry IDs map to halls:
 - HZC01-06 → South Zone
 - HZD01-06 → Central
 
-## 📊 Data Flow
+## Data Flow
 
 1. Telemetry data loaded via `useTelemetry` hook
 2. Data processed and mapped to halls
 3. Hall colors update based on occupancy
 4. Stats panel shows aggregated data
 
-## 🎨 Customization
+## Customization
 
 ### Colors
 Edit `src/data/hallsLayout.js`:
@@ -97,7 +56,7 @@ height: 120  // SVG units
 ### Zone Names
 Edit telemetry mapping in `hallsLayout.js`
 
-## 🛠️ Development
+## Development
 
 ### Add New Component
 ```bash
@@ -111,7 +70,7 @@ Edit `src/components/Scene3D.jsx`
 ### Change Data Source
 Edit `src/hooks/useTelemetry.js` to connect real API
 
-## 📦 Building for Production
+## Building for Production
 
 ```bash
 npm run build
@@ -159,7 +118,7 @@ git push origin feature/your-feature
 - Props destructured in function params
 - Comments for complex logic
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Port Already in Use
 ```bash
@@ -179,17 +138,13 @@ npm install
 - Verify WebGL support in browser
 - Update graphics drivers
 
-## 📝 License
-
-MIT License - Feel free to use for your project!
-
-## 🆘 Support
+## Support
 
 For issues or questions:
 1. Check the troubleshooting section
 2. Review component documentation
-3. Ask your team lead
+3. Ask zaydan and masleen
 
 ---
 
-**Built for SentinaAI Team** 🚀
+**Built by SentinaAI Team**
