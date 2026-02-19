@@ -307,5 +307,32 @@ export const ZONE_MAPPING = {
   'HZD01': 'Central', 'HZD02': 'Central', 'HZD03': 'Central', 'HZD04': 'Central', 'HZD05': 'Central', 'HZD06': 'Central'
 };
 
-export const HALL_HEIGHT = 4; // All halls 10 meters tall
+export const HALL_HEIGHT = 10; // All halls 10 meters tall
 export const SCALE = 0.05; // SVG to 3D world scale
+
+// Helper functions
+export function isPolygonHall(hall) {
+  return hall.vertices && Array.isArray(hall.vertices) && hall.vertices.length >= 3;
+}
+
+export function getRectBounds(hall) {
+  if (isPolygonHall(hall)) {
+    const xs = hall.vertices.map(v => v[0]);
+    const ys = hall.vertices.map(v => v[1]);
+    return {
+      x: Math.min(...xs),
+      y: Math.min(...ys),
+      width: Math.max(...xs) - Math.min(...xs),
+      height: Math.max(...ys) - Math.min(...ys)
+    };
+  }
+  return { x: hall.x, y: hall.y, width: hall.width, height: hall.height };
+}
+
+export function getHallCenter(hall) {
+  const bounds = getRectBounds(hall);
+  return {
+    x: bounds.x + bounds.width / 2,
+    y: bounds.y + bounds.height / 2
+  };
+}

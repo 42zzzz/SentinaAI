@@ -1,17 +1,17 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import HallMesh from './HallMesh';
+import { useHalls } from '../context/HallsContext';
 import { SCALE, HALL_HEIGHT, DWTC_OUTLINE } from '../data/hallsLayout';
 
-// Component to force 24 FPS refresh
 function FrameLimiter() {
   const { invalidate } = useThree();
   
   useEffect(() => {
     const interval = setInterval(() => {
       invalidate();
-    }, 1000 / 24); // 24 FPS
+    }, 1000 / 24);
     
     return () => clearInterval(interval);
   }, [invalidate]);
@@ -19,7 +19,8 @@ function FrameLimiter() {
   return null;
 }
 
-function Scene3D({ halls, selectedHallId, onHallClick, telemetryData, currentView }) {
+function Scene3D({ telemetryData, currentView }) {
+  const { halls, selectedHallId, setSelectedHallId } = useHalls();
   const centerX = (DWTC_OUTLINE.minX + DWTC_OUTLINE.maxX) / 2;
   const centerY = (DWTC_OUTLINE.minY + DWTC_OUTLINE.maxY) / 2;
 
@@ -60,7 +61,7 @@ function Scene3D({ halls, selectedHallId, onHallClick, telemetryData, currentVie
           hall={hall}
           centerX={centerX}
           centerY={centerY}
-          onClick={() => onHallClick(hall)}
+          onClick={() => setSelectedHallId(hall.id)}
           telemetryData={telemetryData}
           currentView={currentView}
           isSelected={selectedHallId === hall.id}

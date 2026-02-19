@@ -304,3 +304,121 @@
   left: 0;
   color: #4ade80;
 }
+
+/* Mode Switcher */
+.mode-switcher {
+  display: flex;
+  gap: 10px;
+}
+
+.mode-switcher button {
+  padding: 8px 16px;
+  background: #1a1a1a;
+  color: #999;
+  border: 1px solid #333;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.mode-switcher button:hover {
+  background: #222;
+  border-color: #444;
+}
+
+.mode-switcher button.active {
+  background: #4ade80;
+  color: #000;
+  border-color: #4ade80;
+  font-weight: 600;
+}
+
+/* Mode Indicator */
+.mode-indicator {
+  padding: 12px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #ddd;
+}
+
+.mode-indicator strong {
+  color: #4ade80;
+}
+
+/* Selected Hall Info */
+.selected-hall-info {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.hall-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #999;
+}
+
+/* Vertex Help */
+.vertex-help {
+  margin-top: 16px;
+  padding: 12px;
+  background: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+
+.vertex-help p {
+  margin: 0 0 8px 0;
+  color: #4ade80;
+  font-size: 14px;
+}
+
+.vertex-help ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #999;
+}
+
+.vertex-help li {
+  margin-bottom: 4px;
+}
+
+/* Keyboard shortcuts */
+kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #4ade80;
+}
+
+.editor-help h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #ddd;
+  font-size: 14px;
+}
+
+.editor-help ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: #999;
+}
+
+.editor-help li {
+  margin-bottom: 6px;
+}

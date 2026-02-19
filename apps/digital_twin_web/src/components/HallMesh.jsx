@@ -1,13 +1,9 @@
-import React, { useState } from 'react';
-import { SCALE, HALL_HEIGHT } from '../data/hallsLayout';
+import React, { useState, useMemo } from 'react';
+import * as THREE from 'three';
+import { SCALE, HALL_HEIGHT, isPolygonHall } from '../data/hallsLayout';
 
-function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView }) {
+function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView, isSelected }) {
   const [hovered, setHovered] = useState(false);
-
-  const x = (hall.x - centerX) * SCALE;
-  const z = (hall.y - centerY) * SCALE;
-  const width = hall.width * SCALE;
-  const depth = hall.height * SCALE;
 
   const data = telemetryData[hall.telemetryId] || {};
   const occupancy = data.occupancy || 0;
@@ -17,20 +13,64 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView 
     return null;
   }
 
+  const geometry = useMemo(() => {
+    if (isPolygonHall(hall)) {
+      const shape = new THREE.Shape();
+      
+      hall.vertices.forEach((vertex, i) => {
+        const x = (vertex[0] - centerX) * SCALE;
+        const z = (vertex[1] - centerY) * SCALE;
+        
+        if (i === 0) {
+          shape.moveTo(x, z);
+        } else {
+          shape.lineTo(x, z);
+        }
+      });
+      shape.closePath();
+
+      const extrudeSettings = {
+        depth: HALL_HEIGHT,
+        bevelEnabled: false
+      };
+
+      return new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    } else {
+      const width = hall.width * SCALE;
+      const depth = hall.height * SCALE;
+      return new THREE.BoxGeometry(width, HALL_HEIGHT, depth);
+    }
+  }, [hall, centerX, centerY]);
+
+  const position = useMemo(() => {
+    if (isPolygonHall(hall)) {
+      return [0, HALL_HEIGHT / 2, 0];
+    } else {
+      const x = (hall.x + hall.width / 2 - centerX) * SCALE;
+      const z = (hall.y + hall.height / 2 - centerY) * SCALE;
+      return [x, HALL_HEIGHT / 2, z];
+    }
+  }, [hall, centerX, centerY]);
+
+  const rotation = useMemo(() => {
+    if (isPolygonHall(hall)) {
+      return [0, 0, 0];
+    } else {
+      return [0, (hall.rotation || 0) * Math.PI / 180, 0];
+    }
+  }, [hall]);
+
   return (
-    <group 
-      position={[x, HALL_HEIGHT / 2, z]} 
-      rotation={[0, (hall.rotation || 0) * Math.PI / 180, 0]}
-    >
+    <group position={position} rotation={rotation}>
       <mesh
+        geometry={geometry}
         castShadow
         receiveShadow
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => setHovered(false)}
-        onClick={() => onClick(hall)}
+        onClick={onClick}
         scale={hovered ? [1.03, 1.05, 1.03] : [1, 1, 1]}
       >
-        <boxGeometry args={[width, HALL_HEIGHT, depth]} />
         <meshStandardMaterial
           color={color}
           emissive={color}
