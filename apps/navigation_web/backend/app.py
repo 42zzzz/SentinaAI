@@ -40,7 +40,7 @@ from coordinate_transformer import CoordinateTransformer, extract_geojson_bounds
 from navmesh_generator import NavMeshGenerator
 from pathfinder import DijkstraPathfinder
 from telemetry_processor import TelemetryProcessor
-
+from event_store import EventStore
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="/static")
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
@@ -60,6 +60,8 @@ transformer: Optional[CoordinateTransformer] = None
 pathfinder: Optional[DijkstraPathfinder] = None
 telemetry: Optional[TelemetryProcessor] = None
 iot_sensor_data: Dict[str, float] = {}
+event_store: Optional[EventStore] = None
+
 
 
 def _resolve_svg_path() -> Path:
@@ -104,6 +106,16 @@ def _resolve_telemetry_path() -> Optional[Path]:
             return candidate
     
     return None
+    
+def _resolve_events_dir() -> Path:
+    env_path = os.environ.get("EVENTS_DIR")
+    if env_path:
+        p = Path(env_path).expanduser().resolve()
+        if p.exists():
+            return p
+
+    backend_dir = Path(__file__).resolve().parent
+    return (backend_dir.parent / "data" / "events").resolve()
 
 
 def _looks_like_geometry_dict(obj: Any) -> bool:
@@ -201,10 +213,9 @@ def _get_actual_coordinate_bounds(geometry_data: Dict) -> tuple[float, float]:
 
 
 def initialize_system() -> None:
-    global navmesh_data, transformer, pathfinder, telemetry
+    global navmesh_data, transformer, pathfinder, telemetry, event_store
 
     svg_path = _resolve_svg_path()
-
     print("\n" + "="*60)
     print("Convention Center Navigation System - IoT Enabled")
     print("="*60)
@@ -318,6 +329,16 @@ def initialize_system() -> None:
     print(f"\n{'='*60}")
     print("System Ready")
     print(f"{'='*60}\n")
+    
+    # 7) Initialize events
+    events_dir = _resolve_events_dir()
+    if events_dir.exists():
+        event_store = EventStore.load(events_dir)
+        print(f"Loaded events dataset from: {events_dir}")
+    else:
+        print(f"Events directory not found: {events_dir} (skipping)")
+        event_store = None
+    
 
 
 @app.route("/api/navmesh", methods=["GET"])
@@ -484,6 +505,36 @@ def reload_telemetry():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/events", methods=["GET"])
+def api_list_events():
+    if not event_store:
+        return jsonify({"events": [], "warning": "event_store_not_loaded"}), 200
+    return jsonify({"events": event_store.list_events()})
+
+@app.route("/api/halls/<path:hall_name>/events", methods=["GET"])
+def api_events_for_hall(hall_name: str):
+    if not event_store:
+        return jsonify({"hall": hall_name, "events": [], "warning": "event_store_not_loaded"}), 200
+    return jsonify({"hall": hall_name, "events": event_store.events_for_hall(hall_name)})
+
+@app.route("/api/halls/<path:hall_name>/events/<event_id>/exhibitors", methods=["GET"])
+def api_exhibitors_for_hall_event(hall_name: str, event_id: str):
+    if not event_store:
+        return jsonify({"hall": hall_name, "eventId": event_id, "assignments": [], "warning": "event_store_not_loaded"}), 200
+    return jsonify({
+        "hall": hall_name,
+        "eventId": event_id,
+        "assignments": event_store.exhibitors_for_hall_event(hall_name, event_id)
+    })
+
+@app.route("/api/events/reload", methods=["POST"])
+def api_events_reload():
+    global event_store
+    events_dir = _resolve_events_dir()
+    if not events_dir.exists():
+        return jsonify({"ok": False, "error": f"events_dir_not_found: {events_dir}"}), 400
+    event_store = EventStore.load(events_dir)
+    return jsonify({"ok": True, "loaded_from": str(events_dir)})
 
 @app.route("/api/health", methods=["GET"])
 def health_check():
