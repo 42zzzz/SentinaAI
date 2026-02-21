@@ -5,7 +5,7 @@ import Controls from './components/Controls';
 import Legend from './components/Legend';
 import HallDetails from './components/HallDetails';
 import HallEditor from './components/HallEditor';
-import { HallsProvider } from './context/HallsContext';
+import { HallsProvider, useHalls } from './context/HallsContext';
 import { useTelemetry } from './hooks/useTelemetry';
 import './App.css';
 
@@ -24,6 +24,7 @@ function AppContent() {
           />
           
           <InfoPanel telemetryData={telemetryData} />
+          <HallDetailsWrapper telemetryData={telemetryData} />
           <Legend />
         </>
       )}
@@ -39,6 +40,21 @@ function AppContent() {
         <HallEditor onClose={() => setIsEditMode(false)} />
       )}
     </div>
+  );
+}
+
+function HallDetailsWrapper({ telemetryData }) {
+  const { halls, selectedHallId, setSelectedHallId } = useHalls();
+  const selectedHall = halls.find(h => h.id === selectedHallId);
+  
+  if (!selectedHall) return null;
+  
+  return (
+    <HallDetails 
+      hall={selectedHall} 
+      telemetryData={telemetryData} 
+      onClose={() => setSelectedHallId(null)} 
+    />
   );
 }
 

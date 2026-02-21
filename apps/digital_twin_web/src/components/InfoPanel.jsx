@@ -6,7 +6,7 @@ function InfoPanel({ telemetryData }) {
   return (
     <div className="info-panel">
       <h1>SentinaAI Digital Twin</h1>
-      <div className="subtitle">Dubai World Trade Centre</div>
+      <div className="subtitle">Convention Centre</div>
       
       <h2>Building</h2>
       <div className="stat">

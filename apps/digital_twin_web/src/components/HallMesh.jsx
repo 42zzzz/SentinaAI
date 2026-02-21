@@ -9,10 +9,6 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
   const occupancy = data.occupancy || 0;
   const color = getOccupancyColor(occupancy / 100);
 
-  if (currentView !== 'all' && !hall.zone.toLowerCase().includes(currentView)) {
-    return null;
-  }
-
   const geometry = useMemo(() => {
     if (isPolygonHall(hall)) {
       const shape = new THREE.Shape();
@@ -59,6 +55,11 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
       return [0, (hall.rotation || 0) * Math.PI / 180, 0];
     }
   }, [hall]);
+
+  // Zone filtering with defensive checks - AFTER all hooks to avoid hook violations
+  if (currentView !== 'all' && (!hall.zone || !hall.zone.toLowerCase().includes(currentView))) {
+    return null;
+  }
 
   return (
     <group position={position} rotation={rotation}>

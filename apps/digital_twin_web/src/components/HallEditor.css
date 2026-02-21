@@ -28,6 +28,7 @@
   align-items: center;
   padding: 20px;
   border-bottom: 1px solid #333;
+  gap: 20px;
 }
 
 .editor-header h2 {
@@ -35,6 +36,46 @@
   font-weight: 600;
   color: #fff;
   margin: 0;
+}
+
+/* Zoom Controls */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+
+.zoom-controls button {
+  width: 28px;
+  height: 28px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #4ade80;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.zoom-controls button:hover {
+  background: #252525;
+  border-color: #4ade80;
+}
+
+.zoom-level {
+  min-width: 50px;
+  text-align: center;
+  font-size: 13px;
+  color: #999;
+  font-weight: 500;
 }
 
 .editor-header .close-btn {
@@ -69,14 +110,16 @@
   position: relative;
   background: #0a0a0a;
   overflow: auto;
+  cursor: grab;
+}
+
+.editor-canvas-container:active {
+  cursor: grabbing;
 }
 
 .editor-canvas {
-  position: relative;
-  width: 2400px;
-  height: 1600px;
+  display: block;
   background: #111;
-  cursor: crosshair;
 }
 
 .editor-grid {

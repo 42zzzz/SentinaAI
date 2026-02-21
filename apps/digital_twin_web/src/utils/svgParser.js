@@ -37,6 +37,22 @@ export function parseSvg(svgText) {
     if (hall) halls.push(hall);
   }
 
+  // Parse <circle> elements
+  const circles = doc.getElementsByTagName('circle');
+  for (let i = 0; i < circles.length; i++) {
+    const circle = circles[i];
+    const hall = parseCircle(circle, idCounter++);
+    if (hall) halls.push(hall);
+  }
+
+  // Parse <ellipse> elements
+  const ellipses = doc.getElementsByTagName('ellipse');
+  for (let i = 0; i < ellipses.length; i++) {
+    const ellipse = ellipses[i];
+    const hall = parseEllipse(ellipse, idCounter++);
+    if (hall) halls.push(hall);
+  }
+
   return halls;
 }
 
@@ -312,4 +328,59 @@ function quadraticBezierPoint(p0, p1, p2, t) {
     u*u * p0[0] + 2*u*t * p1[0] + t*t * p2[0],
     u*u * p0[1] + 2*u*t * p1[1] + t*t * p2[1]
   ];
+}
+
+// Parse <circle> to hall
+function parseCircle(circle, id) {
+  const cx = parseFloat(circle.getAttribute('cx') || 0);
+  const cy = parseFloat(circle.getAttribute('cy') || 0);
+  const r = parseFloat(circle.getAttribute('r') || 0);
+
+  if (r === 0) return null;
+
+  // Convert circle to polygon using ellipse converter
+  const vertices = ellipseToPolygon(cx, cy, r, r);
+  
+  return makePolygonHall(id, vertices);
+}
+
+// Parse <ellipse> to hall
+function parseEllipse(ellipse, id) {
+  const cx = parseFloat(ellipse.getAttribute('cx') || 0);
+  const cy = parseFloat(ellipse.getAttribute('cy') || 0);
+  const rx = parseFloat(ellipse.getAttribute('rx') || 0);
+  const ry = parseFloat(ellipse.getAttribute('ry') || 0);
+
+  if (rx === 0 || ry === 0) return null;
+
+  const vertices = ellipseToPolygon(cx, cy, rx, ry);
+  
+  return makePolygonHall(id, vertices);
+}
+
+// Convert ellipse to polygon with enough segments to look round
+function ellipseToPolygon(cx, cy, rx, ry, segments = 64) {
+  const vertices = [];
+  
+  for (let i = 0; i < segments; i++) {
+    const angle = (i / segments) * 2 * Math.PI;
+    const x = cx + rx * Math.cos(angle);
+    const y = cy + ry * Math.sin(angle);
+    vertices.push([Math.round(x), Math.round(y)]);
+  }
+  
+  return vertices;
+}
+
+// Create polygon hall with standard schema
+function makePolygonHall(id, vertices) {
+  if (!vertices || vertices.length < 3) return null;
+  
+  return {
+    id: `imported_hall_${id}`,
+    telemetryId: `IMPORTED_${String(id).padStart(2, '0')}`,
+    zone: 'Imported',
+    vertices,
+    color: COLORS[(id - 1) % COLORS.length]
+  };
 }
