@@ -9,6 +9,10 @@ class ConventionCenterApp {
         this.currentPath = null;
         this.iotSummary = null;
         this.iotData = {};
+        this.boothHallData = null; // hallName -> {events:[], exhibitors:[], booths:[]}
+        this._csvLoaded = false;
+        this.heatmapLayer = null; // raster heatmap renderer
+        this.heatmapSettings = { enabled: true, mode: 'global', scopeHallName: '', radiusPx: 55, cellSizePx: 12, intensity: 1.0 };
         this.crowdAvoidance = true; // NEW: toggle for crowd avoidance
 
         this.viewport = {
@@ -40,6 +44,7 @@ class ConventionCenterApp {
     async init() {
         this.setupPixi();
         await this.loadNavmesh();
+        await this.loadTooltipCSVData();
         await this.loadIoTData();
         this.setupUI();
         this.renderMap();
@@ -77,6 +82,17 @@ class ConventionCenterApp {
 
         this.app.stage.addChild(this.layers.background);
         this.app.stage.addChild(this.layers.heatmap);
+
+        // Raster Heatmap renderer (loaded from features/heatmap/HeatmapLayer.js)
+        if (typeof window.HeatmapLayer === 'function') {
+            this.heatmapLayer = new window.HeatmapLayer({ worldContainer: this.layers.heatmap, zIndex: 5 });
+            this.heatmapLayer.setEnabled(this.heatmapSettings.enabled);
+            this.heatmapLayer.setMode(this.heatmapSettings.mode);
+            this.heatmapLayer.setRadius(this.heatmapSettings.radiusPx);
+            this.heatmapLayer.setCellSize(this.heatmapSettings.cellSizePx);
+            this.heatmapLayer.setAlphaScale(this.heatmapSettings.intensity);
+        }
+
         this.app.stage.addChild(this.layers.corridors);
         this.app.stage.addChild(this.layers.corridorOutlines);
         this.app.stage.addChild(this.layers.rooms);
@@ -307,7 +323,119 @@ class ConventionCenterApp {
 		return { color: 0xcccccc, alpha: 0.3 };
 	}
 
-    async loadIoTData() {
+    
+    async loadTooltipCSVData() {
+        // Loads CSVs for tooltip enrichment (events/exhibitors/assignments)
+        try {
+            if (!window.CsvDataService || typeof window.CsvDataService.loadAllCSVData !== 'function') {
+                console.warn('CsvDataService not available; skipping tooltip CSV enrichment.');
+                return;
+            }
+
+            const base = '/static/assets/data';
+            const eventsUrl = `${base}/events.csv`;
+            const exhibitorsUrl = `${base}/exhibitors.csv`;
+            const assignmentsUrl = `${base}/event_exhibitor_booth_assignments.csv`;
+
+            const { events, exhibitors, assignments } = await window.CsvDataService.loadAllCSVData(
+                eventsUrl,
+                exhibitorsUrl,
+                assignmentsUrl
+            );
+
+            // boothKey -> { exhibitors:[], events:[] }
+            this.boothDataMap = window.CsvDataService.buildBoothDataMap(events, exhibitors, assignments);
+            this._csvLoaded = true;
+
+            console.log('✓ Tooltip CSV data loaded:', {
+                events: events.length,
+                exhibitors: exhibitors.length,
+                assignments: assignments.length,
+                booths: Object.keys(this.boothDataMap || {}).length
+            });
+        } catch (err) {
+            console.warn('Tooltip CSV load failed:', err);
+            this._csvLoaded = false;
+        }
+    }
+
+    _buildTooltipExtraHTML(node) {
+        // Enrich tooltip with Events/Exhibitors data sourced from CSVs.
+        // Map nodes are halls/rooms, while CSV join is booth-scoped.
+        // Aggregate all booths whose hallName matches this node.name.
+        try {
+            if (!this.boothDataMap || typeof this.boothDataMap !== 'object') return '';
+
+            const hallNameRaw = (node?.name ?? '').toString().trim();
+            const hallNameKey = hallNameRaw.toLowerCase();
+            if (!hallNameKey) return '';
+
+            const boothEntries = Object.values(this.boothDataMap)
+                .filter(b => (b?.hallName ?? '').toString().trim().toLowerCase() === hallNameKey);
+
+            if (boothEntries.length === 0) return '';
+
+            // Deduplicate exhibitors/events across booths
+            const exhibitorMap = new Map();
+            const eventMap = new Map();
+            let boothCodes = [];
+
+            for (const b of boothEntries) {
+                if (b?.boothCode) boothCodes.push(b.boothCode);
+                (b?.exhibitors || []).forEach(ex => {
+                    if (ex?.id && !exhibitorMap.has(ex.id)) exhibitorMap.set(ex.id, ex);
+                });
+                (b?.events || []).forEach(ev => {
+                    if (ev?.id && !eventMap.has(ev.id)) eventMap.set(ev.id, ev);
+                });
+            }
+
+            boothCodes = boothCodes.filter(Boolean);
+            const exhibitors = Array.from(exhibitorMap.values());
+            const events = Array.from(eventMap.values());
+
+            const fmtDate = (d) => (window.CsvDataService?.formatDate ? window.CsvDataService.formatDate(d) : (d || 'N/A'));
+
+            const maxList = 6;
+            const exhibitorList = exhibitors.slice(0, maxList).map(ex => {
+                const meta = [ex.industry, ex.country].filter(Boolean).join(' • ');
+                return `<li><strong>${escapeHtml(ex.name || ex.id)}</strong>${meta ? ` <span style=\"opacity:.8\">(${escapeHtml(meta)})</span>` : ''}</li>`;
+            }).join('');
+
+            const eventList = events.slice(0, maxList).map(ev => {
+                const when = ev.startDate ? fmtDate(ev.startDate) : '';
+                const venue = ev.venue ? ` • ${escapeHtml(ev.venue)}` : '';
+                return `<li><strong>${escapeHtml(ev.name || ev.id)}</strong>${when ? ` <span style=\"opacity:.85\">(${escapeHtml(when)}${venue})</span>` : venue ? ` <span style=\"opacity:.85\">(${venue.replace(' • ','')})</span>` : ''}</li>`;
+            }).join('');
+
+            const extra = [];
+            extra.push('<hr style=\"border:none;border-top:1px solid rgba(255,255,255,0.15);margin:10px 0\">');
+            extra.push(`<div style=\"font-size:12px; opacity:.95\"><strong>CSV Insights</strong></div>`);
+            extra.push(`<div style=\"margin-top:6px; font-size:12px; opacity:.9\">` +
+                `<strong>Booths in this hall:</strong> ${boothEntries.length}` +
+                (boothCodes.length ? ` <span style=\"opacity:.75\">(e.g., ${escapeHtml(boothCodes.slice(0, 3).join(', '))}${boothCodes.length > 3 ? ', …' : ''})</span>` : '') +
+                `</div>`);
+
+            if (events.length) {
+                extra.push(`<div style=\"margin-top:8px; font-size:12px\"><strong>Events</strong> <span style=\"opacity:.75\">(${events.length})</span></div>`);
+                extra.push(`<ul style=\"margin:6px 0 0 18px; padding:0\">${eventList}</ul>`);
+                if (events.length > maxList) extra.push(`<div style=\"font-size:11px; opacity:.7; margin-top:4px\">+${events.length - maxList} more</div>`);
+            }
+
+            if (exhibitors.length) {
+                extra.push(`<div style=\"margin-top:8px; font-size:12px\"><strong>Exhibitors</strong> <span style=\"opacity:.75\">(${exhibitors.length})</span></div>`);
+                extra.push(`<ul style=\"margin:6px 0 0 18px; padding:0\">${exhibitorList}</ul>`);
+                if (exhibitors.length > maxList) extra.push(`<div style=\"font-size:11px; opacity:.7; margin-top:4px\">+${exhibitors.length - maxList} more</div>`);
+            }
+
+            return extra.join('');
+        } catch (e) {
+            console.warn('Tooltip enrichment failed:', e);
+            return '';
+        }
+    }
+
+async loadIoTData() {
         this.updateStatus('Loading IoT telemetry...', true);
         try {
             // Load summary
@@ -408,44 +536,76 @@ class ConventionCenterApp {
         this.updateStatus('Map rendered', false);
     }
 
+    
     renderCrowdHeatmap() {
-        // Overlay heat map on rooms based on occupancy
+        // Raster heatmap overlay using room centers + occupancy weights.
+        // Falls back to old polygon fill if HeatmapLayer not available.
         const roomNodes = this.navmeshData.nodes.filter(n => n.type === 'room');
-        
-        roomNodes.forEach(node => {
-            const occupancy = this.iotData[node.id] || 0;
-            if (occupancy === 0) return;
-            
-            const graphics = new PIXI.Graphics();
-            
-            // Color based on occupancy: green -> yellow -> red
-            let color;
-            let alpha = 0.3;
-            
-            if (occupancy < 0.3) {
-                color = 0x4caf50; // Green
-            } else if (occupancy < 0.5) {
-                color = 0xffa500; // Orange
-            } else if (occupancy < 0.7) {
-                color = 0xff6b6b; // Light red
-            } else {
-                color = 0xff0000; // Red
-                alpha = 0.4;
-            }
-            
-            graphics.beginFill(color, alpha);
-            graphics.lineStyle(0);
-            const polygon = node.polygon;
-            graphics.moveTo(polygon[0][0], polygon[0][1]);
-            for (let i = 1; i < polygon.length; i++) {
-                graphics.lineTo(polygon[i][0], polygon[i][1]);
-            }
-            graphics.closePath();
-            graphics.endFill();
-            
-            this.layers.heatmap.addChild(graphics);
-        });
+        if (!this.heatmapLayer) {
+            // Fallback: simple per-room fill
+            roomNodes.forEach(node => {
+                const occupancy = this.iotData[node.id] || 0;
+                if (occupancy === 0) return;
+
+                const graphics = new PIXI.Graphics();
+                let color;
+                let alpha = 0.3;
+
+                if (occupancy < 0.3) color = 0x4caf50;
+                else if (occupancy < 0.5) color = 0xffa500;
+                else if (occupancy < 0.7) color = 0xff6b6b;
+                else { color = 0xff0000; alpha = 0.4; }
+
+                graphics.beginFill(color, alpha);
+                graphics.lineStyle(0);
+                const polygon = node.polygon;
+                graphics.moveTo(polygon[0][0], polygon[0][1]);
+                for (let i = 1; i < polygon.length; i++) graphics.lineTo(polygon[i][0], polygon[i][1]);
+                graphics.closePath();
+                graphics.endFill();
+                this.layers.heatmap.addChild(graphics);
+            });
+            return;
+        }
+
+        const polyCenter = (poly) => {
+            // poly: [[x,y], ...]
+            let x = 0, y = 0;
+            for (const p of poly) { x += p[0]; y += p[1]; }
+            const n = poly.length || 1;
+            return { x: x / n, y: y / n };
+        };
+
+        const points = [];
+        for (const node of roomNodes) {
+            const occ = this.iotData[node.id] || 0;
+            if (occ <= 0) continue;
+            const c = polyCenter(node.polygon);
+            points.push({ x: c.x, y: c.y, value: occ, boothId: node.name || node.id });
+        }
+
+        // Booth-scoped mode uses a "scope hall" selection (by hall name).
+        // We reuse the room polygon as the mask.
+        const scopeName = this.heatmapSettings.scopeHallName;
+        const scopeNode = scopeName ? roomNodes.find(n => (n.name || '').toLowerCase() === scopeName.toLowerCase()) : null;
+
+        this.heatmapLayer.setEnabled(this.heatmapSettings.enabled);
+        this.heatmapLayer.setRadius(this.heatmapSettings.radiusPx);
+        this.heatmapLayer.setCellSize(this.heatmapSettings.cellSizePx);
+        this.heatmapLayer.setAlphaScale(this.heatmapSettings.intensity);
+
+        if (this.heatmapSettings.mode === 'booth' && scopeNode) {
+            this.heatmapLayer.setMode('booth');
+            this.heatmapLayer.setBooths([{ id: scopeNode.name || scopeNode.id, polygon: scopeNode.polygon }]);
+            this.heatmapLayer.setSelectedBoothId(scopeNode.name || scopeNode.id);
+        } else {
+            this.heatmapLayer.setMode('global');
+            this.heatmapLayer.setSelectedBoothId(null);
+        }
+
+        this.heatmapLayer.update(points);
     }
+
     renderCorridors() {
         if (!this.navmeshData.corridor_polygons) return;
 
@@ -616,6 +776,7 @@ class ConventionCenterApp {
             ${occupancyText}
             ${occupancy > 0 ? `<strong>Status:</strong> ${crowdStatus}<br>` : ''}
             <strong>Type:</strong> Exhibition Hall
+            ${this._buildTooltipExtraHTML(node) || ''}
         `;
 
         const container = document.getElementById('canvas-container');
@@ -816,6 +977,11 @@ class ConventionCenterApp {
         
         // NEW: Crowd avoidance toggle
         document.getElementById('crowdToggle').addEventListener('change', () => this.toggleCrowdAvoidance());
+
+        // NEW: Heatmap controls (injected dynamically)
+		if (typeof this._injectHeatmapControls === 'function') {
+			this._injectHeatmapControls();
+		}
         
         document.addEventListener('mousemove', (event) => {
             const tooltip = document.getElementById('event-tooltip');
@@ -823,6 +989,131 @@ class ConventionCenterApp {
             tooltip.style.top = (event.clientY + 20) + 'px';
         });
     }
+
+	_injectHeatmapControls() {
+		// Creates a small floating panel for heatmap controls (no React).
+		// Safe to call multiple times.
+		if (document.getElementById('heatmap-panel')) return;
+
+		const panel = document.createElement('div');
+		panel.id = 'heatmap-panel';
+		panel.style.position = 'absolute';
+		panel.style.top = '12px';
+		panel.style.right = '12px';
+		panel.style.zIndex = '9999';
+		panel.style.background = 'rgba(0,0,0,0.72)';
+		panel.style.color = '#fff';
+		panel.style.padding = '12px';
+		panel.style.borderRadius = '10px';
+		panel.style.width = '280px';
+		panel.style.fontFamily = 'system-ui, -apple-system, Segoe UI, Roboto, Arial';
+		panel.style.fontSize = '12px';
+		panel.style.userSelect = 'none';
+
+		const roomNodes = (this.navmeshData?.nodes || []).filter(n => n.type === 'room');
+		const hallOptions = roomNodes
+			.map(n => n.name || n.id)
+			.filter(Boolean)
+			.sort((a, b) => a.localeCompare(b));
+
+		panel.innerHTML = `
+			<div style="display:flex;justify-content:space-between;align-items:center">
+				<strong>Heatmap</strong>
+				<label style="display:flex;gap:8px;align-items:center">
+					<span id="hm-onoff-label">${this.heatmapSettings.enabled ? 'On' : 'Off'}</span>
+					<input id="hm-enabled" type="checkbox" ${this.heatmapSettings.enabled ? 'checked' : ''} />
+				</label>
+			</div>
+			<div style="margin-top:10px">
+				<label style="display:flex;gap:10px;align-items:center">
+					<span style="width:70px">Mode</span>
+					<select id="hm-mode" style="flex:1">
+						<option value="global" ${this.heatmapSettings.mode === 'global' ? 'selected' : ''}>Global</option>
+						<option value="booth" ${this.heatmapSettings.mode === 'booth' ? 'selected' : ''}>Scoped</option>
+					</select>
+				</label>
+			</div>
+			<div id="hm-scope-row" style="margin-top:10px;${this.heatmapSettings.mode === 'booth' ? '' : 'display:none;'}">
+				<label style="display:flex;gap:10px;align-items:center">
+					<span style="width:70px">Scope</span>
+					<select id="hm-scope" style="flex:1">
+						<option value="">Select…</option>
+						${hallOptions.map(n => `<option value="${String(n).replace(/"/g,'&quot;')}" ${String(n).toLowerCase()===String(this.heatmapSettings.scopeHallName||'').toLowerCase() ? 'selected' : ''}>${n}</option>`).join('')}
+					</select>
+				</label>
+			</div>
+			<div style="margin-top:10px">
+				<label style="display:flex;gap:10px;align-items:center">
+					<span style="width:70px">Radius</span>
+					<input id="hm-radius" type="range" min="10" max="160" value="${this.heatmapSettings.radiusPx}" style="flex:1" />
+					<span id="hm-radius-v" style="width:36px;text-align:right">${this.heatmapSettings.radiusPx}</span>
+				</label>
+			</div>
+			<div style="margin-top:10px">
+				<label style="display:flex;gap:10px;align-items:center">
+					<span style="width:70px">Cell</span>
+					<input id="hm-cell" type="range" min="4" max="30" value="${this.heatmapSettings.cellSizePx}" style="flex:1" />
+					<span id="hm-cell-v" style="width:36px;text-align:right">${this.heatmapSettings.cellSizePx}</span>
+				</label>
+			</div>
+			<div style="margin-top:10px">
+				<label style="display:flex;gap:10px;align-items:center">
+					<span style="width:70px">Intensity</span>
+					<input id="hm-int" type="range" min="0.2" max="2.5" step="0.1" value="${this.heatmapSettings.intensity}" style="flex:1" />
+					<span id="hm-int-v" style="width:36px;text-align:right">${Number(this.heatmapSettings.intensity).toFixed(1)}</span>
+				</label>
+			</div>
+			<div style="margin-top:10px;opacity:.85">
+				<div>Global = whole venue. Scoped = mask to selected hall polygon.</div>
+			</div>
+		`;
+
+		document.body.appendChild(panel);
+
+		const refresh = () => {
+			// Re-render map overlay only if data exists
+			try {
+				if (this.iotData && Object.keys(this.iotData).length > 0) {
+					this.renderCrowdHeatmap();
+				}
+			} catch (_) {}
+		};
+
+		panel.querySelector('#hm-enabled').addEventListener('change', (e) => {
+			this.heatmapSettings.enabled = !!e.target.checked;
+			panel.querySelector('#hm-onoff-label').textContent = this.heatmapSettings.enabled ? 'On' : 'Off';
+			refresh();
+		});
+
+		panel.querySelector('#hm-mode').addEventListener('change', (e) => {
+			this.heatmapSettings.mode = e.target.value === 'booth' ? 'booth' : 'global';
+			panel.querySelector('#hm-scope-row').style.display = (this.heatmapSettings.mode === 'booth') ? '' : 'none';
+			refresh();
+		});
+
+		panel.querySelector('#hm-scope').addEventListener('change', (e) => {
+			this.heatmapSettings.scopeHallName = e.target.value || '';
+			refresh();
+		});
+
+		panel.querySelector('#hm-radius').addEventListener('input', (e) => {
+			this.heatmapSettings.radiusPx = Number(e.target.value);
+			panel.querySelector('#hm-radius-v').textContent = this.heatmapSettings.radiusPx;
+			refresh();
+		});
+
+		panel.querySelector('#hm-cell').addEventListener('input', (e) => {
+			this.heatmapSettings.cellSizePx = Number(e.target.value);
+			panel.querySelector('#hm-cell-v').textContent = this.heatmapSettings.cellSizePx;
+			refresh();
+		});
+
+		panel.querySelector('#hm-int').addEventListener('input', (e) => {
+			this.heatmapSettings.intensity = Number(e.target.value);
+			panel.querySelector('#hm-int-v').textContent = Number(this.heatmapSettings.intensity).toFixed(1);
+			refresh();
+		});
+	}
 
     zoom(factor) {
         this.viewport.zoom = this._clamp(this.viewport.zoom * factor, 0.25, 6);
