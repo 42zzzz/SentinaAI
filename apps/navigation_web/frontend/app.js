@@ -9,14 +9,9 @@ class ConventionCenterApp {
         this.currentPath = null;
         this.iotSummary = null;
         this.iotData = {};
-        this.boothHallData = null;
-        this._csvLoaded = false;
-        
-        // HEATMAP: Simple toggle for per-hall overlay visualization
-        this.heatmapEnabled = false;
-        this.heatmapOverlayContainer = null; // NEW: Container for heatmap overlay polygons
-        
-        this.crowdAvoidance = true;
+        this.heatmapEnabled = true; // show/hide heatmap overlay
+        this.heatmapOpacity = 0.35; // default overlay opacity
+        this.crowdAvoidance = true; // NEW: toggle for crowd avoidance
 
         this.viewport = {
             zoom: 1,
@@ -24,6 +19,7 @@ class ConventionCenterApp {
             y: 0
         };
 
+        // Drag state and robust hover hit-testing (do not rely on Pixi hit tests)
         this._isDragging = false;
         this._roomHitTest = [];
         this._hoveredRoomId = null;
@@ -35,6 +31,7 @@ class ConventionCenterApp {
             rooms: null,
             corridors: null,
             corridorOutlines: null,
+            heatmap: null,  // heat map layer for occupancy
             path: null,
             interactive: null
         };
@@ -45,8 +42,9 @@ class ConventionCenterApp {
     async init() {
         this.setupPixi();
         await this.loadNavmesh();
-        await this.loadTooltipCSVData();
         await this.loadIoTData();
+        // Keep telemetry + heatmap live
+        setInterval(() => this.refreshTelemetry(), 5000);
         this.setupUI();
         this.renderMap();
         this.updateStatus('Ready', false);
@@ -60,6 +58,7 @@ class ConventionCenterApp {
 	            view: canvas,
 	            width: container.clientWidth,
 	            height: container.clientHeight,
+	            // Background Color
 	            backgroundColor: 0xffffff,
 	            antialias: true,
 	            resolution: window.devicePixelRatio || 1,
@@ -69,29 +68,30 @@ class ConventionCenterApp {
             this.app.renderer.resolution = 1;
         } catch (_) {}
 
-        this.app.stage.sortableChildren = true;
-        
-        // HEATMAP CHANGE: Removed old layers.heatmap, using heatmapOverlayContainer instead
+        this.app.stage.sortableChildren = true;        // Create layers
         this.layers.background = new PIXI.Container();
         this.layers.corridors = new PIXI.Container();
         this.layers.corridorOutlines = new PIXI.Container();
         this.layers.rooms = new PIXI.Container();
-        
-        // HEATMAP: New overlay container sits ABOVE rooms but BELOW path/interactive
-        this.heatmapOverlayContainer = new PIXI.Container();
-        this.heatmapOverlayContainer.zIndex = 50; // Above rooms (default 0), below path (100)
-        
+        this.layers.heatmap = new PIXI.Container(); // overlay sits above rooms/corridors
         this.layers.path = new PIXI.Container();
-        this.layers.path.zIndex = 100;
         this.layers.interactive = new PIXI.Container();
-        this.layers.interactive.zIndex = 200;
 
-        // Layer order: background → corridors → rooms → heatmap overlay → path → interactive
+        // Optional zIndex (stage.sortableChildren already enabled)
+        this.layers.background.zIndex = 0;
+        this.layers.corridors.zIndex = 10;
+        this.layers.corridorOutlines.zIndex = 11;
+        this.layers.rooms.zIndex = 20;
+        this.layers.heatmap.zIndex = 30;
+        this.layers.path.zIndex = 40;
+        this.layers.interactive.zIndex = 50;
+
+        // Draw order: background → corridors → rooms → heatmap → path → interactive
         this.app.stage.addChild(this.layers.background);
         this.app.stage.addChild(this.layers.corridors);
         this.app.stage.addChild(this.layers.corridorOutlines);
         this.app.stage.addChild(this.layers.rooms);
-        this.app.stage.addChild(this.heatmapOverlayContainer); // HEATMAP: Insert here
+        this.app.stage.addChild(this.layers.heatmap);
         this.app.stage.addChild(this.layers.path);
         this.app.stage.addChild(this.layers.interactive);
 
@@ -103,6 +103,8 @@ class ConventionCenterApp {
     }
 
     setupPanZoom() {
+        // Make the map draggable from ANY click location (including halls/corridors).
+        // We handle panning at the DOM level so interactive Pixi objects do not block dragging.
         try {
             this.app.stage.eventMode = 'static';
         } catch (_) {
@@ -125,6 +127,7 @@ class ConventionCenterApp {
         };
 
         const onDown = (e) => {
+            // Left click / touch only
             if (typeof e.button === 'number' && e.button !== 0) return;
             isDragging = true;
             this._isDragging = true;
@@ -151,6 +154,7 @@ class ConventionCenterApp {
             this.viewport.y = startViewport.y + dy;
             this._clampViewportToMap();
             this.updateViewport();
+            // Hide tooltip while actively dragging to avoid flicker
             if (movedPx > 2) this.hideEventTooltip();
         };
 
@@ -234,6 +238,53 @@ class ConventionCenterApp {
         return Math.max(lo, Math.min(hi, v));
     }
 
+
+    _heatColor(t) {
+        // t: 0..1  -> green(120°) to red(0°)
+        const clamp = (x) => Math.max(0, Math.min(1, x));
+        t = clamp(t);
+        const h = (1 - t) * 120; // degrees
+        const s = 0.85;
+        const v = 1.0;
+
+        const c = v * s;
+        const hp = h / 60;
+        const x = c * (1 - Math.abs((hp % 2) - 1));
+        let r=0, g=0, b=0;
+        if (0 <= hp && hp < 1) [r,g,b] = [c,x,0];
+        else if (1 <= hp && hp < 2) [r,g,b] = [x,c,0];
+        else if (2 <= hp && hp < 3) [r,g,b] = [0,c,x];
+        else if (3 <= hp && hp < 4) [r,g,b] = [0,x,c];
+        else if (4 <= hp && hp < 5) [r,g,b] = [x,0,c];
+        else if (5 <= hp && hp < 6) [r,g,b] = [c,0,x];
+        const m = v - c;
+        r = Math.round((r + m) * 255);
+        g = Math.round((g + m) * 255);
+        b = Math.round((b + m) * 255);
+        return (r << 16) + (g << 8) + b;
+    }
+
+    async refreshTelemetry() {
+        // Lightweight polling to keep the heatmap + IoT panel live
+        try {
+            const [summaryResp, dataResp] = await Promise.all([
+                fetch(`${API_BASE}/iot/summary`, { cache: 'no-store' }),
+                fetch(`${API_BASE}/iot/data`, { cache: 'no-store' }),
+            ]);
+
+            const summary = await summaryResp.json().catch(() => null);
+            const data = await dataResp.json().catch(() => ({}));
+
+            if (summary) this.iotSummary = summary;
+            if (data && typeof data === 'object') this.iotData = data;
+
+            this.updateIoTDisplay();
+            this.renderHeatmap();
+        } catch (_) {
+            // keep quiet if telemetry is down
+        }
+    }
+
     async loadNavmesh() {
         this.updateStatus('Loading navigation mesh...', true);
         try {
@@ -245,6 +296,7 @@ class ConventionCenterApp {
                 throw new Error(`Failed to load navmesh: ${msg}`);
             }
 
+            // Defensive: if backend returns an unexpected payload, fail gracefully
             if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.edges) || !Array.isArray(data.rooms)) {
                 throw new Error('Navmesh payload missing required fields (nodes/edges/rooms)');
             }
@@ -262,6 +314,7 @@ class ConventionCenterApp {
             const msg = error?.message || String(error);
             this.updateStatus(`Error loading navmesh: ${msg}`, false);
 
+            // If backend is still warming up, retry a few times so the UI doesn't stay on "Initializing..." forever.
             if (/system not initialized/i.test(msg) && this._navmeshRetryCount < 10) {
                 this._navmeshRetryCount += 1;
                 setTimeout(async () => {
@@ -277,6 +330,7 @@ class ConventionCenterApp {
     }
 
     _parseHexWithAlpha(hex) {
+        // Accepts: #RRGGBB or #RRGGBBAA
         if (typeof hex !== 'string') return { color: 0xffffff, alpha: 1 };
         const h = hex.trim().replace('#', '');
         if (h.length === 6) {
@@ -291,13 +345,16 @@ class ConventionCenterApp {
     }
 
 	_getHallStyleByName(hallName) {
+		// Returns { color: 0xRRGGBB, alpha: 0..1 }
 		const safe = (hallName ?? '').toString().trim();
 		const name = safe.toLowerCase();
 
+		// Core hall buckets (keep your same palette)
 		if (name.startsWith('north hall')) return { color: 0x9e2a2b, alpha: 0.4 };
 		if (name.startsWith('east hall')) return { color: 0x1f3a5f, alpha: 0.4 };
 		if (name.startsWith('south hall')) return { color: 0xe09f3e, alpha: 0.4 };
 
+		// Generic halls like "Hall 1", "Hall 8", etc.
 		if (name.startsWith('hall')) {
 			const num = parseInt(name.replace('hall', '').trim(), 10);
 			if (!Number.isNaN(num)) {
@@ -309,118 +366,14 @@ class ConventionCenterApp {
 		return { color: 0xcccccc, alpha: 0.3 };
 	}
 
-    
-    async loadTooltipCSVData() {
-        try {
-            if (!window.CsvDataService || typeof window.CsvDataService.loadAllCSVData !== 'function') {
-                console.warn('CsvDataService not available; skipping tooltip CSV enrichment.');
-                return;
-            }
-
-            const base = '/static/assets/data';
-            const eventsUrl = `${base}/events.csv`;
-            const exhibitorsUrl = `${base}/exhibitors.csv`;
-            const assignmentsUrl = `${base}/event_exhibitor_booth_assignments.csv`;
-
-            const { events, exhibitors, assignments } = await window.CsvDataService.loadAllCSVData(
-                eventsUrl,
-                exhibitorsUrl,
-                assignmentsUrl
-            );
-
-            this.boothDataMap = window.CsvDataService.buildBoothDataMap(events, exhibitors, assignments);
-            this._csvLoaded = true;
-
-            console.log('✓ Tooltip CSV data loaded:', {
-                events: events.length,
-                exhibitors: exhibitors.length,
-                assignments: assignments.length,
-                booths: Object.keys(this.boothDataMap || {}).length
-            });
-        } catch (err) {
-            console.warn('Tooltip CSV load failed:', err);
-            this._csvLoaded = false;
-        }
-    }
-
-    _buildTooltipExtraHTML(node) {
-        try {
-            if (!this.boothDataMap || typeof this.boothDataMap !== 'object') return '';
-
-            const hallNameRaw = (node?.name ?? '').toString().trim();
-            const hallNameKey = hallNameRaw.toLowerCase();
-            if (!hallNameKey) return '';
-
-            const boothEntries = Object.values(this.boothDataMap)
-                .filter(b => (b?.hallName ?? '').toString().trim().toLowerCase() === hallNameKey);
-
-            if (boothEntries.length === 0) return '';
-
-            const exhibitorMap = new Map();
-            const eventMap = new Map();
-            let boothCodes = [];
-
-            for (const b of boothEntries) {
-                if (b?.boothCode) boothCodes.push(b.boothCode);
-                (b?.exhibitors || []).forEach(ex => {
-                    if (ex?.id && !exhibitorMap.has(ex.id)) exhibitorMap.set(ex.id, ex);
-                });
-                (b?.events || []).forEach(ev => {
-                    if (ev?.id && !eventMap.has(ev.id)) eventMap.set(ev.id, ev);
-                });
-            }
-
-            boothCodes = boothCodes.filter(Boolean);
-            const exhibitors = Array.from(exhibitorMap.values());
-            const events = Array.from(eventMap.values());
-
-            const fmtDate = (d) => (window.CsvDataService?.formatDate ? window.CsvDataService.formatDate(d) : (d || 'N/A'));
-
-            const maxList = 6;
-            const exhibitorList = exhibitors.slice(0, maxList).map(ex => {
-                const meta = [ex.industry, ex.country].filter(Boolean).join(' • ');
-                return `<li><strong>${escapeHtml(ex.name || ex.id)}</strong>${meta ? ` <span style=\"opacity:.8\">(${escapeHtml(meta)})</span>` : ''}</li>`;
-            }).join('');
-
-            const eventList = events.slice(0, maxList).map(ev => {
-                const when = ev.startDate ? fmtDate(ev.startDate) : '';
-                const venue = ev.venue ? ` • ${escapeHtml(ev.venue)}` : '';
-                return `<li><strong>${escapeHtml(ev.name || ev.id)}</strong>${when ? ` <span style=\"opacity:.85\">(${escapeHtml(when)}${venue})</span>` : venue ? ` <span style=\"opacity:.85\">(${venue.replace(' • ','')})</span>` : ''}</li>`;
-            }).join('');
-
-            const extra = [];
-            extra.push('<hr style=\"border:none;border-top:1px solid rgba(255,255,255,0.15);margin:10px 0\">');
-            extra.push(`<div style=\"font-size:12px; opacity:.95\"><strong>CSV Insights</strong></div>`);
-            extra.push(`<div style=\"margin-top:6px; font-size:12px; opacity:.9\">` +
-                `<strong>Booths in this hall:</strong> ${boothEntries.length}` +
-                (boothCodes.length ? ` <span style=\"opacity:.75\">(e.g., ${escapeHtml(boothCodes.slice(0, 3).join(', '))}${boothCodes.length > 3 ? ', …' : ''})</span>` : '') +
-                `</div>`);
-
-            if (events.length) {
-                extra.push(`<div style=\"margin-top:8px; font-size:12px\"><strong>Events</strong> <span style=\"opacity:.75\">(${events.length})</span></div>`);
-                extra.push(`<ul style=\"margin:6px 0 0 18px; padding:0\">${eventList}</ul>`);
-                if (events.length > maxList) extra.push(`<div style=\"font-size:11px; opacity:.7; margin-top:4px\">+${events.length - maxList} more</div>`);
-            }
-
-            if (exhibitors.length) {
-                extra.push(`<div style=\"margin-top:8px; font-size:12px\"><strong>Exhibitors</strong> <span style=\"opacity:.75\">(${exhibitors.length})</span></div>`);
-                extra.push(`<ul style=\"margin:6px 0 0 18px; padding:0\">${exhibitorList}</ul>`);
-                if (exhibitors.length > maxList) extra.push(`<div style=\"font-size:11px; opacity:.7; margin-top:4px\">+${exhibitors.length - maxList} more</div>`);
-            }
-
-            return extra.join('');
-        } catch (e) {
-            console.warn('Tooltip enrichment failed:', e);
-            return '';
-        }
-    }
-
-async loadIoTData() {
+    async loadIoTData() {
         this.updateStatus('Loading IoT telemetry...', true);
         try {
+            // Load summary
             const summaryResp = await fetch(`${API_BASE}/iot/summary`, { cache: 'no-store' });
             this.iotSummary = await summaryResp.json().catch(() => null);
             
+            // Load sensor data
             const dataResp = await fetch(`${API_BASE}/iot/data`, { cache: 'no-store' });
             this.iotData = await dataResp.json().catch(() => ({}));
             
@@ -453,6 +406,7 @@ async loadIoTData() {
         document.getElementById('max-occupancy').textContent = 
             `${(this.iotSummary.max_occupancy * 100).toFixed(1)}%`;
         
+        // Show crowded halls
         const crowdedList = document.getElementById('crowded-halls');
         crowdedList.innerHTML = '';
         
@@ -494,6 +448,7 @@ async loadIoTData() {
         this.layers.rooms.removeChildren();
         this.layers.corridors.removeChildren();
         if (this.layers.corridorOutlines) this.layers.corridorOutlines.removeChildren();
+        this.layers.heatmap.removeChildren();
         
         this.renderCorridors();
         this.renderRooms();
@@ -503,123 +458,95 @@ async loadIoTData() {
             this._robustHoverInitialized = true;
         }
         
-        // HEATMAP: Render overlay after halls are drawn
-        this._updateHeatmapOverlay();
+        // Heatmap overlay (rooms + corridor congestion)
+        this.renderHeatmap();
         
         this.centerMap();
         this.updateStatus('Map rendered', false);
     }
 
-    // HEATMAP: Main heatmap overlay rendering method
-    // Called after renderMap completes and when telemetry/toggle changes
-    _updateHeatmapOverlay() {
-        // Clear existing overlay
-        if (this.heatmapOverlayContainer) {
-            this.heatmapOverlayContainer.removeChildren();
-        }
-        
-        // Exit early if disabled or no data
+    renderHeatmap() {
+        if (!this.layers.heatmap) return;
+        this.layers.heatmap.removeChildren();
+
         if (!this.heatmapEnabled) return;
-        if (!this.navmeshData || !this.iotData) return;
-        
+        if (!this.iotData || Object.keys(this.iotData).length === 0) return;
+
+        const g = new PIXI.Graphics();
+        g.zIndex = 30;
+
+        // 1) Room overlay (occupancy)
         const roomNodes = this.navmeshData.nodes.filter(n => n.type === 'room');
-        if (roomNodes.length === 0) return;
-        
-        // Find max occupancy for normalization
-        let maxOccupancy = 0;
-        roomNodes.forEach(node => {
-            const occ = this.iotData[node.id] || 0;
-            if (occ > maxOccupancy) maxOccupancy = occ;
-        });
-        
-        // Avoid division by zero
-        if (maxOccupancy === 0) maxOccupancy = 1;
-        
-        // Render overlay polygon for each hall
-        roomNodes.forEach(node => {
-            const rawOccupancy = this.iotData[node.id] || 0;
-            
-            // Skip if zero occupancy (transparent)
-            if (rawOccupancy === 0) return;
-            
-            // Normalize intensity 0..1
-            const intensity = rawOccupancy / maxOccupancy;
-            
-            // Map intensity to color: blue → cyan → yellow → orange → red
-            const colorData = this._getHeatmapColor(intensity);
-            
-            const graphics = new PIXI.Graphics();
-            graphics.beginFill(colorData.color, colorData.alpha);
-            graphics.lineStyle(0); // No border
-            
-            const polygon = node.polygon;
-            if (!polygon || polygon.length < 3) return;
-            
-            graphics.moveTo(polygon[0][0], polygon[0][1]);
-            for (let i = 1; i < polygon.length; i++) {
-                graphics.lineTo(polygon[i][0], polygon[i][1]);
-            }
-            graphics.closePath();
-            graphics.endFill();
-            
-            this.heatmapOverlayContainer.addChild(graphics);
-        });
-    }
-    
-    // HEATMAP: Color mapping function
-    // Maps normalized intensity [0..1] to color stops: blue → cyan → yellow → orange → red
-    // Returns { color: 0xRRGGBB, alpha: number }
-    _getHeatmapColor(intensity) {
-        // Clamp intensity
-        intensity = Math.max(0, Math.min(1, intensity));
-        
-        // Color stops with linear interpolation
-        // Stop 0.0: Blue (0x0066ff)
-        // Stop 0.25: Cyan (0x00ffff)
-        // Stop 0.5: Yellow (0xffff00)
-        // Stop 0.75: Orange (0xff9900)
-        // Stop 1.0: Red (0xff0000)
-        
-        let color;
-        if (intensity <= 0.25) {
-            // Interpolate blue → cyan
-            const t = intensity / 0.25;
-            color = this._lerpColor(0x0066ff, 0x00ffff, t);
-        } else if (intensity <= 0.5) {
-            // Interpolate cyan → yellow
-            const t = (intensity - 0.25) / 0.25;
-            color = this._lerpColor(0x00ffff, 0xffff00, t);
-        } else if (intensity <= 0.75) {
-            // Interpolate yellow → orange
-            const t = (intensity - 0.5) / 0.25;
-            color = this._lerpColor(0xffff00, 0xff9900, t);
-        } else {
-            // Interpolate orange → red
-            const t = (intensity - 0.75) / 0.25;
-            color = this._lerpColor(0xff9900, 0xff0000, t);
+        for (const node of roomNodes) {
+            const occ = Number(this.iotData[node.id] ?? 0);
+            if (!isFinite(occ) || occ <= 0.02) continue;
+            const t = this._clamp(occ, 0, 1);
+            const color = this._heatColor(t);
+            const alpha = this._clamp(this.heatmapOpacity * (0.45 + 0.55 * t), 0.05, 0.65);
+
+            const poly = node.polygon;
+            if (!poly || poly.length < 3) continue;
+            g.beginFill(color, alpha);
+            g.lineStyle(0);
+            g.moveTo(poly[0][0], poly[0][1]);
+            for (let i = 1; i < poly.length; i++) g.lineTo(poly[i][0], poly[i][1]);
+            g.closePath();
+            g.endFill();
         }
-        
-        // Modest opacity so halls remain visible: 0.35 at low intensity, 0.65 at high
-        const alpha = 0.35 + (intensity * 0.3);
-        
-        return { color, alpha };
-    }
-    
-    // HEATMAP: Linear interpolation between two hex colors
-    _lerpColor(color1, color2, t) {
-        const r1 = (color1 >> 16) & 0xff;
-        const g1 = (color1 >> 8) & 0xff;
-        const b1 = color1 & 0xff;
-        
-        const r2 = (color2 >> 16) & 0xff;
-        const g2 = (color2 >> 8) & 0xff;
-        const b2 = color2 & 0xff;
-        
-        const r = Math.round(r1 + (r2 - r1) * t);
-        const g = Math.round(g1 + (g2 - g1) * t);
-        const b = Math.round(b1 + (b2 - b1) * t);
-        
-        return (r << 16) | (g << 8) | b;
+
+        // 2) Corridor glow (based on edge multiplier)
+        const incident = new Map();
+        const addInc = (id, m) => {
+            if (!incident.has(id)) incident.set(id, []);
+            incident.get(id).push(m);
+        };
+
+        for (const e of (this.navmeshData.edges || [])) {
+            let m = 1.0;
+            const bw = Number(e.base_weight);
+            const w = Number(e.weight);
+            if (isFinite(bw) && bw > 0 && isFinite(w)) m = w / bw;
+            else if (e.crowd_multiplier !== undefined) m = Number(e.crowd_multiplier) || 1.0;
+
+            addInc(e.from, m);
+            addInc(e.to, m);
+        }
+
+        const corridorNodes = this.navmeshData.nodes.filter(n => n.type === 'corridor');
+        let maxM = 1.0;
+        const nodeM = new Map();
+        for (const n of corridorNodes) {
+            const arr = incident.get(n.id) || [];
+            if (!arr.length) continue;
+            const avg = arr.reduce((a,b)=>a+b,0) / arr.length;
+            nodeM.set(n.id, avg);
+            if (avg > maxM) maxM = avg;
+        }
+
+        if (maxM > 1.05) {
+            for (const n of corridorNodes) {
+                const avg = nodeM.get(n.id);
+                if (!avg) continue;
+                const t = this._clamp((avg - 1) / (maxM - 1), 0, 1);
+                if (t <= 0.05) continue;
+
+                const color = this._heatColor(t);
+                const alpha = this._clamp(0.08 + 0.18 * t, 0.06, 0.30);
+                const r1 = 10 + 18 * t;
+                const r2 = r1 * 1.6;
+
+                // soft glow by drawing two circles
+                g.beginFill(color, alpha);
+                g.drawCircle(n.position.x, n.position.y, r2);
+                g.endFill();
+
+                g.beginFill(color, this._clamp(alpha + 0.06, 0.08, 0.38));
+                g.drawCircle(n.position.x, n.position.y, r1);
+                g.endFill();
+            }
+        }
+
+        this.layers.heatmap.addChild(g);
     }
 
     renderCorridors() {
@@ -631,6 +558,7 @@ async loadIoTData() {
             const polygon = corridor?.polygon;
             if (!polygon || polygon.length < 3) return;
 
+            // Fill (below rooms)
             const fillG = new PIXI.Graphics();
             fillG.zIndex = 10;
             fillG.beginFill(0x9e2a2b, 0.30);
@@ -640,14 +568,17 @@ async loadIoTData() {
             fillG.endFill();
             this.layers.corridors.addChild(fillG);
 
+            // Outline (kept separate so it can't get covered by fill draw order)
             const outG = new PIXI.Graphics();
             outG.zIndex = 11;
 
+            // Outer dark stroke for visibility on light background
             outG.lineStyle(12, 0x111111, 0.95);
             outG.moveTo(polygon[0][0], polygon[0][1]);
             for (let i = 1; i < polygon.length; i++) outG.lineTo(polygon[i][0], polygon[i][1]);
             outG.closePath();
 
+            // Inner light stroke (gives a crisp edge against red fill)
             outG.lineStyle(6, 0xffffff, 0.95);
             outG.moveTo(polygon[0][0], polygon[0][1]);
             for (let i = 1; i < polygon.length; i++) outG.lineTo(polygon[i][0], polygon[i][1]);
@@ -666,9 +597,11 @@ async loadIoTData() {
             const graphics = new PIXI.Graphics();
             const style = this._getHallStyleByName(node.name || `Hall ${index + 1}`);
             graphics.beginFill(style.color, style.alpha);
+            // Required: black outline 4px width
             graphics.lineStyle(4, 0x000000, 1);
             
             const polygon = node.polygon;
+            // Precompute bounding boxes for fast hover hit-testing
             let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
             for (const pt of polygon) {
                 if (pt[0] < minX) minX = pt[0];
@@ -684,6 +617,7 @@ async loadIoTData() {
             graphics.closePath();
             graphics.endFill();
 
+            // Do not rely on Pixi per-polygon hover events; robust hover is handled at the canvas level.
             try {
                 graphics.eventMode = 'none';
             } catch (_) {
@@ -708,6 +642,7 @@ async loadIoTData() {
     }
 
     _pointInPolygon(x, y, poly) {
+        // Ray-casting algorithm. poly is [[x,y], ...]
         let inside = false;
         for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
             const xi = poly[i][0], yi = poly[i][1];
@@ -729,6 +664,8 @@ async loadIoTData() {
     }
 
     _setupRobustHoverTooltips() {
+        // Robust hall hover detection that does NOT rely on Pixi hit-testing.
+        // Fixes cases where pointer events only fire on part of a polygon.
         this.app.view.addEventListener('pointermove', (e) => {
             if (this._isDragging) return;
 
@@ -782,7 +719,6 @@ async loadIoTData() {
             ${occupancyText}
             ${occupancy > 0 ? `<strong>Status:</strong> ${crowdStatus}<br>` : ''}
             <strong>Type:</strong> Exhibition Hall
-            ${this._buildTooltipExtraHTML(node) || ''}
         `;
 
         const container = document.getElementById('canvas-container');
@@ -800,34 +736,32 @@ async loadIoTData() {
 
         tooltip.classList.add('visible');
 
+        // Clamp within container bounds
         const tipRect = tooltip.getBoundingClientRect();
         const maxLeft = rect.left + rect.width - tipRect.width - 8;
         const maxTop = rect.top + rect.height - tipRect.height - 8;
 
-        if (left > maxLeft) left = x - tipRect.width - pad;
-        if (top > maxTop) top = y - tipRect.height - pad;
-
-        tooltip.style.left = `${left}px`;
-        tooltip.style.top = `${top}px`;
+        const absLeft = Math.min(rect.left + left, maxLeft);
+        const absTop = Math.min(rect.top + top, maxTop);
+        tooltip.style.left = `${Math.max(rect.left + 8, absLeft)}px`;
+        tooltip.style.top = `${Math.max(rect.top + 8, absTop)}px`;
     }
 
-    hideEventTooltip() {
-        const tooltip = document.getElementById('event-tooltip');
-        tooltip.classList.remove('visible');
+	    hideEventTooltip() {
+        document.getElementById('event-tooltip').classList.remove('visible');
     }
 
     centerMap() {
-        if (!this.navmeshData?.scale_info?.svg_dimensions) return;
-        const mapW = this.navmeshData.scale_info.svg_dimensions.width;
-        const mapH = this.navmeshData.scale_info.svg_dimensions.height;
-        const screenW = this.app.screen.width;
-        const screenH = this.app.screen.height;
-        const scaleX = screenW / mapW;
-        const scaleY = screenH / mapH;
-        this.viewport.zoom = Math.min(scaleX, scaleY) * 0.9;
-        this.viewport.x = (screenW / this.viewport.zoom - mapW) / 2;
-        this.viewport.y = (screenH / this.viewport.zoom - mapH) / 2;
-        this._clampViewportToMap();
+        if (!this.navmeshData || !this.navmeshData.scale_info) return;
+        const mapWidth = this.navmeshData.scale_info.svg_dimensions.width;
+        const mapHeight = this.navmeshData.scale_info.svg_dimensions.height;
+        const canvasWidth = this.app.screen.width;
+        const canvasHeight = this.app.screen.height;
+        const zoomX = canvasWidth / mapWidth;
+        const zoomY = canvasHeight / mapHeight;
+        this.viewport.zoom = Math.min(zoomX, zoomY) * 0.9;
+        this.viewport.x = (canvasWidth / this.viewport.zoom - mapWidth) / 2;
+        this.viewport.y = (canvasHeight / this.viewport.zoom - mapHeight) / 2;
         this.updateViewport();
     }
 
@@ -836,88 +770,113 @@ async loadIoTData() {
         const endId = document.getElementById('endRoom').value;
         
         if (!startId || !endId) {
-            this.updateStatus('Please select both start and end locations', false);
+            alert('Please select both start and destination');
             return;
         }
-
-        this.updateStatus('Finding optimal path...', true);
+        
+        if (startId === endId) {
+            alert('Start and destination cannot be the same');
+            return;
+        }
+        
+        this.updateStatus('Calculating route...', true);
         
         try {
-            const response = await fetch(
-                `${API_BASE}/path?start=${startId}&end=${endId}&avoid_crowds=${this.crowdAvoidance}`,
-                { cache: 'no-store' }
-            );
+            const response = await fetch(`${API_BASE}/pathfind`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    start: startId, 
+                    end: endId,
+                    avoid_crowds: this.crowdAvoidance  // NEW: pass preference
+                })
+            });
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+            const result = await response.json();
+            
+            if (result.success) {
+                this.currentPath = result;
+                this.renderPath();
+                this.showPathInfo();
+                
+                const crowdNote = result.crowd_avoidance_enabled ? ' (avoiding crowds)' : '';
+                this.updateStatus(`Route found: ${result.distance.meters.toFixed(1)}m${crowdNote}`, false);
+            } else {
+                this.updateStatus('No path found', false);
             }
-            
-            const data = await response.json();
-            this.currentPath = data;
-            
-            this.renderPath(data);
-            this.displayPathInfo(data);
-            
-            const dist = data.distance.toFixed(1);
-            const time = data.estimated_time.toFixed(1);
-            this.updateStatus(`Path found: ${dist}m, ~${time} min`, false);
-            
         } catch (error) {
             console.error('Error finding path:', error);
-            this.updateStatus('Error finding path', false);
+            this.updateStatus('Error calculating route', false);
         }
     }
 
-    renderPath(pathData) {
+    renderPath() {
+        if (!this.currentPath) return;
         this.layers.path.removeChildren();
         
-        const line = new PIXI.Graphics();
-        line.lineStyle(8, 0x4CAF50, 0.8);
+        const graphics = new PIXI.Graphics();
+        const coords = this.currentPath.path_coordinates;
         
-        const waypoints = pathData.waypoints;
-        if (waypoints && waypoints.length > 0) {
-            line.moveTo(waypoints[0][0], waypoints[0][1]);
-            for (let i = 1; i < waypoints.length; i++) {
-                line.lineTo(waypoints[i][0], waypoints[i][1]);
-            }
+        graphics.lineStyle(8, 0x00d4ff, 1);
+        graphics.moveTo(coords[0].x, coords[0].y);
+        for (let i = 1; i < coords.length; i++) {
+            graphics.lineTo(coords[i].x, coords[i].y);
         }
+        this.layers.path.addChild(graphics);
         
-        this.layers.path.addChild(line);
+        const startPoint = new PIXI.Graphics();
+        startPoint.beginFill(0x4caf50);
+        startPoint.drawCircle(coords[0].x, coords[0].y, 15);
+        startPoint.endFill();
+        this.layers.path.addChild(startPoint);
         
-        if (waypoints && waypoints.length > 0) {
-            const startMarker = new PIXI.Graphics();
-            startMarker.beginFill(0x4CAF50);
-            startMarker.drawCircle(0, 0, 20);
-            startMarker.endFill();
-            startMarker.position.set(waypoints[0][0], waypoints[0][1]);
-            this.layers.path.addChild(startMarker);
-            
-            const endMarker = new PIXI.Graphics();
-            endMarker.beginFill(0xFF5252);
-            endMarker.drawCircle(0, 0, 20);
-            endMarker.endFill();
-            const last = waypoints[waypoints.length - 1];
-            endMarker.position.set(last[0], last[1]);
-            this.layers.path.addChild(endMarker);
+        const endPoint = new PIXI.Graphics();
+        endPoint.beginFill(0xf44336);
+        endPoint.drawCircle(coords[coords.length - 1].x, coords[coords.length - 1].y, 15);
+        endPoint.endFill();
+        this.layers.path.addChild(endPoint);
+        
+        for (let i = 1; i < coords.length - 1; i++) {
+            const point = new PIXI.Graphics();
+            point.beginFill(0x00d4ff, 0.8);
+            point.drawCircle(coords[i].x, coords[i].y, 6);
+            point.endFill();
+            this.layers.path.addChild(point);
         }
     }
 
-    displayPathInfo(pathData) {
+    showPathInfo() {
+        if (!this.currentPath) return;
+        
         const pathInfo = document.getElementById('path-info');
-        const pathSteps = document.getElementById('path-steps');
+        const distanceMeters = document.getElementById('distance-meters');
+        const distancePixels = document.getElementById('distance-pixels');
+        const pathSteps = document.getElementById('pathSteps');
         
-        pathSteps.innerHTML = `
-            <div><strong>Distance:</strong> ${pathData.distance.toFixed(1)}m</div>
-            <div><strong>Estimated Time:</strong> ${pathData.estimated_time.toFixed(1)} minutes</div>
-            <div><strong>Path Type:</strong> ${this.crowdAvoidance ? 'Crowd-Aware' : 'Shortest'}</div>
-        `;
+        distanceMeters.textContent = this.currentPath.distance.meters.toFixed(1);
+        distancePixels.textContent = this.currentPath.distance.pixels.toFixed(0);
         
-        if (pathData.path_crowding && pathData.path_crowding.length > 0) {
+        pathSteps.innerHTML = '';
+        this.currentPath.path.forEach((nodeId, index) => {
+            const step = document.createElement('div');
+            step.className = 'path-step';
+            const node = this.navmeshData.nodes.find(n => n.id === nodeId);
+            let nodeName = nodeId;
+            if (node && node.type === 'room') {
+                const roomIndex = this.navmeshData.nodes.filter(n => n.type === 'room').indexOf(node);
+                nodeName = node.name || `Hall ${roomIndex + 1}`;
+            }
+            step.textContent = `${index + 1}. ${nodeName}`;
+            pathSteps.appendChild(step);
+        });
+        
+        // NEW: Show crowd info if available
+        if (this.currentPath.path_crowding && this.currentPath.path_crowding.length > 0) {
             const crowdInfo = document.createElement('div');
             crowdInfo.style.marginTop = '10px';
             crowdInfo.innerHTML = '<strong>Hall Occupancy:</strong>';
             
-            pathData.path_crowding.forEach(item => {
+            this.currentPath.path_crowding.forEach(item => {
                 const crowdItem = document.createElement('div');
                 crowdItem.style.fontSize = '12px';
                 crowdItem.style.padding = '2px 5px';
@@ -957,68 +916,31 @@ async loadIoTData() {
         document.getElementById('zoomIn').addEventListener('click', () => this.zoom(1.2));
         document.getElementById('zoomOut').addEventListener('click', () => this.zoom(0.8));
         document.getElementById('resetView').addEventListener('click', () => this.resetView());
-        
-        document.getElementById('crowdToggle').addEventListener('change', () => this.toggleCrowdAvoidance());
 
-        // HEATMAP: Inject simple toggle UI
-        this._injectHeatmapToggleUI();
-        
+        // Crowd avoidance toggle
+        const crowdToggle = document.getElementById('crowdToggle');
+        if (crowdToggle) {
+            crowdToggle.addEventListener('change', () => this.toggleCrowdAvoidance());
+        }
+
+        // Heatmap toggle
+        const heatmapToggle = document.getElementById('heatmapToggle');
+        if (heatmapToggle) {
+            heatmapToggle.checked = !!this.heatmapEnabled;
+            heatmapToggle.addEventListener('change', (e) => {
+                this.heatmapEnabled = !!e.target.checked;
+                this.renderHeatmap();
+            });
+        }
+
+        // Tooltip follows cursor (if present)
         document.addEventListener('mousemove', (event) => {
             const tooltip = document.getElementById('event-tooltip');
+            if (!tooltip) return;
             tooltip.style.left = (event.clientX + 20) + 'px';
             tooltip.style.top = (event.clientY + 20) + 'px';
         });
     }
-
-	// HEATMAP: Simple UI toggle (checkbox in top-right corner)
-	// Creates a small floating panel with checkbox and legend
-	_injectHeatmapToggleUI() {
-		if (document.getElementById('heatmap-toggle-panel')) return;
-
-		const panel = document.createElement('div');
-		panel.id = 'heatmap-toggle-panel';
-		panel.style.position = 'absolute';
-		panel.style.top = '12px';
-		panel.style.right = '12px';
-		panel.style.zIndex = '9999';
-		panel.style.background = 'rgba(255, 255, 255, 0.95)';
-		panel.style.border = '2px solid #333';
-		panel.style.borderRadius = '8px';
-		panel.style.padding = '12px 16px';
-		panel.style.fontFamily = 'system-ui, -apple-system, Arial';
-		panel.style.fontSize = '13px';
-		panel.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
-		panel.style.userSelect = 'none';
-		panel.style.minWidth = '200px';
-
-		panel.innerHTML = `
-			<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-				<input type="checkbox" id="heatmap-checkbox" ${this.heatmapEnabled ? 'checked' : ''} 
-					   style="width:18px;height:18px;cursor:pointer">
-				<label for="heatmap-checkbox" style="cursor:pointer;font-weight:600;font-size:14px">
-					Show Heatmap
-				</label>
-			</div>
-			<div style="font-size:11px;opacity:0.75;line-height:1.4">
-				Visualizes hall occupancy:<br>
-				<span style="color:#0066ff">●</span> Low →
-				<span style="color:#00ffff">●</span> →
-				<span style="color:#ffff00">●</span> →
-				<span style="color:#ff9900">●</span> →
-				<span style="color:#ff0000">●</span> High
-			</div>
-		`;
-
-		document.body.appendChild(panel);
-
-		const checkbox = document.getElementById('heatmap-checkbox');
-		checkbox.addEventListener('change', (e) => {
-			this.heatmapEnabled = e.target.checked;
-			console.log('Heatmap overlay:', this.heatmapEnabled ? 'enabled' : 'disabled');
-			// Re-render heatmap overlay
-			this._updateHeatmapOverlay();
-		});
-	}
 
     zoom(factor) {
         this.viewport.zoom = this._clamp(this.viewport.zoom * factor, 0.25, 6);
@@ -1031,13 +953,6 @@ async loadIoTData() {
         statusText.textContent = message;
         loadingSpinner.style.display = loading ? 'inline-block' : 'none';
     }
-}
-
-// Utility function for escaping HTML in tooltips
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 document.addEventListener('DOMContentLoaded', () => {

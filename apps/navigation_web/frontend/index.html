@@ -421,6 +421,14 @@
                 <div style="margin-top: 10px;">
                     <strong style="font-size: 12px; color: #4ecdc4;">Crowded Halls:</strong>
                     <ul id="crowded-halls"></ul>
+
+                <div class="toggle-container">
+                    <span class="toggle-label">Show Heatmap</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="heatmapToggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
                 </div>
             </div>
 
@@ -510,9 +518,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
-    <script src="/static/features/data/csvDataService.js" defer></script>
-    <script src="/static/features/heatmap/heatmap-utils.js" defer></script>
-    <script src="/static/features/heatmap/HeatmapLayer.js" defer></script>
     <script src="/static/app.js?v=20260201000000" defer></script>
 </body>
 </html>
