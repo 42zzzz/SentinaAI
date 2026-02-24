@@ -430,6 +430,74 @@ def calculate_path():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/path", methods=["GET"])
+def legacy_path_api():
+    """
+    Backwards-compatible endpoint for the frontend which calls:
+      GET /api/path?start=...&end=...&avoid_crowds=true|false
+
+    Returns the shape the current frontend expects:
+      { waypoints: [[x,y],...], distance: <meters>, estimated_time: <minutes>, path_crowding: [...] }
+    """
+    if not pathfinder or not transformer:
+        return jsonify({"error": "System not initialized"}), 500
+
+    start_id = request.args.get("start")
+    end_id = request.args.get("end")
+    avoid_crowds_str = (request.args.get("avoid_crowds") or "true").lower()
+    avoid_crowds = avoid_crowds_str not in ("false", "0", "no")
+
+    if not start_id or not end_id:
+        return jsonify({"error": "start and end required"}), 400
+
+    try:
+        # Same crowd-aware toggle behavior as /api/pathfind
+        if not avoid_crowds and telemetry:
+            original_edges = [e.copy() for e in navmesh_data["edges"]]
+            for e in navmesh_data["edges"]:
+                e["effective_weight"] = e["weight"]
+            pathfinder.update_weights(navmesh_data["edges"])
+
+            path = pathfinder.find_path(start_id, end_id)
+
+            navmesh_data["edges"] = original_edges
+            pathfinder.update_weights(navmesh_data["edges"])
+        else:
+            path = pathfinder.find_path(start_id, end_id)
+
+        if not path:
+            return jsonify({"error": "No path found"}), 404
+
+        waypoints = [pathfinder.nodes[nid]["position"] for nid in path]
+        total_pixels = pathfinder.get_path_distance(path)
+        total_meters = total_pixels * transformer.meters_per_pixel
+
+        # simple walking speed estimate: 1.4 m/s  -> 84 m/min
+        estimated_time_min = total_meters / 84.0 if total_meters else 0.0
+
+        path_crowding = []
+        if telemetry:
+            for node_id in path:
+                node = pathfinder.nodes.get(node_id)
+                if node and node.get("type") == "room":
+                    occ = iot_sensor_data.get(node_id, 0.0)
+                    path_crowding.append({
+                        "node_id": node_id,
+                        "name": node.get("name", ""),
+                        "occupancy": round(occ, 3)
+                    })
+
+        return jsonify({
+            "success": True,
+            "path": path,
+            "waypoints": waypoints,
+            "distance": round(total_meters, 2),
+            "estimated_time": round(estimated_time_min, 2),
+            "path_crowding": path_crowding,
+            "crowd_avoidance_enabled": avoid_crowds
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/iot/update", methods=["POST"])
 def update_iot_sensors():
@@ -555,6 +623,74 @@ def health_check():
 def serve_frontend():
     return send_from_directory(app.static_folder, "index.html")
 
+@app.route("/api/path", methods=["GET"], strict_slashes=False)
+def get_path():
+    """
+    Frontend expects:
+      GET /api/path?start=...&end=...&avoid_crowds=true|false
+    Returns:
+      { waypoints: [[x,y],...], distance: <meters>, estimated_time: <minutes>, path_crowding: [...] }
+    """
+    if not pathfinder or not transformer:
+        return jsonify({"error": "System not initialized"}), 500
+
+    start_id = request.args.get("start")
+    end_id = request.args.get("end")
+    avoid_crowds_str = (request.args.get("avoid_crowds") or "true").lower()
+    avoid_crowds = avoid_crowds_str not in ("false", "0", "no")
+
+    if not start_id or not end_id:
+        return jsonify({"error": "start and end required"}), 400
+
+    try:
+        # If avoid_crowds is False, temporarily reset weights to base
+        if not avoid_crowds and telemetry:
+            original_edges = [e.copy() for e in navmesh_data["edges"]]
+            for e in navmesh_data["edges"]:
+                e["effective_weight"] = e["weight"]
+            pathfinder.update_weights(navmesh_data["edges"])
+
+            path = pathfinder.find_path(start_id, end_id)
+
+            navmesh_data["edges"] = original_edges
+            pathfinder.update_weights(navmesh_data["edges"])
+        else:
+            path = pathfinder.find_path(start_id, end_id)
+
+        if not path:
+            return jsonify({"error": "No path found"}), 404
+
+        waypoints = [pathfinder.nodes[nid]["position"] for nid in path]
+
+        total_pixels = pathfinder.get_path_distance(path)
+        total_meters = total_pixels * transformer.meters_per_pixel
+
+        # walking speed approx 1.4 m/s => 84 m/min
+        estimated_time_min = (total_meters / 84.0) if total_meters else 0.0
+
+        path_crowding = []
+        if telemetry:
+            for node_id in path:
+                node = pathfinder.nodes.get(node_id)
+                if node and node.get("type") == "room":
+                    occ = iot_sensor_data.get(node_id, 0.0)
+                    path_crowding.append({
+                        "node_id": node_id,
+                        "name": node.get("name", ""),
+                        "occupancy": round(occ, 3),
+                    })
+
+        return jsonify({
+            "success": True,
+            "path": path,
+            "waypoints": waypoints,
+            "distance": round(total_meters, 2),
+            "estimated_time": round(estimated_time_min, 2),
+            "path_crowding": path_crowding,
+            "crowd_avoidance_enabled": avoid_crowds,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.errorhandler(404)
 def spa_fallback(e):
