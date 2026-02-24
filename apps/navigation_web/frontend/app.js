@@ -11,6 +11,8 @@ class ConventionCenterApp {
         this.iotData = {};
         this.heatmapEnabled = true; // show/hide heatmap overlay
         this.heatmapOpacity = 1.0; // opaque overlay opacity (traffic light scale)
+        this.demoMode = true; // DEMO: simulate varied occupancy (green/yellow/red)
+        this._iotDataReal = {}; // last real telemetry payload
         this.crowdAvoidance = true; // NEW: toggle for crowd avoidance
 
         this.viewport = {
@@ -263,6 +265,109 @@ class ConventionCenterApp {
         return (r << 16) + (g << 8) + b;
     }
 
+    _hashString(s) {
+        // Simple deterministic hash for stable demo values
+        s = String(s ?? '');
+        let h = 2166136261;
+        for (let i = 0; i < s.length; i++) {
+            h ^= s.charCodeAt(i);
+            h = Math.imul(h, 16777619);
+        }
+        return h >>> 0;
+    }
+
+    _mulberry32(a) {
+        // Deterministic PRNG returning 0..1
+        return function() {
+            let t = a += 0x6D2B79F5;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+    }
+
+    _buildDemoIoTData(real) {
+        // Creates a believable spread of occupancies, while forcing a few halls to red.
+        // If real telemetry already has good spread, we only override a few hotspots.
+        const out = Object.assign({}, (real && typeof real === 'object') ? real : {});
+        const nodes = this.navmeshData?.nodes || [];
+        const roomNodes = nodes.filter(n => n.type === 'room');
+        if (!roomNodes.length) return out;
+
+        const sorted = [...roomNodes].sort((a, b) => (String(a.name || a.id)).localeCompare(String(b.name || b.id)));
+        const N = sorted.length;
+
+        const realVals = sorted
+            .map(n => Number(out[n.id]))
+            .filter(v => Number.isFinite(v));
+        const spread = realVals.length ? (Math.max(...realVals) - Math.min(...realVals)) : 0;
+
+        // Pick stable hotspots by percentile (works regardless of hall naming)
+        const pickIdx = (p) => Math.max(0, Math.min(N - 1, Math.floor(p * (N - 1))));
+        const redIds = new Set([sorted[pickIdx(0.15)]?.id, sorted[pickIdx(0.55)]?.id, sorted[pickIdx(0.85)]?.id].filter(Boolean));
+        const yellowIds = new Set([sorted[pickIdx(0.30)]?.id, sorted[pickIdx(0.40)]?.id, sorted[pickIdx(0.70)]?.id].filter(Boolean));
+        const greenIds = new Set([sorted[pickIdx(0.05)]?.id, sorted[pickIdx(0.25)]?.id, sorted[pickIdx(0.95)]?.id].filter(Boolean));
+
+        // If telemetry is basically uniform (your "all yellow" issue), fully simulate a spread.
+        const useFullSimulation = spread < 0.20;
+
+        for (const n of sorted) {
+            const id = n.id;
+            const rand = this._mulberry32(this._hashString(id) ^ 0xA5A5A5A5)();
+
+            if (useFullSimulation) {
+                // Full distribution: mostly green, some yellow, few red.
+                if (redIds.has(id)) {
+                    out[id] = 0.90 + 0.09 * rand; // 90–99%
+                } else if (yellowIds.has(id)) {
+                    out[id] = 0.55 + 0.18 * rand; // 55–73%
+                } else {
+                    out[id] = 0.10 + 0.25 * rand; // 10–35%
+                }
+            } else {
+                // Real telemetry has variety; just add believable demo emphasis.
+                const base = Number(out[id]);
+                const baseOcc = Number.isFinite(base) ? this._clamp(base, 0, 1) : (0.10 + 0.25 * rand);
+
+                if (redIds.has(id)) out[id] = Math.max(baseOcc, 0.88 + 0.10 * rand);
+                else if (greenIds.has(id)) out[id] = Math.min(baseOcc, 0.18 + 0.12 * rand);
+                else out[id] = baseOcc;
+            }
+        }
+
+        return out;
+    }
+
+    _buildDemoSummary(iotData) {
+        const iot = (iotData && typeof iotData === 'object') ? iotData : {};
+        const nodes = this.navmeshData?.nodes || [];
+        const roomNodes = nodes.filter(n => n.type === 'room');
+        const idToName = new Map(roomNodes.map(n => [n.id, n.name || n.id]));
+
+        const vals = roomNodes
+            .map(n => Number(iot[n.id]))
+            .filter(v => Number.isFinite(v));
+
+        const avg = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+        const mx = vals.length ? Math.max(...vals) : 0;
+
+        const crowded = roomNodes
+            .map(n => ({ hallId: idToName.get(n.id), occupancy: this._clamp(Number(iot[n.id]) || 0, 0, 1) }))
+            .filter(x => x.occupancy > 0.50)
+            .sort((a, b) => b.occupancy - a.occupancy)
+            .slice(0, 10);
+
+        return {
+            telemetry_enabled: true,
+            avg_occupancy: avg,
+            max_occupancy: mx,
+            crowded_halls: crowded,
+            telemetry_halls: roomNodes.length,
+            telemetry_note: 'simulated'
+        };
+    }
+
+
 
     async refreshTelemetry() {
         // Lightweight polling to keep the heatmap + IoT panel live
@@ -276,7 +381,13 @@ class ConventionCenterApp {
             const data = await dataResp.json().catch(() => ({}));
 
             if (summary) this.iotSummary = summary;
-            if (data && typeof data === 'object') this.iotData = data;
+            if (data && typeof data === 'object') this._iotDataReal = data;
+            this.iotData = this._iotDataReal || this.iotData || {};
+
+            if (this.demoMode) {
+                this.iotData = this._buildDemoIoTData(this._iotDataReal);
+                this.iotSummary = this._buildDemoSummary(this.iotData);
+            }
 
             this.updateIoTDisplay();
             this.renderHeatmap();
@@ -375,9 +486,17 @@ class ConventionCenterApp {
             
             // Load sensor data
             const dataResp = await fetch(`${API_BASE}/iot/data`, { cache: 'no-store' });
-            this.iotData = await dataResp.json().catch(() => ({}));
-            
-            if (this.iotSummary.telemetry_enabled) {
+            this._iotDataReal = await dataResp.json().catch(() => ({}));
+            this.iotData = this._iotDataReal;
+
+            // DEMO: simulate occupancy spread so the heatmap isn't all yellow
+            if (this.demoMode) {
+                this.iotData = this._buildDemoIoTData(this._iotDataReal);
+                this.iotSummary = this._buildDemoSummary(this.iotData);
+            }
+
+            const enabled = (this.iotSummary && this.iotSummary.telemetry_enabled) || this.demoMode;
+            if (enabled) {
                 console.log('✓ IoT Telemetry loaded:', this.iotSummary);
                 this.updateIoTDisplay();
             } else {
@@ -395,23 +514,25 @@ class ConventionCenterApp {
     }
 
     updateIoTDisplay() {
-        if (!this.iotSummary || !this.iotSummary.telemetry_enabled) return;
-        
-        document.getElementById('iot-status').textContent = 
-            this.iotSummary.telemetry_enabled ? 'Active' : 'Offline';
-        
-        document.getElementById('avg-occupancy').textContent = 
-            `${(this.iotSummary.avg_occupancy * 100).toFixed(1)}%`;
-        
-        document.getElementById('max-occupancy').textContent = 
-            `${(this.iotSummary.max_occupancy * 100).toFixed(1)}%`;
+        const enabled = this.demoMode || (this.iotSummary && this.iotSummary.telemetry_enabled);
+        if (!enabled) return;
+
+        const summary = this.demoMode ? this._buildDemoSummary(this.iotData) : this.iotSummary;
+        const statusEl = document.getElementById('iot-status');
+        if (statusEl) statusEl.textContent = this.demoMode ? 'Simulated' : (summary.telemetry_enabled ? 'Active' : 'Offline');
+
+        const avgEl = document.getElementById('avg-occupancy');
+        if (avgEl) avgEl.textContent = `${(summary.avg_occupancy * 100).toFixed(1)}%`;
+
+        const maxEl = document.getElementById('max-occupancy');
+        if (maxEl) maxEl.textContent = `${(summary.max_occupancy * 100).toFixed(1)}%`;
         
         // Show crowded halls
         const crowdedList = document.getElementById('crowded-halls');
         crowdedList.innerHTML = '';
         
-        if (this.iotSummary.crowded_halls && this.iotSummary.crowded_halls.length > 0) {
-            this.iotSummary.crowded_halls.slice(0, 5).forEach(item => {
+        if (summary.crowded_halls && summary.crowded_halls.length > 0) {
+            summary.crowded_halls.slice(0, 5).forEach(item => {
                 const li = document.createElement('li');
                 li.textContent = `${item.hallId}: ${(item.occupancy * 100).toFixed(0)}%`;
                 li.style.color = item.occupancy > 0.75 ? '#ff6b6b' : '#ffa500';
@@ -482,6 +603,8 @@ class ConventionCenterApp {
         const edges = this.navmeshData.edges || [];
         const nodes = this.navmeshData.nodes || [];
 
+        const roomNodes = nodes.filter(n => n.type === 'room');
+
         // Compute average edge multiplier per node
         const incident = new Map();
         const addInc = (id, m) => {
@@ -527,7 +650,9 @@ class ConventionCenterApp {
                 }
             }
 
-            const t = (count > 0) ? (sum / count) : 0.0;
+            const tEdges = (count > 0) ? (sum / count) : 0.0;
+            const tRooms = this._corridorIntensityFromRooms(poly, roomNodes, iot);
+            const t = this._clamp(Math.max(tEdges, tRooms * 0.95), 0, 1);
             const color = this._heatColor(t);
 
             g.beginFill(color, alpha);
@@ -541,7 +666,6 @@ class ConventionCenterApp {
         // ---------------------------
         // Room heat (solid fill)
         // ---------------------------
-        const roomNodes = nodes.filter(n => n.type === 'room');
         for (const node of roomNodes) {
             const poly = node.polygon;
             if (!poly || poly.length < 3) continue;
@@ -560,6 +684,37 @@ class ConventionCenterApp {
         }
 
         this.layers.heatmap.addChild(g);
+    }
+
+
+
+    _corridorIntensityFromRooms(poly, roomNodes, iot) {
+        // Estimate corridor heat from nearby room occupancies so corridors visually match hotspots.
+        if (!poly || poly.length < 3 || !roomNodes?.length) return 0.0;
+        // centroid
+        let cx = 0, cy = 0;
+        for (const p of poly) { cx += p[0]; cy += p[1]; }
+        cx /= poly.length; cy /= poly.length;
+
+        const occOf = (id) => this._clamp(Number(iot?.[id] ?? 0) || 0, 0, 1);
+
+        // take k nearest rooms
+        const k = 4;
+        const nearest = roomNodes
+            .map(n => {
+                const x = n.position?.x ?? n.center?.x ?? n.polygon?.[0]?.[0];
+                const y = n.position?.y ?? n.center?.y ?? n.polygon?.[0]?.[1];
+                const dx = (Number(x) - cx), dy = (Number(y) - cy);
+                const d2 = (dx * dx + dy * dy);
+                return { id: n.id, d2 };
+            })
+            .filter(o => Number.isFinite(o.d2))
+            .sort((a, b) => a.d2 - b.d2)
+            .slice(0, k);
+
+        if (!nearest.length) return 0.0;
+        const avg = nearest.reduce((acc, o) => acc + occOf(o.id), 0) / nearest.length;
+        return this._clamp(avg, 0, 1);
     }
 
     renderCorridors() {
@@ -952,6 +1107,21 @@ class ConventionCenterApp {
             crowdToggle.addEventListener('change', () => this.toggleCrowdAvoidance());
         }
 
+
+        // Demo toggle (simulate hotspots for visuals)
+        const demoToggle = document.getElementById('demoToggle');
+        if (demoToggle) {
+            demoToggle.checked = !!this.demoMode;
+            demoToggle.addEventListener('change', (e) => {
+                this.demoMode = !!e.target.checked;
+                // Recompute displayed telemetry + heatmap without changing backend data
+                const base = this._iotDataReal || this.iotData || {};
+                this.iotData = this.demoMode ? this._buildDemoIoTData(base) : base;
+                if (this.demoMode) this.iotSummary = this._buildDemoSummary(this.iotData);
+                this.updateIoTDisplay();
+                this.renderHeatmap();
+            });
+        }
         // Heatmap toggle
         const heatmapToggle = document.getElementById('heatmapToggle');
         if (heatmapToggle) {
