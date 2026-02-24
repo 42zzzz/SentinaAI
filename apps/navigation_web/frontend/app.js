@@ -1,6 +1,8 @@
 // app.js - PixiJS Convention Center Navigation with IoT Crowd Awareness
 
 const API_BASE = 'http://localhost:5000/api';
+// If true, render every intermediate node as a small dot (useful for debugging navmesh).
+const SHOW_PATH_DEBUG_POINTS = false;
 
 class ConventionCenterApp {
     constructor() {
@@ -999,7 +1001,9 @@ class ConventionCenterApp {
         this.layers.path.removeChildren();
         
         const graphics = new PIXI.Graphics();
-        const coords = this.currentPath.path_coordinates;
+        const rawCoords = this.currentPath.path_coordinates || [];
+        const coords = this.currentPath.path_coordinates_smooth || rawCoords;
+        if (!coords || coords.length < 2) return;
         
         graphics.lineStyle(8, 0x00d4ff, 1);
         graphics.moveTo(coords[0].x, coords[0].y);
@@ -1019,13 +1023,16 @@ class ConventionCenterApp {
         endPoint.drawCircle(coords[coords.length - 1].x, coords[coords.length - 1].y, 15);
         endPoint.endFill();
         this.layers.path.addChild(endPoint);
-        
-        for (let i = 1; i < coords.length - 1; i++) {
-            const point = new PIXI.Graphics();
-            point.beginFill(0x00d4ff, 0.8);
-            point.drawCircle(coords[i].x, coords[i].y, 6);
-            point.endFill();
-            this.layers.path.addChild(point);
+
+        if (SHOW_PATH_DEBUG_POINTS) {
+            // Show raw nav nodes (usually grid-like and zig-zaggy)
+            for (let i = 1; i < rawCoords.length - 1; i++) {
+                const point = new PIXI.Graphics();
+                point.beginFill(0x00d4ff, 0.6);
+                point.drawCircle(rawCoords[i].x, rawCoords[i].y, 4);
+                point.endFill();
+                this.layers.path.addChild(point);
+            }
         }
     }
 

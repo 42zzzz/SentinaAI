@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import math
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -61,6 +62,50 @@ pathfinder: Optional[DijkstraPathfinder] = None
 telemetry: Optional[TelemetryProcessor] = None
 iot_sensor_data: Dict[str, float] = {}
 event_store: Optional[EventStore] = None
+
+
+def _polyline_length_px(coords: list[dict]) -> float:
+    """Euclidean length of a polyline in SVG pixels."""
+    if not coords or len(coords) < 2:
+        return 0.0
+    total = 0.0
+    for i in range(len(coords) - 1):
+        a = coords[i]
+        b = coords[i + 1]
+        total += math.hypot(float(b["x"]) - float(a["x"]), float(b["y"]) - float(a["y"]))
+    return float(total)
+
+
+def _smooth_path_coords(coords: list[dict], generator: Any, samples: int = 21) -> list[dict]:
+    """Shortcut a grid-like path into a more human-looking polyline.
+
+    Uses corridor-only line-of-sight checks to remove unnecessary intermediate nodes
+    without cutting through halls.
+    """
+    if not coords or len(coords) <= 2:
+        return coords
+    if generator is None:
+        return coords
+
+    los_fn = getattr(generator, "_segment_walkable_corridor_only", None)
+    if not callable(los_fn):
+        los_fn = getattr(generator, "_segment_walkable", None)
+    if not callable(los_fn):
+        return coords
+
+    out = [coords[0]]
+    i = 0
+    n = len(coords)
+    while i < n - 1:
+        # Pick the farthest reachable point.
+        j = n - 1
+        while j > i + 1:
+            if los_fn(coords[i], coords[j], samples=samples):
+                break
+            j -= 1
+        out.append(coords[j])
+        i = j
+    return out
 
 
 
@@ -402,8 +447,16 @@ def calculate_path():
 
         path_coords = [pathfinder.nodes[node_id]["position"] for node_id in path]
 
-        total_distance_pixels = pathfinder.get_path_distance(path)
+        # Smooth/shortcut the path to avoid ugly grid zig-zags in the rendered line.
+        generator = navmesh_data.get("generator") if navmesh_data else None
+        path_coords_smooth = _smooth_path_coords(path_coords, generator)
+
+        # Distance shown to the user should be geometric distance, not Dijkstra cost.
+        total_distance_pixels = _polyline_length_px(path_coords_smooth)
         total_distance_meters = total_distance_pixels * transformer.meters_per_pixel
+
+        # Keep the Dijkstra cost separately (this can include crowd multipliers).
+        total_cost = pathfinder.get_path_distance(path)
 
         # Include crowding info for each hall in path
         path_crowding = []
@@ -423,10 +476,12 @@ def calculate_path():
                 "success": True,
                 "path": path,
                 "path_coordinates": path_coords,
+                "path_coordinates_smooth": path_coords_smooth,
                 "distance": {
                     "pixels": round(total_distance_pixels, 2),
                     "meters": round(total_distance_meters, 2),
                 },
+                "cost": round(float(total_cost), 2),
                 "node_count": len(path),
                 "path_crowding": path_crowding,
                 "crowd_avoidance_enabled": avoid_crowds

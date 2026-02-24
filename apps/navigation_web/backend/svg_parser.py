@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
+import math
 from typing import Dict, List, Optional, Tuple
 
 
@@ -46,6 +47,158 @@ CORRIDOR_FILL = "#ff0000"
 COLOR_TOLERANCE = 20
 
 TARGET_HALL_COUNT = 26
+
+
+# -------------------------
+# SVG transform utilities
+# -------------------------
+
+Matrix = Tuple[Tuple[float, float, float], Tuple[float, float, float], Tuple[float, float, float]]
+
+
+def _mat_identity() -> Matrix:
+    return (
+        (1.0, 0.0, 0.0),
+        (0.0, 1.0, 0.0),
+        (0.0, 0.0, 1.0),
+    )
+
+
+def _mat_mul(a: Matrix, b: Matrix) -> Matrix:
+    """Matrix multiplication a @ b (3x3)."""
+    return (
+        (
+            a[0][0] * b[0][0] + a[0][1] * b[1][0] + a[0][2] * b[2][0],
+            a[0][0] * b[0][1] + a[0][1] * b[1][1] + a[0][2] * b[2][1],
+            a[0][0] * b[0][2] + a[0][1] * b[1][2] + a[0][2] * b[2][2],
+        ),
+        (
+            a[1][0] * b[0][0] + a[1][1] * b[1][0] + a[1][2] * b[2][0],
+            a[1][0] * b[0][1] + a[1][1] * b[1][1] + a[1][2] * b[2][1],
+            a[1][0] * b[0][2] + a[1][1] * b[1][2] + a[1][2] * b[2][2],
+        ),
+        (
+            a[2][0] * b[0][0] + a[2][1] * b[1][0] + a[2][2] * b[2][0],
+            a[2][0] * b[0][1] + a[2][1] * b[1][1] + a[2][2] * b[2][1],
+            a[2][0] * b[0][2] + a[2][1] * b[1][2] + a[2][2] * b[2][2],
+        ),
+    )
+
+
+def _mat_apply(m: Matrix, x: float, y: float) -> Tuple[float, float]:
+    """Apply affine matrix to point (x,y)."""
+    nx = m[0][0] * x + m[0][1] * y + m[0][2]
+    ny = m[1][0] * x + m[1][1] * y + m[1][2]
+    return (float(nx), float(ny))
+
+
+def _mat_translate(tx: float, ty: float) -> Matrix:
+    return (
+        (1.0, 0.0, float(tx)),
+        (0.0, 1.0, float(ty)),
+        (0.0, 0.0, 1.0),
+    )
+
+
+def _mat_scale(sx: float, sy: float) -> Matrix:
+    return (
+        (float(sx), 0.0, 0.0),
+        (0.0, float(sy), 0.0),
+        (0.0, 0.0, 1.0),
+    )
+
+
+def _mat_rotate(deg: float) -> Matrix:
+    rad = math.radians(float(deg))
+    c = math.cos(rad)
+    s = math.sin(rad)
+    return (
+        (c, -s, 0.0),
+        (s, c, 0.0),
+        (0.0, 0.0, 1.0),
+    )
+
+
+def _mat_skew_x(deg: float) -> Matrix:
+    t = math.tan(math.radians(float(deg)))
+    return (
+        (1.0, t, 0.0),
+        (0.0, 1.0, 0.0),
+        (0.0, 0.0, 1.0),
+    )
+
+
+def _mat_skew_y(deg: float) -> Matrix:
+    t = math.tan(math.radians(float(deg)))
+    return (
+        (1.0, 0.0, 0.0),
+        (t, 1.0, 0.0),
+        (0.0, 0.0, 1.0),
+    )
+
+
+def _parse_transform(transform_str: str) -> Matrix:
+    """Parse SVG transform="..." into a single 3x3 matrix.
+
+    SVG applies transform lists left-to-right, e.g. "translate(...) scale(...)"
+    means translate first, then scale (translation gets scaled).
+    To preserve this, we pre-multiply: M = T @ M, in list order.
+    """
+    if not transform_str:
+        return _mat_identity()
+
+    s = transform_str.strip()
+    if not s:
+        return _mat_identity()
+
+    m_total: Matrix = _mat_identity()
+
+    for name, args in re.findall(r"([a-zA-Z]+)\s*\(([^)]*)\)", s):
+        name_l = name.strip().lower()
+        nums = _parse_floats(args)
+
+        if name_l == "translate":
+            tx = nums[0] if len(nums) >= 1 else 0.0
+            ty = nums[1] if len(nums) >= 2 else 0.0
+            tmat = _mat_translate(tx, ty)
+
+        elif name_l == "scale":
+            sx = nums[0] if len(nums) >= 1 else 1.0
+            sy = nums[1] if len(nums) >= 2 else sx
+            tmat = _mat_scale(sx, sy)
+
+        elif name_l == "rotate":
+            ang = nums[0] if len(nums) >= 1 else 0.0
+            if len(nums) >= 3:
+                cx, cy = nums[1], nums[2]
+                tmat = _mat_mul(_mat_translate(cx, cy), _mat_mul(_mat_rotate(ang), _mat_translate(-cx, -cy)))
+            else:
+                tmat = _mat_rotate(ang)
+
+        elif name_l == "matrix" and len(nums) >= 6:
+            a, b, c, d, e, f = nums[:6]
+            tmat = (
+                (float(a), float(c), float(e)),
+                (float(b), float(d), float(f)),
+                (0.0, 0.0, 1.0),
+            )
+
+        elif name_l == "skewx":
+            ang = nums[0] if len(nums) >= 1 else 0.0
+            tmat = _mat_skew_x(ang)
+
+        elif name_l == "skewy":
+            ang = nums[0] if len(nums) >= 1 else 0.0
+            tmat = _mat_skew_y(ang)
+
+        else:
+            # Unknown/unsupported transform
+            continue
+
+        # Pre-multiply to respect SVG left-to-right application order
+        m_total = _mat_mul(tmat, m_total)
+
+    return m_total
 
 
 def _strip_ns(tag: str) -> str:
@@ -258,12 +411,38 @@ class SVGParser:
         self.tree = ET.parse(svg_path)
         self.root = self.tree.getroot()
 
+        # Build parent map so we can accumulate <g transform="..."> ancestors
+        self._parent_map: Dict[ET.Element, ET.Element] = {}
+        for parent in self.root.iter():
+            for child in list(parent):
+                self._parent_map[child] = parent
+
         # viewBox is the most reliable canvas size
         viewbox = self.root.get("viewBox", "0 0 5600 3200")
         try:
             _, _, self.width, self.height = map(float, viewbox.split())
         except Exception:
             self.width, self.height = 5600.0, 3200.0
+
+    def _cumulative_transform(self, el: ET.Element) -> Matrix:
+        """Return transform matrix for element including all ancestor <g> transforms."""
+        m: Matrix = _mat_identity()
+        cur: Optional[ET.Element] = el
+        while cur is not None:
+            t = cur.get("transform")
+            if t:
+                m = _mat_mul(_parse_transform(t), m)
+            cur = self._parent_map.get(cur)
+        return m
+
+    def _apply_transform(self, pts: List[List[float]], m: Matrix) -> List[List[float]]:
+        if m == _mat_identity():
+            return pts
+        out: List[List[float]] = []
+        for x, y in pts:
+            nx, ny = _mat_apply(m, float(x), float(y))
+            out.append([nx, ny])
+        return out
 
     # -------------------------
     # Halls (destinations)
@@ -312,6 +491,9 @@ class SVGParser:
 
             if not poly or len(poly) < 3:
                 continue
+
+            # Apply element + ancestor transforms (common with Inkscape "move" operations)
+            poly = self._apply_transform(poly, self._cumulative_transform(el))
 
             area = _poly_area(poly)
             if area <= 0:
@@ -373,16 +555,19 @@ class SVGParser:
                 if w <= 0 or h <= 0:
                     continue
                 poly = _rect_to_poly(x, y, w, h)
+                poly = self._apply_transform(poly, self._cumulative_transform(el))
                 corridors.append(self._poly_to_corridor(poly))
 
             elif tag == "polygon":
                 pts = self._parse_polygon_points(el.get("points", ""))
                 if pts and len(pts) >= 3:
+                    pts = self._apply_transform(pts, self._cumulative_transform(el))
                     corridors.append(self._poly_to_corridor(pts))
 
             elif tag == "path":
                 pts = self._parse_path_to_points(el.get("d", ""))
                 if pts and len(pts) >= 3:
+                    pts = self._apply_transform(pts, self._cumulative_transform(el))
                     corridors.append(self._poly_to_corridor(pts))
 
         print(f"Corridors extracted: {len(corridors)}")

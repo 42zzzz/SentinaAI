@@ -84,7 +84,7 @@ class NavMeshGenerator:
         # Connect corridor "islands" so paths exist across the whole building
         self._connect_corridor_components(
             max_link_dist_px=max(6.0 * self.corridor_step_px, 800.0),  # INCREASED from 4x/650
-            force_bridge=True,
+            force_bridge=False,
         )
 
         self._connect_rooms_to_corridors(k=8)  # INCREASED from 6
@@ -322,6 +322,10 @@ class NavMeshGenerator:
                 mx, my = (x1 + x2) / 2.0, (y1 + y2) / 2.0
                 if not corridor_ok(mx, my):
                     continue
+                # Ensure corridor edges never cut through halls/open space (corridor-only visibility)
+                if not self._segment_walkable_corridor_only(node_pos[nid], node_pos[other], samples=9):
+                    continue
+
 
                 self._add_edge_bidir(nid, other, float(w))
                 edges_added += 1
@@ -410,7 +414,7 @@ class NavMeshGenerator:
                 best_fallback = candidates[0]
 
                 for d, a, b in candidates:
-                    if self._segment_walkable(node_pos[a], node_pos[b], samples=13):  # INCREASED from 9
+                    if self._segment_walkable_corridor_only(node_pos[a], node_pos[b], samples=13):  # INCREASED from 9
                         self._add_edge_bidir(a, b, float(d))
                         adj[a].add(b)
                         adj[b].add(a)
@@ -519,6 +523,31 @@ class NavMeshGenerator:
                 return False
 
         return True
+    def _segment_walkable_corridor_only(self, a: Dict[str, float], b: Dict[str, float], samples: int = 21) -> bool:
+        """Corridor-only walkability for corridor edges and path smoothing.
+
+        Allows halls only at the endpoints (so routes may start/end inside rooms),
+        but otherwise the segment must stay within corridor polygons.
+        """
+        ax, ay = a["x"], a["y"]
+        bx, by = b["x"], b["y"]
+
+        for i in range(samples + 1):
+            t = i / float(samples)
+            x = ax + (bx - ax) * t
+            y = ay + (by - ay) * t
+
+            if self._in_any_corridor(x, y):
+                continue
+
+            if (i == 0 or i == samples) and self._in_any_hall(x, y):
+                continue
+
+            return False
+
+        return True
+
+
 
     # -------------------------
     # IoT weight updates
