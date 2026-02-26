@@ -396,11 +396,13 @@ def get_navmesh():
         return jsonify({"error": "System not initialized"}), 500
 
     response = {
-        "nodes": navmesh_data["nodes"],
-        "edges": navmesh_data["edges"],
-        "rooms": navmesh_data["rooms_metadata"],
-        "scale_info": transformer.get_scale_info(),
-        "corridor_polygons": navmesh_data.get("corridor_polygons", []),
+    "nodes": navmesh_data["nodes"],
+    "edges": navmesh_data["edges"],
+    "rooms": navmesh_data["rooms_metadata"],
+    "scale_info": transformer.get_scale_info(),
+    "corridor_polygons": navmesh_data.get("corridor_polygons", []),
+    "spine_nodes": navmesh_data.get("spine_nodes", []),
+    "spine_edges": navmesh_data.get("spine_edges", []),
     }
     return jsonify(response)
 
