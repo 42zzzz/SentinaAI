@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import TopHallsToday from "../components/TopHallsToday";
+import AiOpsPanel from "../components/AiOpsPanel";
+import AiSimulateSurge from "../components/AiSimulateSurge";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -101,8 +103,10 @@ export default function DashboardPage() {
           </tbody>
         </table>
       </div>
-
-      {/* Optional energy widget you already have */}
+      
+      <AiSimulateSurge onSimulated={() => {
+      }} />
+      <AiOpsPanel />
       <TopHallsToday zoneId="zoneB" limit={5} />
     </div>
   );

@@ -27,6 +27,9 @@ const dashboardRoutes = require("./routes/dashboard.routes");
 app.use("/dashboard", dashboardRoutes);
 const navRoutes = require("./routes/nav.routes");
 app.use("/nav", navRoutes);
+const aiRoutes = require("./routes/ai.routes");
+app.use("/ai", aiRoutes);
+
 
 
 const PORT = process.env.PORT || 8080;
