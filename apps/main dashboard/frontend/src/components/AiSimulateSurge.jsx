@@ -4,7 +4,7 @@ import axios from "axios";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 export default function AiSimulateSurge({ onSimulated }) {
-  const [halls, setHalls] = useState([]);
+  const [rows, setRows] = useState([]);
   const [hallId, setHallId] = useState("");
   const [occupancy, setOccupancy] = useState(85);
   const [co2, setCo2] = useState(950);
@@ -13,26 +13,36 @@ export default function AiSimulateSurge({ onSimulated }) {
   const [msg, setMsg] = useState({ type: "", text: "" });
 
   const hallOptions = useMemo(() => {
-    // Expecting rows like: { hall_id: "hall1", occupancyRatio, co2, ... }
-    return halls.map((h) => h.hall_id).filter(Boolean);
-  }, [halls]);
+    // rows from /ai/ops-live: { hall_id, hall_name, ... }
+    return rows
+      .map((h) => h.hall_id)
+      .filter(Boolean);
+  }, [rows]);
 
   useEffect(() => {
     let alive = true;
 
     const loadHalls = async () => {
       try {
-        const r = await axios.get(`${API_BASE}/ai/venue-status`);
+        // ✅ Telemetry-driven source
+        const r = await axios.get(`${API_BASE}/ai/ops-live`);
         if (!alive) return;
 
-        const rows = Array.isArray(r.data) ? r.data : r.data?.rows || [];
-        setHalls(rows);
+        if (r.data && r.data.ok === false) {
+          throw new Error(r.data.error || "AI ops-live failed");
+        }
 
-        // Default selection if empty
-        if (!hallId && rows.length) setHallId(rows[0].hall_id);
+        const fetched = r.data?.rows || [];
+        setRows(fetched);
+
+        if (!hallId && fetched.length) setHallId(fetched[0].hall_id);
+        setMsg({ type: "", text: "" });
       } catch (e) {
         if (!alive) return;
-        setMsg({ type: "error", text: e?.response?.data?.error || e.message || "Failed to load halls" });
+        setMsg({
+          type: "error",
+          text: e?.response?.data?.error || e.message || "Failed to load halls from ops-live",
+        });
       }
     };
 
@@ -50,20 +60,21 @@ export default function AiSimulateSurge({ onSimulated }) {
     try {
       if (!hallId) throw new Error("Please select a hall.");
 
-      // Clamp occupancy to 0–100
       const occ = Math.max(0, Math.min(100, Number(occupancy)));
       const co2Val = Number(co2);
 
+      // We keep using the simulation endpoint for surge injection demo
       const r = await axios.post(`${API_BASE}/ai/simulate-prediction`, {
         hall_id: hallId,
         occupancy: occ,
         co2: co2Val,
       });
 
-      // FastAPI returns something like { updates: [...] } OR an array depending on your implementation
-      setMsg({ type: "success", text: `Simulated surge for ${hallId} (occupancy ${occ}%, CO₂ ${co2Val}).` });
+      setMsg({
+        type: "success",
+        text: `Simulated surge for ${hallId} (occupancy ${occ}%, CO₂ ${co2Val}).`,
+      });
 
-      // Optional callback: tell parent to refresh immediately
       if (typeof onSimulated === "function") onSimulated(r.data);
     } catch (e) {
       setMsg({
@@ -79,7 +90,7 @@ export default function AiSimulateSurge({ onSimulated }) {
     <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, background: "white" }}>
       <div style={{ padding: 14, fontWeight: 900, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>AI Simulator – Trigger Crowd Surge</div>
-        <div style={{ fontSize: 12, opacity: 0.7 }}>POST /ai/simulate-prediction</div>
+        <div style={{ fontSize: 12, opacity: 0.7 }}>Halls source: /ai/ops-live</div>
       </div>
 
       <div style={{ padding: 14, display: "grid", gap: 12 }}>
@@ -159,7 +170,7 @@ export default function AiSimulateSurge({ onSimulated }) {
         ) : null}
 
         <div style={{ fontSize: 12, opacity: 0.7 }}>
-          Tip: set occupancy above <b>75%</b> to trigger spillover and anomaly behaviour.
+          Tip: occupancy above <b>75%</b> triggers spillover. (AI actions may still show <b>none</b> until model/rules are improved.)
         </div>
       </div>
     </div>

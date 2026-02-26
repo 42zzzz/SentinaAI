@@ -28,15 +28,19 @@ export default function AiOpsPanel() {
 
     const load = async () => {
       try {
-        const r = await axios.get(`${API_BASE}/ai/venue-status`);
+        // ✅ Telemetry-driven AI (Option A)
+        const r = await axios.get(`${API_BASE}/ai/ops-live`);
         if (!alive) return;
 
-        // your AI service returns an array of hall objects
-        setRows(Array.isArray(r.data) ? r.data : r.data?.rows || []);
+        if (r.data && r.data.ok === false) {
+          throw new Error(r.data.error || "AI ops-live failed");
+        }
+
+        setRows(r.data?.rows || []);
         setErr("");
       } catch (e) {
         if (!alive) return;
-        setErr(e?.response?.data?.error || e.message || "Failed to load AI venue status");
+        setErr(e?.response?.data?.error || e.message || "Failed to load AI ops-live");
       }
     };
 
@@ -52,7 +56,7 @@ export default function AiOpsPanel() {
     <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, background: "white", overflowX: "auto" }}>
       <div style={{ padding: 14, fontWeight: 900, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>AI Operations – Live Status</div>
-        <div style={{ fontSize: 12, opacity: 0.7 }}>Source: /ai/venue-status</div>
+        <div style={{ fontSize: 12, opacity: 0.7 }}>Source: /ai/ops-live</div>
       </div>
 
       {err ? (
@@ -68,6 +72,7 @@ export default function AiOpsPanel() {
             <th style={{ padding: 12 }}>Hall</th>
             <th style={{ padding: 12 }}>Occupancy</th>
             <th style={{ padding: 12 }}>CO₂</th>
+            <th style={{ padding: 12 }}>Congestion</th>
             <th style={{ padding: 12 }}>AI Action</th>
             <th style={{ padding: 12 }}>Anomaly</th>
           </tr>
@@ -75,20 +80,22 @@ export default function AiOpsPanel() {
         <tbody>
           {rows.map((h) => (
             <tr key={h.hall_id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-              <td style={{ padding: 12, fontWeight: 900 }}>{h.hall_id}</td>
+              <td style={{ padding: 12, fontWeight: 900 }}>{h.hall_name ? `${h.hall_name} (${h.hall_id})` : h.hall_id}</td>
               <td style={{ padding: 12 }}>{Math.round((h.occupancyRatio ?? 0) * 100)}%</td>
               <td style={{ padding: 12 }}>{Math.round(Number(h.co2 || 0))}</td>
+              <td style={{ padding: 12 }}>{Number(h.flowCongestionIndex ?? 0).toFixed(2)}</td>
               <td style={{ padding: 12 }}>
-                <Badge danger={h.aiAction && h.aiAction !== "none"}>{h.aiAction || "none"}</Badge>
+                <Badge danger={h.aiAction && String(h.aiAction).toLowerCase() !== "none"}>{h.aiAction || "none"}</Badge>
               </td>
               <td style={{ padding: 12 }}>
                 <Badge danger={!!h.isAnomaly}>{h.isAnomaly ? "Yes" : "No"}</Badge>
               </td>
             </tr>
           ))}
+
           {!rows.length ? (
             <tr>
-              <td colSpan={5} style={{ padding: 12, opacity: 0.7 }}>
+              <td colSpan={6} style={{ padding: 12, opacity: 0.7 }}>
                 No AI rows yet.
               </td>
             </tr>

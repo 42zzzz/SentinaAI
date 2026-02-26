@@ -1,8 +1,11 @@
-// routes/ai.routes.js
 const router = require("express").Router();
 const ai = require("../controllers/ai.controller");
 
-router.get("/venue-status", ai.getVenueStatus);
-router.post("/simulate-prediction", ai.simulatePrediction);
+// Telemetry-driven AI status (Option A)
+router.get("/ops-live", ai.getOpsLive);
+
+// Keep these if you're still using simulator/proxy
+router.get("/venue-status", ai.getVenueStatusProxy);
+router.post("/simulate-prediction", ai.simulatePredictionProxy);
 
 module.exports = router;

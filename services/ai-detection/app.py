@@ -139,22 +139,75 @@ class SimulationRequest(BaseModel):
     co2: int
 
 ADJACENCY_MAP = {
-    "hall1": ["hall2", "northhall4", "southhall1", "easthall1"],
-    "hall2": ["hall1", "hall3"],
-    "hall3": ["hall2", "hall4"],
-    "northhall1": ["northhall2"],
-    "northhall2": ["northhall1", "northhall3"],
-    "northhall3": ["northhall2", "northhall4"],
-    "northhall4": ["northhall3", "northhall5", "hall1"],
-    "northhall5": ["northhall4", "northhall6"],
-    "northhall6": ["northhall5"],
-    "southhall1": ["southhall2", "hall1"],
-    "southhall2": ["southhall1", "southhall3"],
-    "southhall3": ["southhall2", "southhall4"],
-    "easthall1": ["easthall2", "hall1"],
-    "easthall2": ["easthall1", "easthall3"],
-    "easthall3": ["easthall2", "easthall4"]
+    # Core halls (Zone C: Hall1..Hall6)
+    "HZC01": ["HZC02", "HZD04", "HZA01", "HZB01"],   # Hall1 connected to Hall2, NorthHall4, SouthHall1, EastHall1
+    "HZC02": ["HZC01", "HZC03"],
+    "HZC03": ["HZC02", "HZC04"],
+    "HZC04": ["HZC03", "HZC05"],
+    "HZC05": ["HZC04", "HZC06"],
+    "HZC06": ["HZC05"],
+
+    # North halls (Zone D: NorthHall1..NorthHall6)
+    "HZD01": ["HZD02"],
+    "HZD02": ["HZD01", "HZD03"],
+    "HZD03": ["HZD02", "HZD04"],
+    "HZD04": ["HZD03", "HZD05", "HZC01"],           # NorthHall4 connected back to Hall1
+    "HZD05": ["HZD04", "HZD06"],
+    "HZD06": ["HZD05"],
+
+    # South halls (Zone A: SouthHall1..SouthHall6)
+    "HZA01": ["HZA02", "HZC01"],                    # SouthHall1 connected back to Hall1
+    "HZA02": ["HZA01", "HZA03"],
+    "HZA03": ["HZA02", "HZA04"],
+    "HZA04": ["HZA03", "HZA05"],
+    "HZA05": ["HZA04", "HZA06"],
+    "HZA06": ["HZA05"],
+
+    # East halls (Zone B: EastHall1..EastHall4)
+    "HZB01": ["HZB02", "HZC01"],                    # EastHall1 connected back to Hall1
+    "HZB02": ["HZB01", "HZB03"],
+    "HZB03": ["HZB02", "HZB04"],
+    "HZB04": ["HZB03"],
+
+    # Additional halls in Zone B (Hall7..Hall10)
+    "HZB05": ["HZB06"],
+    "HZB06": ["HZB05", "HZB07"],
+    "HZB07": ["HZB06", "HZB08"],
+    "HZB08": ["HZB07"],
 }
+
+# --- 4B. TELEMETRY-DRIVEN INFERENCE ENDPOINT (Option A) ---
+class InferActionRequest(BaseModel):
+    hall_id: str
+    occupancyRatio: float          # 0.0 to 1.0
+    co2: float                     # ppm
+    flowCongestionIndex: float     # 0.0 to 1.0 (or your scale)
+
+@app.post("/api/infer-action")
+def infer_action(req: InferActionRequest):
+    """
+    Given telemetry-derived features (from interval_metrics),
+    return AI action + anomaly flag. This aligns with the model’s training features:
+    [occupancyRatio, co2, flowCongestionIndex]
+    """
+    try:
+        safety_input = [[float(req.occupancyRatio), float(req.co2), float(req.flowCongestionIndex)]]
+        action_code = safety.predict(safety_input)[0]
+        rec_action = le_action.inverse_transform([action_code])[0]
+    except Exception:
+        rec_action = "pipeline_error"
+
+    is_anomaly = str(rec_action).lower() != "none"
+
+    return {
+        "status": "success",
+        "hall_id": req.hall_id,
+        "occupancyRatio": float(req.occupancyRatio),
+        "co2": float(req.co2),
+        "flowCongestionIndex": float(req.flowCongestionIndex),
+        "aiAction": rec_action,
+        "isAnomaly": bool(is_anomaly),
+    }
 
 def run_ai_pipeline(occ_percent, co2_level):
     occ_ratio = occ_percent / 100.0
