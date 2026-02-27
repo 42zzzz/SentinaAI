@@ -1006,10 +1006,49 @@ class ConventionCenterApp {
         if (!coords || coords.length < 2) return;
         
         graphics.lineStyle(8, 0x00d4ff, 1);
-        graphics.moveTo(coords[0].x, coords[0].y);
-        for (let i = 1; i < coords.length; i++) {
-            graphics.lineTo(coords[i].x, coords[i].y);
+        
+        // Draw path with rounded corners using quadratic curves
+        const cornerRadius = 20; // Adjust this value to control how rounded the corners are
+        
+        if (coords.length === 2) {
+            // For straight paths with only 2 points, just draw a straight line
+            graphics.moveTo(coords[0].x, coords[0].y);
+            graphics.lineTo(coords[1].x, coords[1].y);
+        } else {
+            // For paths with 3+ points, use curved corners
+            graphics.moveTo(coords[0].x, coords[0].y);
+            
+            for (let i = 1; i < coords.length - 1; i++) {
+                const prev = coords[i - 1];
+                const curr = coords[i];
+                const next = coords[i + 1];
+                
+                // Calculate distances to determine curve points
+                const d1 = Math.hypot(curr.x - prev.x, curr.y - prev.y);
+                const d2 = Math.hypot(next.x - curr.x, next.y - curr.y);
+                
+                // Limit corner radius based on segment length
+                const maxRadius = Math.min(d1 / 2, d2 / 2, cornerRadius);
+                
+                // Calculate the point before the corner
+                const ratio1 = maxRadius / d1;
+                const beforeX = curr.x - (curr.x - prev.x) * ratio1;
+                const beforeY = curr.y - (curr.y - prev.y) * ratio1;
+                
+                // Calculate the point after the corner
+                const ratio2 = maxRadius / d2;
+                const afterX = curr.x + (next.x - curr.x) * ratio2;
+                const afterY = curr.y + (next.y - curr.y) * ratio2;
+                
+                // Draw line to before corner, curve through corner, continue from after
+                graphics.lineTo(beforeX, beforeY);
+                graphics.quadraticCurveTo(curr.x, curr.y, afterX, afterY);
+            }
+            
+            // Draw final segment to last point
+            graphics.lineTo(coords[coords.length - 1].x, coords[coords.length - 1].y);
         }
+        
         this.layers.path.addChild(graphics);
         
         const startPoint = new PIXI.Graphics();
