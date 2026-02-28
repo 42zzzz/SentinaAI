@@ -1,6 +1,7 @@
 // backend/server.js (ESM-safe)
 // NOTE: Your package.json is running Node as ES module ("type": "module"),
 // so we must use `import` instead of `require`.
+// Hi 
 
 import express from "express";
 import cors from "cors";
