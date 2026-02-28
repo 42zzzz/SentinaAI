@@ -11,7 +11,7 @@ class ConventionCenterApp {
         this.currentPath = null;
         this.iotSummary = null;
         this.iotData = {};
-        this.heatmapEnabled = true; // show/hide heatmap overlay
+        this.heatmapEnabled = false; // show/hide heatmap overlay (default: OFF)
         this.heatmapOpacity = 1.0; // opaque overlay opacity (traffic light scale)
         this.demoMode = true; // DEMO: simulate varied occupancy (green/yellow/red)
         this._iotDataReal = {}; // last real telemetry payload
@@ -58,10 +58,14 @@ class ConventionCenterApp {
         const canvas = document.getElementById('pixiCanvas');
         const container = document.getElementById('canvas-container');
         
+        // Fixed resolution for dashboard integration
+        const CANVAS_WIDTH = 1600;
+        const CANVAS_HEIGHT = 900;
+        
 	        this.app = new PIXI.Application({
 	            view: canvas,
-	            width: container.clientWidth,
-	            height: container.clientHeight,
+	            width: CANVAS_WIDTH,
+	            height: CANVAS_HEIGHT,
 	            // Background Color
 	            backgroundColor: 0xffffff,
 	            antialias: true,
@@ -1008,7 +1012,7 @@ class ConventionCenterApp {
         graphics.lineStyle(8, 0x00d4ff, 1);
         
         // Draw path with rounded corners using quadratic curves
-        const cornerRadius = 20; // Adjust this value to control how rounded the corners are
+        const cornerRadius = 50; // Larger radius to smooth out dense node clusters
         
         if (coords.length === 2) {
             // For straight paths with only 2 points, just draw a straight line

@@ -100,12 +100,94 @@ def _smooth_path_coords(coords: list[dict], generator: Any, samples: int = 21) -
         # Pick the farthest reachable point.
         j = n - 1
         while j > i + 1:
-            if los_fn(coords[i], coords[j], samples=samples):
+            # Calculate adaptive sample count based on segment length
+            # Use at least 1 sample per 20 pixels to ensure we catch hall boundaries
+            dist = math.hypot(coords[j]["x"] - coords[i]["x"], 
+                            coords[j]["y"] - coords[i]["y"])
+            adaptive_samples = max(samples, int(dist / 20) + 1)
+            
+            if los_fn(coords[i], coords[j], samples=adaptive_samples):
                 break
             j -= 1
         out.append(coords[j])
         i = j
     return out
+
+
+def _simplify_path_coords(coords: list[dict], generator: Any) -> list[dict]:
+    """Remove redundant near-collinear nodes to reduce squiggly paths.
+    
+    Uses angle-based filtering with strict line-of-sight validation.
+    Only removes a node if:
+    1. It's nearly collinear with neighbors (angle > 165 degrees)
+    2. Direct connection doesn't cut through halls
+    """
+    if not coords or len(coords) <= 2:
+        return coords
+    
+    if generator is None:
+        return coords
+    
+    los_fn = getattr(generator, "_segment_walkable_corridor_only", None)
+    if not callable(los_fn):
+        return coords
+    
+    # Angle threshold in degrees - only remove very collinear points
+    angle_threshold = 165.0
+    
+    simplified = [coords[0]]
+    
+    i = 1
+    while i < len(coords) - 1:
+        prev = simplified[-1]
+        curr = coords[i]
+        next_pt = coords[i + 1]
+        
+        # Calculate angle at current point
+        v1_x = curr["x"] - prev["x"]
+        v1_y = curr["y"] - prev["y"]
+        v2_x = next_pt["x"] - curr["x"]
+        v2_y = next_pt["y"] - curr["y"]
+        
+        # Normalize vectors
+        len1 = math.hypot(v1_x, v1_y)
+        len2 = math.hypot(v2_x, v2_y)
+        
+        if len1 < 1e-6 or len2 < 1e-6:
+            # Skip near-duplicate points
+            i += 1
+            continue
+        
+        v1_x /= len1
+        v1_y /= len1
+        v2_x /= len2
+        v2_y /= len2
+        
+        # Dot product gives cos(angle)
+        dot = v1_x * v2_x + v1_y * v2_y
+        dot = max(-1.0, min(1.0, dot))  # Clamp to [-1, 1]
+        angle_deg = math.degrees(math.acos(dot))
+        
+        # Check if nearly collinear and direct path is valid
+        if angle_deg > angle_threshold:
+            # Calculate adaptive samples based on distance
+            dist = math.hypot(next_pt["x"] - prev["x"], next_pt["y"] - prev["y"])
+            samples = max(25, int(dist / 15) + 1)
+            
+            # Only skip this node if direct path is walkable
+            if los_fn(prev, next_pt, samples=samples):
+                # Skip current node (don't add it to simplified)
+                i += 1
+                continue
+        
+        # Keep this node
+        simplified.append(curr)
+        i += 1
+    
+    # Always keep the last node
+    simplified.append(coords[-1])
+    
+    return simplified
 
 
 
@@ -165,6 +247,33 @@ def _resolve_events_dir() -> Path:
 
     backend_dir = Path(__file__).resolve().parent
     return (backend_dir.parent / "data" / "events").resolve()
+
+
+def _resolve_data_file(filename: str) -> Optional[Path]:
+    """Find a file in the data directory."""
+    env_var = f"DATA_{filename.upper().replace('.', '_')}"
+    env_path = os.environ.get(env_var)
+    if env_path:
+        p = Path(env_path).expanduser().resolve()
+        if p.exists():
+            return p
+
+    backend_dir = Path(__file__).resolve().parent
+    
+    # Try multiple common locations
+    candidates = [
+        backend_dir.parent / "data" / filename,
+        backend_dir.parent / filename,
+        backend_dir / filename,
+        Path.cwd() / "data" / filename,
+        Path.cwd() / filename,
+    ]
+    
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    
+    return None
 
 
 def _looks_like_geometry_dict(obj: Any) -> bool:
@@ -318,24 +427,64 @@ def initialize_system() -> None:
     print(f"  meters_per_pixel: {transformer.meters_per_pixel:.4f}")
     print(f"  Example: 1000px path = {1000 * transformer.meters_per_pixel:.1f} meters")
 
-    # 4) Generate navmesh
-    generator = NavMeshGenerator(
-        rooms=geometry_data.get("rooms", []),
-        corridors=corridors,
-        entrances=geometry_data.get("entrances", []),
-    )
-    navmesh_data = generator.generate()
+    # 4) Load or Generate navmesh
+    navmesh_json_path = _resolve_data_file("navmesh_output.json")
+    
+    if navmesh_json_path and navmesh_json_path.exists():
+        print(f"\n{'='*60}")
+        print(f"Loading MANUAL navmesh from: {navmesh_json_path}")
+        print(f"{'='*60}")
+        
+        with open(navmesh_json_path, 'r') as f:
+            navmesh_data = json.load(f)
+        
+        # Normalize node format - convert manual format (x/y) to backend format (position.x/y)
+        for node in navmesh_data.get("nodes", []):
+            if "position" not in node or not isinstance(node.get("position"), dict):
+                # Manual format - convert to backend format
+                node["position"] = {
+                    "x": float(node.get("x", 0)),
+                    "y": float(node.get("y", 0))
+                }
+                # Remove old keys to avoid confusion
+                node.pop("x", None)
+                node.pop("y", None)
+        
+        # Create a minimal generator for compatibility
+        generator = NavMeshGenerator(
+            rooms=geometry_data.get("rooms", []),
+            corridors=corridors,
+            entrances=geometry_data.get("entrances", []),
+        )
+        
+        navmesh_data["transformer"] = transformer
+        navmesh_data["generator"] = generator
+        
+        print(f"\nManual Navmesh Loaded:")
+        print(f"  Nodes: {len(navmesh_data['nodes'])}")
+        print(f"  Edges: {len(navmesh_data['edges'])}")
+        print(f"  Rooms: {len(navmesh_data.get('rooms_metadata', []))}")
+    else:
+        print(f"\nNo manual navmesh found at {navmesh_json_path}")
+        print(f"Auto-generating navmesh from SVG...")
+        
+        generator = NavMeshGenerator(
+            rooms=geometry_data.get("rooms", []),
+            corridors=corridors,
+            entrances=geometry_data.get("entrances", []),
+        )
+        navmesh_data = generator.generate()
 
-    navmesh_data["transformer"] = transformer
-    navmesh_data["generator"] = generator
+        navmesh_data["transformer"] = transformer
+        navmesh_data["generator"] = generator
+
+        print(f"\nNavmesh Generated:")
+        print(f"  Nodes: {len(navmesh_data['nodes'])}")
+        print(f"  Edges: {len(navmesh_data['edges'])}")
+        print(f"  Rooms: {len(navmesh_data['rooms_metadata'])}")
 
     # 5) Initialize pathfinder
     pathfinder = DijkstraPathfinder(navmesh_data["nodes"], navmesh_data["edges"])
-
-    print(f"\nNavmesh Generated:")
-    print(f"  Nodes: {len(navmesh_data['nodes'])}")
-    print(f"  Edges: {len(navmesh_data['edges'])}")
-    print(f"  Rooms: {len(navmesh_data['rooms_metadata'])}")
 
     # 6) Load IoT telemetry (optional)
     telemetry_path = _resolve_telemetry_path()
@@ -348,7 +497,21 @@ def initialize_system() -> None:
         try:
             telemetry = TelemetryProcessor()
             telemetry.load_jsonl_stream(telemetry_path)
-            telemetry.map_hall_ids_to_rooms(navmesh_data['rooms_metadata'])
+            
+            # Map hall IDs - handle missing rooms_metadata
+            rooms_for_mapping = navmesh_data.get('rooms_metadata', [])
+            if not rooms_for_mapping:
+                # Try to extract from nodes
+                rooms_for_mapping = [
+                    {"id": n["id"], "name": n.get("name", n["id"])}
+                    for n in navmesh_data.get("nodes", [])
+                    if n.get("type") == "room"
+                ]
+            
+            if rooms_for_mapping:
+                telemetry.map_hall_ids_to_rooms(rooms_for_mapping)
+            else:
+                print("Warning: No rooms found for telemetry mapping")
             
             # Apply initial telemetry data to navmesh
             sensor_data = telemetry.get_sensor_data_for_navmesh()
@@ -395,10 +558,35 @@ def get_navmesh():
     if not navmesh_data or not transformer:
         return jsonify({"error": "System not initialized"}), 500
 
+    # Extract rooms_metadata - handle missing key
+    rooms_metadata = navmesh_data.get("rooms_metadata", [])
+    
+    # If missing, try to build from nodes with type="room"
+    if not rooms_metadata and "nodes" in navmesh_data:
+        rooms_metadata = []
+        for node in navmesh_data["nodes"]:
+            if node.get("type") == "room":
+                # Handle both formats: manual (x/y) and backend (position.x/y)
+                if "position" in node and isinstance(node["position"], dict):
+                    position = node["position"]
+                else:
+                    # Manual format - convert to backend format
+                    position = {
+                        "x": float(node.get("x", 0)),
+                        "y": float(node.get("y", 0))
+                    }
+                
+                rooms_metadata.append({
+                    "id": node["id"],
+                    "name": node.get("name", node["id"]),
+                    "position": position,
+                    "polygon": node.get("polygon", [])
+                })
+
     response = {
     "nodes": navmesh_data["nodes"],
     "edges": navmesh_data["edges"],
-    "rooms": navmesh_data["rooms_metadata"],
+    "rooms": rooms_metadata,
     "scale_info": transformer.get_scale_info(),
     "corridor_polygons": navmesh_data.get("corridor_polygons", []),
     "spine_nodes": navmesh_data.get("spine_nodes", []),
@@ -416,6 +604,14 @@ def get_rooms():
 
 @app.route("/api/pathfind", methods=["POST", "OPTIONS"])
 def calculate_path():
+    # Handle CORS preflight
+    if request.method == "OPTIONS":
+        response = jsonify({"status": "ok"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response
+    
     if not pathfinder or not transformer:
         return jsonify({"error": "System not initialized"}), 500
 
@@ -433,7 +629,7 @@ def calculate_path():
             original_edges = [e.copy() for e in navmesh_data["edges"]]
             # Reset to base weights
             for e in navmesh_data["edges"]:
-                e["effective_weight"] = e["weight"]
+                e["effective_weight"] = e.get("weight", e.get("base_weight", 1.0))
             pathfinder.update_weights(navmesh_data["edges"])
             
             path = pathfinder.find_path(start_id, end_id)
@@ -445,13 +641,24 @@ def calculate_path():
             path = pathfinder.find_path(start_id, end_id)
         
         if not path:
-            return jsonify({"error": "No path found"}), 404
+            return jsonify({"error": "No path found", "success": False}), 404
 
-        path_coords = [pathfinder.nodes[node_id]["position"] for node_id in path]
+        # Safely extract positions
+        path_coords = []
+        for node_id in path:
+            node = pathfinder.nodes.get(node_id)
+            if node and "position" in node:
+                path_coords.append(node["position"])
+            else:
+                print(f"Warning: Node {node_id} missing position")
 
-        # Smooth/shortcut the path to avoid ugly grid zig-zags in the rendered line.
-        generator = navmesh_data.get("generator") if navmesh_data else None
-        path_coords_smooth = _smooth_path_coords(path_coords, generator)
+        if not path_coords:
+            return jsonify({"error": "Path found but no coordinates available", "success": False}), 500
+
+        # Use raw navmesh path - no simplification
+        # The frontend rounded corners (app.js) will provide visual smoothing
+        # This guarantees the path never cuts through halls
+        path_coords_smooth = path_coords
 
         # Distance shown to the user should be geometric distance, not Dijkstra cost.
         total_distance_pixels = _polyline_length_px(path_coords_smooth)
@@ -490,7 +697,10 @@ def calculate_path():
             }
         )
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        print(f"ERROR in pathfind: {e}")
+        print(traceback.format_exc())
+        return jsonify({"error": str(e), "success": False}), 500
 
 
 @app.route("/api/iot/update", methods=["POST"])
@@ -550,7 +760,18 @@ def reload_telemetry():
     try:
         telemetry = TelemetryProcessor()
         telemetry.load_jsonl_stream(telemetry_path)
-        telemetry.map_hall_ids_to_rooms(navmesh_data['rooms_metadata'])
+        
+        # Map hall IDs - handle missing rooms_metadata
+        rooms_for_mapping = navmesh_data.get('rooms_metadata', [])
+        if not rooms_for_mapping:
+            rooms_for_mapping = [
+                {"id": n["id"], "name": n.get("name", n["id"])}
+                for n in navmesh_data.get("nodes", [])
+                if n.get("type") == "room"
+            ]
+        
+        if rooms_for_mapping:
+            telemetry.map_hall_ids_to_rooms(rooms_for_mapping)
         
         sensor_data = telemetry.get_sensor_data_for_navmesh()
         iot_sensor_data.update(sensor_data)
