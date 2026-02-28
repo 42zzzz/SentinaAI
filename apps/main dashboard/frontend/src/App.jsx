@@ -9,6 +9,7 @@ import BoothsPage from "./pages/BoothsPage";
 import AlertsPage from "./pages/AlertsPage";
 import EventDetails from "./pages/EventDetails";
 import NavigationPage from "./pages/NavigationPage";
+import ExhibitorDashboard from "./pages/ExhibitorDashboard.jsx";
 
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/alerts" element={<AlertsPage />} />
           <Route path="/events/:id" element={<EventDetails />} />
           <Route path="/navigation" element={<NavigationPage />} />
+          <Route path="/exhibitor" element={<ExhibitorDashboard />} />
 
           {/* Optional placeholders */}
           <Route path="/settings" element={<div>Settings (later)</div>} />
@@ -34,5 +36,3 @@ export default function App() {
     </BrowserRouter>
   );
 }
-
-<Route path="/events/:id" element={<EventDetails />} />
