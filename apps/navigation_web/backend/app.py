@@ -459,7 +459,8 @@ def initialize_system() -> None:
         
         navmesh_data["transformer"] = transformer
         navmesh_data["generator"] = generator
-        
+        navmesh_data["corridor_polygons"] = geometry_data.get("corridors", [])
+
         print(f"\nManual Navmesh Loaded:")
         print(f"  Nodes: {len(navmesh_data['nodes'])}")
         print(f"  Edges: {len(navmesh_data['edges'])}")

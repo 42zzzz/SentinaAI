@@ -11,7 +11,7 @@ class ConventionCenterApp {
         this.currentPath = null;
         this.iotSummary = null;
         this.iotData = {};
-        this.heatmapEnabled = true; // show/hide heatmap overlay
+        this.heatmapEnabled = false; // show/hide heatmap overlay
         this.heatmapOpacity = 1.0; // opaque overlay opacity (traffic light scale)
         this.demoMode = true; // DEMO: simulate varied occupancy (green/yellow/red)
         this._iotDataReal = {}; // last real telemetry payload
@@ -68,7 +68,7 @@ class ConventionCenterApp {
 	            width: container.clientWidth,
 	            height: container.clientHeight,
 	            // Background Color
-	            backgroundColor: 0xffffff,
+	            backgroundColor: 0xf5f5f5,
 	            antialias: true,
 	            resolution: window.devicePixelRatio || 1,
 	        });
@@ -835,13 +835,13 @@ renderMap() {
             outG.zIndex = 11;
 
             // Outer dark stroke for visibility on light background
-            outG.lineStyle(12, 0x111111, 0.95);
+            outG.lineStyle({ width: 12, color: 0x111111, alpha: 0.95, join: PIXI.LINE_JOIN.MITER, cap: PIXI.LINE_CAP.BUTT });
             outG.moveTo(polygon[0][0], polygon[0][1]);
             for (let i = 1; i < polygon.length; i++) outG.lineTo(polygon[i][0], polygon[i][1]);
             outG.closePath();
 
             // Inner light stroke (gives a crisp edge against red fill)
-            outG.lineStyle(6, 0xF2F0E6, 0.95);
+            outG.lineStyle({ width: 6, color: 0xF2F0E6, alpha: 0.95, join: PIXI.LINE_JOIN.MITER, cap: PIXI.LINE_CAP.BUTT });
             outG.moveTo(polygon[0][0], polygon[0][1]);
             for (let i = 1; i < polygon.length; i++) outG.lineTo(polygon[i][0], polygon[i][1]);
             outG.closePath();
