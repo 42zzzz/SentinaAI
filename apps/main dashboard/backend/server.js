@@ -8,7 +8,6 @@ dotenv.config();
 // ---- Ensure fetch exists (Node <18) ----
 if (typeof global.fetch !== "function") {
   try {
-    // IMPORTANT: install node-fetch@2 (see step 3)
     global.fetch = require("node-fetch");
   } catch (e) {
     console.warn(
@@ -19,7 +18,7 @@ if (typeof global.fetch !== "function") {
 
 const app = express();
 
-// ✅ Avoid CORS causing “Failed to fetch” (localhost vs 127.0.0.1 etc.)
+// ✅ Flexible CORS
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
@@ -39,7 +38,6 @@ app.get("/api/exhibitor-ai/health", async (req, res) => {
   }
 });
 
-// JSON passthrough for AI endpoints
 app.get("/api/exhibitor-ai/*path", async (req, res) => {
   try {
     const path = req.originalUrl.replace("/api/exhibitor-ai", "");
@@ -75,7 +73,7 @@ app.get("/api/exhibitor-ai-download/*path", async (req, res) => {
 });
 
 // ----------------------
-// Mount routes (CommonJS)
+// Mount routes
 // ----------------------
 app.use("/energy", require("./routes/energy.routes.js"));
 app.use("/devices", require("./routes/devices.routes.js"));
@@ -85,6 +83,10 @@ app.use("/booths", require("./routes/booths.routes.js"));
 app.use("/dashboard", require("./routes/dashboard.routes.js"));
 app.use("/nav", require("./routes/nav.routes.js"));
 app.use("/ai", require("./routes/ai.routes.js"));
+
+// 🔐 AUTH LAYER (ADDED BACK)
+app.use("/auth", require("./routes/auth"));
+app.use("/users", require("./routes/users.routes.js"));
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`✅ API running on http://localhost:${PORT}`));

@@ -1,0 +1,86 @@
+/* Full screen background */
+.login-wrapper {
+  height: 100vh;
+  background-color: #1f3a5c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Center card */
+.login-card {
+  width: 420px;
+  background: #f4f4f4;
+  padding: 50px 40px;
+  border-radius: 8px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  text-align: center;
+}
+
+/* Title */
+.login-title {
+  font-size: 48px;
+  font-weight: 700;
+  margin-bottom: 40px;
+  color: #243b55;
+}
+
+/* Inputs */
+.login-input {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 20px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+}
+
+.login-input:focus {
+  border-color: #1f3a5c;
+  box-shadow: 0 0 0 2px rgba(31, 58, 92, 0.2);
+}
+
+/* Button */
+.login-button {
+  width: 100%;
+  padding: 14px;
+  background-color: #1f3a5c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.login-button:hover {
+  background-color: #162c46;
+}
+
+.login-button:disabled {
+  background-color: #999;
+  cursor: not-allowed;
+}
+
+/* Error */
+.login-error {
+  color: red;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 14px;
+  font-size: 13px;
+  color: #1f3a5c;
+  cursor: pointer;
+  user-select: none;
+}

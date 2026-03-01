@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 const navItemStyle = ({ isActive }) => ({
   display: "flex",
@@ -26,19 +26,29 @@ const iconStyle = {
 
 function PageTitle() {
   const { pathname } = useLocation();
-  const map = {
-    "/": "Dashboard",
-    "/devices": "Devices",
-    "/events": "Events",
-    "/exhibitors": "Exhibitors",
-    "/booths": "Booths & Assignments",
-    "/alerts": "Alerts",
-    "/navigation": "Navigation",
-  };
-  return map[pathname] || "SentinaAI";
+
+  if (pathname === "/operations" || pathname === "/operations/") {
+    return "Dashboard";
+  }
+
+  if (pathname.startsWith("/operations/devices")) return "Devices";
+  if (pathname.startsWith("/operations/events")) return "Events";
+  if (pathname.startsWith("/operations/exhibitors")) return "Exhibitors";
+  if (pathname.startsWith("/operations/booths")) return "Booths & Assignments";
+  if (pathname.startsWith("/operations/alerts")) return "Alerts";
+  if (pathname.startsWith("/operations/navigation")) return "Navigation";
+
+  return "SentinaAI";
 }
 
 export default function AppLayout() {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/", { replace: true });
+  };
+
   return (
     <div style={styles.shell}>
       {/* Sidebar */}
@@ -46,44 +56,54 @@ export default function AppLayout() {
         <div style={styles.brand}>SentinaAI</div>
 
         <div style={styles.sectionLabel}>MAIN</div>
-        <NavLink to="/" end style={navItemStyle}>
+
+        <NavLink to="/operations" end style={navItemStyle}>
           <span style={iconStyle}>🏠</span> Dashboard
         </NavLink>
-        <NavLink to="/devices" style={navItemStyle}>
+
+        <NavLink to="/operations/devices" style={navItemStyle}>
           <span style={iconStyle}>📟</span> Devices
         </NavLink>
-        <NavLink to="/alerts" style={navItemStyle}>
+
+        <NavLink to="/operations/alerts" style={navItemStyle}>
           <span style={iconStyle}>⚠️</span> Alerts
         </NavLink>
-        <NavLink to="/events" style={navItemStyle}>
+
+        <NavLink to="/operations/events" style={navItemStyle}>
           <span style={iconStyle}>🗓️</span> Events
         </NavLink>
-        <NavLink to="/exhibitors" style={navItemStyle}>
+
+        <NavLink to="/operations/exhibitors" style={navItemStyle}>
           <span style={iconStyle}>🏢</span> Exhibitors
         </NavLink>
-        <NavLink to="/booths" style={navItemStyle}>
+
+        <NavLink to="/operations/booths" style={navItemStyle}>
           <span style={iconStyle}>🧭</span> Booths
         </NavLink>
-        <NavLink to="/navigation" style={navItemStyle}>
+
+        <NavLink to="/operations/navigation" style={navItemStyle}>
           <span style={iconStyle}>🗺️</span> Navigation
         </NavLink>
 
         <div style={{ flex: 1 }} />
 
         <div style={styles.sectionLabel}>SETTINGS</div>
-        <NavLink to="/settings" style={navItemStyle}>
+
+        <NavLink to="/operations/settings" style={navItemStyle}>
           <span style={iconStyle}>⚙️</span> Settings
         </NavLink>
-        <NavLink to="/help" style={navItemStyle}>
+
+        <NavLink to="/operations/help" style={navItemStyle}>
           <span style={iconStyle}>❔</span> Help
         </NavLink>
 
-        <button style={styles.logoutBtn}>Logout</button>
+        <button style={styles.logoutBtn} onClick={handleLogout}>
+          Logout
+        </button>
       </aside>
 
       {/* Main */}
       <main style={styles.main}>
-        {/* Top header */}
         <header style={styles.header}>
           <div>
             <div style={styles.pageTitle}>{PageTitle()}</div>
@@ -100,16 +120,25 @@ export default function AppLayout() {
 
             <div style={styles.userCard}>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 13 }}>Tracy Miller</div>
-                <div style={{ fontSize: 12, opacity: 0.75 }}>Role: Operation Manager</div>
-                <div style={{ fontSize: 12, opacity: 0.75 }}>Employee ID: ED-360</div>
+                <div style={{ fontWeight: 800, fontSize: 13 }}>
+                  {localStorage.getItem("full_name") || "User"}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>
+                  Role: {localStorage.getItem("role")}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>
+                  Employee ID: {localStorage.getItem("employee_id")}
+                </div>
               </div>
-              <div style={styles.avatar}>TM</div>
+              <div style={styles.avatar}>
+                {(localStorage.getItem("full_name") || "U")
+                  .charAt(0)
+                  .toUpperCase()}
+              </div>
             </div>
           </div>
         </header>
 
-        {/* Page content */}
         <div style={styles.content}>
           <Outlet />
         </div>
@@ -167,7 +196,6 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    background: "transparent",
   },
   pageTitle: {
     fontSize: 20,

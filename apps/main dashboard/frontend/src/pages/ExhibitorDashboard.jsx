@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const DEFAULT_EXHIBITOR_ID = "EXH0240";
 
@@ -37,6 +38,16 @@ export default function ExhibitorDashboard() {
   const [density, setDensity] = useState(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("full_name");
+    localStorage.removeItem("employee_id");
+    navigate("/");
+  };
 
   const heatmapUrl = useMemo(() => {
     const qs = buildQuery({ intervalMinutes, catchmentK, mcPasses, agg: "mean" });
@@ -106,7 +117,24 @@ export default function ExhibitorDashboard() {
 
   return (
     <div style={{ padding: 16, fontFamily: "system-ui, Arial" }}>
-      <h2 style={{ margin: 0 }}>Exhibitor Dashboard</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h2 style={{ margin: 0 }}>Exhibitor Dashboard</h2>
+
+        <button
+          onClick={handleLogout}
+          style={{
+            padding: "6px 14px",
+            borderRadius: 8,
+            border: "none",
+            background: "#e11d48",
+            color: "white",
+            cursor: "pointer",
+            fontWeight: 600
+          }}
+        >
+          Logout
+        </button>
+      </div>
       <p style={{ marginTop: 6, opacity: 0.8 }}>
         Live AI metrics for booth engagement (catchment) and competitive density.
       </p>
