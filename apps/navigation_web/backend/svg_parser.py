@@ -546,6 +546,7 @@ class SVGParser:
 
             # Also check if ID contains "corridor" for extra validation
             label = get_label_text(el)
+            corridor_id = el.get("id", "")
             
             if tag == "rect":
                 x = float(el.get("x", 0))
@@ -556,19 +557,19 @@ class SVGParser:
                     continue
                 poly = _rect_to_poly(x, y, w, h)
                 poly = self._apply_transform(poly, self._cumulative_transform(el))
-                corridors.append(self._poly_to_corridor(poly))
+                corridors.append(self._poly_to_corridor(poly, corridor_id))
 
             elif tag == "polygon":
                 pts = self._parse_polygon_points(el.get("points", ""))
                 if pts and len(pts) >= 3:
                     pts = self._apply_transform(pts, self._cumulative_transform(el))
-                    corridors.append(self._poly_to_corridor(pts))
+                    corridors.append(self._poly_to_corridor(pts, corridor_id))
 
             elif tag == "path":
                 pts = self._parse_path_to_points(el.get("d", ""))
                 if pts and len(pts) >= 3:
                     pts = self._apply_transform(pts, self._cumulative_transform(el))
-                    corridors.append(self._poly_to_corridor(pts))
+                    corridors.append(self._poly_to_corridor(pts, corridor_id))
 
         print(f"Corridors extracted: {len(corridors)}")
         if len(corridors) == 0:
@@ -577,9 +578,10 @@ class SVGParser:
         
         return corridors
 
-    def _poly_to_corridor(self, pts: List[List[float]]) -> Dict:
+    def _poly_to_corridor(self, pts: List[List[float]], corridor_id: str = "") -> Dict:
         return {
             "type": "corridor",
+            "id": corridor_id,
             "bounds": _poly_bbox(pts),
             "polygon": pts,
         }

@@ -11,7 +11,7 @@ class ConventionCenterApp {
         this.currentPath = null;
         this.iotSummary = null;
         this.iotData = {};
-        this.heatmapEnabled = false; // show/hide heatmap overlay (default: OFF)
+        this.heatmapEnabled = true; // show/hide heatmap overlay
         this.heatmapOpacity = 1.0; // opaque overlay opacity (traffic light scale)
         this.demoMode = true; // DEMO: simulate varied occupancy (green/yellow/red)
         this._iotDataReal = {}; // last real telemetry payload
@@ -39,13 +39,18 @@ class ConventionCenterApp {
             path: null,
             interactive: null
         };
-        
+
+        // Fallback corridor geometry (if backend navmesh lacks corridor_polygons)
+        this.svgCorridorPolygons = [];
+        this._svgCorridorsLoaded = false;
+
         this.init();
     }
 
     async init() {
         this.setupPixi();
         await this.loadNavmesh();
+        await this.loadSvgCorridors();
         await this.loadIoTData();
         // Keep telemetry + heatmap live
         setInterval(() => this.refreshTelemetry(), 5000);
@@ -58,14 +63,10 @@ class ConventionCenterApp {
         const canvas = document.getElementById('pixiCanvas');
         const container = document.getElementById('canvas-container');
         
-        // Fixed resolution for dashboard integration
-        const CANVAS_WIDTH = 1600;
-        const CANVAS_HEIGHT = 900;
-        
 	        this.app = new PIXI.Application({
 	            view: canvas,
-	            width: CANVAS_WIDTH,
-	            height: CANVAS_HEIGHT,
+	            width: container.clientWidth,
+	            height: container.clientHeight,
 	            // Background Color
 	            backgroundColor: 0xffffff,
 	            antialias: true,
@@ -94,12 +95,12 @@ class ConventionCenterApp {
         this.layers.path.zIndex = 50;
         this.layers.interactive.zIndex = 60;
 
-        // Draw order: background → corridors → rooms → heatmap → path → interactive
+        // Draw order: background → corridors → heatmap → corridorOutlines → rooms → path → interactive
         this.app.stage.addChild(this.layers.background);
         this.app.stage.addChild(this.layers.corridors);
+        this.app.stage.addChild(this.layers.heatmap);
         this.app.stage.addChild(this.layers.corridorOutlines);
         this.app.stage.addChild(this.layers.rooms);
-        this.app.stage.addChild(this.layers.heatmap);
         this.app.stage.addChild(this.layers.path);
         this.app.stage.addChild(this.layers.interactive);
 
@@ -569,7 +570,91 @@ class ConventionCenterApp {
         });
     }
 
-    renderMap() {
+    
+    async loadSvgCorridors() {
+        // If backend provides corridor_polygons, prefer those.
+        const backendPolys = (this.navmeshData && Array.isArray(this.navmeshData.corridor_polygons)) ? this.navmeshData.corridor_polygons : null;
+        if (backendPolys && backendPolys.length) {
+            this._svgCorridorsLoaded = true;
+            return;
+        }
+        if (this._svgCorridorsLoaded) return;
+
+        try {
+            // SVG is bundled into frontend/assets so it's always reachable by the static server.
+            const res = await fetch('./assets/convention_map.svg', { cache: 'no-store' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const svgText = await res.text();
+
+            // Create a real SVG element in the DOM so SVGPathElement geometry APIs work reliably.
+            const holder = document.createElement('div');
+            holder.style.position = 'absolute';
+            holder.style.left = '-99999px';
+            holder.style.top = '-99999px';
+            holder.style.width = '1px';
+            holder.style.height = '1px';
+            holder.style.overflow = 'hidden';
+            holder.innerHTML = svgText;
+
+            document.body.appendChild(holder);
+            const svgEl = holder.querySelector('svg');
+            if (!svgEl) throw new Error('SVG <svg> root not found');
+
+            const redPaths = Array.from(svgEl.querySelectorAll('path'))
+                .filter(p => {
+                    const style = (p.getAttribute('style') || '').toLowerCase().replace(/\s+/g,'');
+                    const fill = (p.getAttribute('fill') || '').toLowerCase().replace(/\s+/g,'');
+                    // Accept fill in style or attribute (#ff0000 or rgb(255,0,0))
+                    return style.includes('fill:#ff0000') || fill === '#ff0000' || style.includes('fill:rgb(255,0,0)');
+                });
+
+            const corridors = [];
+
+            for (const p of redPaths) {
+                let total = 0;
+                try { total = p.getTotalLength(); } catch (_) { total = 0; }
+                if (!isFinite(total) || total <= 0) continue;
+
+                const id = p.getAttribute('id') || 'corridor';
+                // corridor_02 is curvy and long; sample denser so the outline looks smooth.
+                const samples = (id === 'corridor_02') ? 220 : 80;
+
+                const pts = [];
+                for (let i = 0; i <= samples; i++) {
+                    const t = (i / samples) * total;
+                    const pt = p.getPointAtLength(t);
+                    pts.push([pt.x, pt.y]);
+                }
+                // Reduce noise: drop near-duplicate consecutive points
+                const simplified = [];
+                const eps2 = 0.25; // ~0.5px squared
+                for (const q of pts) {
+                    if (!simplified.length) { simplified.push(q); continue; }
+                    const a = simplified[simplified.length - 1];
+                    const dx = q[0] - a[0], dy = q[1] - a[1];
+                    if ((dx*dx + dy*dy) > eps2) simplified.push(q);
+                }
+                if (simplified.length >= 3) corridors.push({ id, polygon: simplified });
+            }
+
+            document.body.removeChild(holder);
+
+            this.svgCorridorPolygons = corridors;
+            this._svgCorridorsLoaded = true;
+
+            if (corridors.length) {
+                console.log(`✓ SVG corridor fallback loaded: ${corridors.length} corridor paths`);
+            } else {
+                console.warn('⚠ No red corridor paths found in SVG (fallback corridors empty)');
+            }
+        } catch (e) {
+            console.warn('⚠ Failed to load SVG corridor fallback:', e);
+            this.svgCorridorPolygons = [];
+            this._svgCorridorsLoaded = true;
+        }
+    }
+
+renderMap() {
         if (!this.navmeshData) return;
         this.updateStatus('Rendering map...', true);
         this.layers.rooms.removeChildren();
@@ -724,11 +809,13 @@ class ConventionCenterApp {
     }
 
     renderCorridors() {
-        if (!this.navmeshData.corridor_polygons) return;
+        const backendPolys = (this.navmeshData && Array.isArray(this.navmeshData.corridor_polygons)) ? this.navmeshData.corridor_polygons : [];
+        const corridorPolys = backendPolys.length ? backendPolys : (this.svgCorridorPolygons || []);
+        if (!corridorPolys.length) return;
 
         if (this.layers.corridorOutlines) this.layers.corridorOutlines.removeChildren();
 
-        this.navmeshData.corridor_polygons.forEach(corridor => {
+        corridorPolys.forEach(corridor => {
             const polygon = corridor?.polygon;
             if (!polygon || polygon.length < 3) return;
 
@@ -754,7 +841,7 @@ class ConventionCenterApp {
             outG.closePath();
 
             // Inner light stroke (gives a crisp edge against red fill)
-            outG.lineStyle(6, 0xffffff, 0.95);
+            outG.lineStyle(6, 0xF2F0E6, 0.95);
             outG.moveTo(polygon[0][0], polygon[0][1]);
             for (let i = 1; i < polygon.length; i++) outG.lineTo(polygon[i][0], polygon[i][1]);
             outG.closePath();
@@ -1010,49 +1097,10 @@ class ConventionCenterApp {
         if (!coords || coords.length < 2) return;
         
         graphics.lineStyle(8, 0x00d4ff, 1);
-        
-        // Draw path with rounded corners using quadratic curves
-        const cornerRadius = 50; // Larger radius to smooth out dense node clusters
-        
-        if (coords.length === 2) {
-            // For straight paths with only 2 points, just draw a straight line
-            graphics.moveTo(coords[0].x, coords[0].y);
-            graphics.lineTo(coords[1].x, coords[1].y);
-        } else {
-            // For paths with 3+ points, use curved corners
-            graphics.moveTo(coords[0].x, coords[0].y);
-            
-            for (let i = 1; i < coords.length - 1; i++) {
-                const prev = coords[i - 1];
-                const curr = coords[i];
-                const next = coords[i + 1];
-                
-                // Calculate distances to determine curve points
-                const d1 = Math.hypot(curr.x - prev.x, curr.y - prev.y);
-                const d2 = Math.hypot(next.x - curr.x, next.y - curr.y);
-                
-                // Limit corner radius based on segment length
-                const maxRadius = Math.min(d1 / 2, d2 / 2, cornerRadius);
-                
-                // Calculate the point before the corner
-                const ratio1 = maxRadius / d1;
-                const beforeX = curr.x - (curr.x - prev.x) * ratio1;
-                const beforeY = curr.y - (curr.y - prev.y) * ratio1;
-                
-                // Calculate the point after the corner
-                const ratio2 = maxRadius / d2;
-                const afterX = curr.x + (next.x - curr.x) * ratio2;
-                const afterY = curr.y + (next.y - curr.y) * ratio2;
-                
-                // Draw line to before corner, curve through corner, continue from after
-                graphics.lineTo(beforeX, beforeY);
-                graphics.quadraticCurveTo(curr.x, curr.y, afterX, afterY);
-            }
-            
-            // Draw final segment to last point
-            graphics.lineTo(coords[coords.length - 1].x, coords[coords.length - 1].y);
+        graphics.moveTo(coords[0].x, coords[0].y);
+        for (let i = 1; i < coords.length; i++) {
+            graphics.lineTo(coords[i].x, coords[i].y);
         }
-        
         this.layers.path.addChild(graphics);
         
         const startPoint = new PIXI.Graphics();
