@@ -1,28 +1,35 @@
-// backend/server.js (ESM-safe)
-// NOTE: Your package.json is running Node as ES module ("type": "module"),
-// so we must use `import` instead of `require`.
-// Hi 
-
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
+// backend/server.js (CommonJS)
+const express = require("express");
+const cors = require("cors");
+const dotenv = require("dotenv");
 
 dotenv.config();
 
+// ---- Ensure fetch exists (Node <18) ----
+if (typeof global.fetch !== "function") {
+  try {
+    // IMPORTANT: install node-fetch@2 (see step 3)
+    global.fetch = require("node-fetch");
+  } catch (e) {
+    console.warn(
+      "❌ fetch() is not available. Install node-fetch@2 or upgrade Node to 18+."
+    );
+  }
+}
+
 const app = express();
 
-app.use(cors({ origin: "http://localhost:5173" }));
+// ✅ Avoid CORS causing “Failed to fetch” (localhost vs 127.0.0.1 etc.)
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
 app.get("/health", (req, res) =>
   res.json({ ok: true, service: "backend", time: new Date().toISOString() })
 );
 
-
 // --- Exhibitor AI proxy (FastAPI) ---
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
 
-// Basic health passthrough
 app.get("/api/exhibitor-ai/health", async (req, res) => {
   try {
     const r = await fetch(`${AI_SERVICE_URL}/health`);
@@ -32,7 +39,7 @@ app.get("/api/exhibitor-ai/health", async (req, res) => {
   }
 });
 
-// JSON passthrough for AI endpoints  ✅ FIXED: *path
+// JSON passthrough for AI endpoints
 app.get("/api/exhibitor-ai/*path", async (req, res) => {
   try {
     const path = req.originalUrl.replace("/api/exhibitor-ai", "");
@@ -49,7 +56,6 @@ app.get("/api/exhibitor-ai/*path", async (req, res) => {
   }
 });
 
-// File passthrough for XLSX downloads ✅ FIXED: *path
 app.get("/api/exhibitor-ai-download/*path", async (req, res) => {
   try {
     const path = req.originalUrl.replace("/api/exhibitor-ai-download", "");
@@ -68,39 +74,17 @@ app.get("/api/exhibitor-ai-download/*path", async (req, res) => {
   }
 });
 
-
 // ----------------------
-// Mount routes (ESM-safe)
+// Mount routes (CommonJS)
 // ----------------------
-// Your route files likely use `module.exports = router;` (CommonJS).
-// In ESM, import them and use `.default || module` to support both.
-
-import energyRoutesImport from "./routes/energy.routes.js";
-import devicesRoutesImport from "./routes/devices.routes.js";
-import eventsRoutesImport from "./routes/events.routes.js";
-import exhibitorsRoutesImport from "./routes/exhibitors.routes.js";
-import boothsRoutesImport from "./routes/booths.routes.js";
-import dashboardRoutesImport from "./routes/dashboard.routes.js";
-import navRoutesImport from "./routes/nav.routes.js";
-import aiRoutesImport from "./routes/ai.routes.js";
-
-const energyRoutes = energyRoutesImport?.default || energyRoutesImport;
-const devicesRoutes = devicesRoutesImport?.default || devicesRoutesImport;
-const eventsRoutes = eventsRoutesImport?.default || eventsRoutesImport;
-const exhibitorsRoutes = exhibitorsRoutesImport?.default || exhibitorsRoutesImport;
-const boothsRoutes = boothsRoutesImport?.default || boothsRoutesImport;
-const dashboardRoutes = dashboardRoutesImport?.default || dashboardRoutesImport;
-const navRoutes = navRoutesImport?.default || navRoutesImport;
-const aiRoutes = aiRoutesImport?.default || aiRoutesImport;
-
-app.use("/energy", energyRoutes);
-app.use("/devices", devicesRoutes);
-app.use("/events", eventsRoutes);
-app.use("/exhibitors", exhibitorsRoutes);
-app.use("/booths", boothsRoutes);
-app.use("/dashboard", dashboardRoutes);
-app.use("/nav", navRoutes);
-app.use("/ai", aiRoutes);
+app.use("/energy", require("./routes/energy.routes.js"));
+app.use("/devices", require("./routes/devices.routes.js"));
+app.use("/events", require("./routes/events.routes.js"));
+app.use("/exhibitors", require("./routes/exhibitors.routes.js"));
+app.use("/booths", require("./routes/booths.routes.js"));
+app.use("/dashboard", require("./routes/dashboard.routes.js"));
+app.use("/nav", require("./routes/nav.routes.js"));
+app.use("/ai", require("./routes/ai.routes.js"));
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`✅ API running on http://localhost:${PORT}`));

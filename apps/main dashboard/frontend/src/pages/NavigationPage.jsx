@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-// Your PNG pixel size (keep this EXACT, because we are mapping coords into this)
+// PNG pixel size (path points are now in THIS exact coordinate space)
 const IMG_W = 1600;
 const IMG_H = 900;
 
@@ -34,7 +34,7 @@ export default function NavigationPage() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
 
-  const [pathNav, setPathNav] = useState([]); // navmesh coords
+  const [pathNav, setPathNav] = useState([]); // now already 1600x900 pixel coords
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -85,64 +85,11 @@ export default function NavigationPage() {
     return (Array.isArray(roomsRaw) ? roomsRaw : []).map(toRoomOption).filter(Boolean);
   }, [roomsRaw]);
 
-  // Compute navmesh bounds (this is the coordinate space that path points are in)
-  const navBounds = useMemo(() => {
-    const nodes = navInfo?.nodes;
-    if (!Array.isArray(nodes) || nodes.length === 0) {
-      return { minX: 0, minY: 0, maxX: 1, maxY: 1, w: 1, h: 1 };
-    }
-
-    const xs = [];
-    const ys = [];
-
-    for (const n of nodes) {
-      const b = n?.bounds;
-      if (
-        b &&
-        Number.isFinite(b.x) &&
-        Number.isFinite(b.y) &&
-        Number.isFinite(b.width) &&
-        Number.isFinite(b.height)
-      ) {
-        xs.push(b.x, b.x + b.width);
-        ys.push(b.y, b.y + b.height);
-        continue;
-      }
-
-      const x = n?.position?.x;
-      const y = n?.position?.y;
-      if (Number.isFinite(x) && Number.isFinite(y)) {
-        xs.push(x);
-        ys.push(y);
-      }
-    }
-
-    if (!xs.length || !ys.length) return { minX: 0, minY: 0, maxX: 1, maxY: 1, w: 1, h: 1 };
-
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-
-    const w = Math.max(1, maxX - minX);
-    const h = Math.max(1, maxY - minY);
-
-    return { minX, minY, maxX, maxY, w, h };
-  }, [navInfo]);
-
-  // Convert navmesh coords -> image pixel coords (1600x900)
+  // ✅ No scaling anymore: path coords are already in 1600x900 pixels
   const pathPx = useMemo(() => {
     if (!pathNav.length) return [];
-
-    const sx = IMG_W / navBounds.w;
-    const sy = IMG_H / navBounds.h;
-
-    // Map each point into [0..IMG_W, 0..IMG_H]
-    return pathNav.map(([x, y]) => [
-      (x - navBounds.minX) * sx,
-      (y - navBounds.minY) * sy,
-    ]);
-  }, [pathNav, navBounds]);
+    return pathNav;
+  }, [pathNav]);
 
   async function findPath() {
     setError("");
@@ -164,13 +111,14 @@ export default function NavigationPage() {
 
       setPathNav(normalized);
 
-      // Debug: confirm ranges
+      // Debug: confirm these are already pixel coords for 1600x900
       if (normalized.length) {
         const xs = normalized.map((p) => p[0]);
         const ys = normalized.map((p) => p[1]);
-        console.log("NAV x range:", Math.min(...xs), Math.max(...xs));
-        console.log("NAV y range:", Math.min(...ys), Math.max(...ys));
-        console.log("NAV bounds:", navBounds);
+        console.log("PATH x range:", Math.min(...xs), Math.max(...xs));
+        console.log("PATH y range:", Math.min(...ys), Math.max(...ys));
+        console.log("Expected image:", IMG_W, IMG_H);
+        console.log("navInfo:", navInfo);
       }
     } catch (e) {
       setError(e.message || "Pathfind failed");
@@ -209,7 +157,7 @@ export default function NavigationPage() {
           </button>
 
           <div style={{ fontSize: 12, opacity: 0.7 }}>
-            Rooms: {options.length} • NavBox: {Math.round(navBounds.w)}×{Math.round(navBounds.h)} → Img: {IMG_W}×{IMG_H}
+            Rooms: {options.length} • Img: {IMG_W}×{IMG_H}
           </div>
 
           {error ? <div style={{ color: "#b91c1c", fontWeight: 800 }}>{error}</div> : null}
@@ -218,7 +166,6 @@ export default function NavigationPage() {
 
       {/* Map + Path */}
       <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-        {/* ONE SVG in PNG pixel coords */}
         <svg
           viewBox={`0 0 ${IMG_W} ${IMG_H}`}
           preserveAspectRatio="xMidYMid meet"

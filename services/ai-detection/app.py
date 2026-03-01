@@ -42,6 +42,50 @@ ops_df['day_code'] = ops_df['dayOfWeek'].map(day_map)
 forecaster = RandomForestRegressor(n_estimators=50, random_state=42)
 safety = RandomForestClassifier(n_estimators=50, random_state=42)
 
+from datetime import datetime, timezone
+
+class OccupancyForecastRequest(BaseModel):
+    hall_id: str
+    venueRole: str
+    hourOfDay: int
+    dayOfWeek: str  # e.g. "Monday"
+
+@app.post("/api/occupancy-forecast")
+def occupancy_forecast(req: OccupancyForecastRequest):
+    """
+    Predict occupancy for the next 60 minutes (4 x 15-min points) using the trained forecaster.
+    We keep the model inputs aligned with training: [hourOfDay, day_code, venueRole_encoded]
+    """
+    day_map = {'Monday':0, 'Tuesday':1, 'Wednesday':2, 'Thursday':3, 'Friday':4, 'Saturday':5, 'Sunday':6}
+
+    try:
+        day_code = day_map.get(req.dayOfWeek, 0)
+        role_code = le_venue.transform([req.venueRole])[0]
+    except Exception:
+        # fallback if unseen role
+        day_code = day_map.get(req.dayOfWeek, 0)
+        role_code = 0
+
+    points = []
+    base_hour = int(req.hourOfDay)
+
+    # 4 points: +15, +30, +45, +60 minutes
+    for i in range(1, 5):
+        # keep hour input simple (model trained on int hourOfDay)
+        hour_in = (base_hour + ((i * 15) // 60)) % 24
+        y = float(forecaster.predict([[hour_in, day_code, role_code]])[0])
+
+        points.append({
+            "offsetMinutes": i * 15,
+            "predictedOccupancy": int(round(y))
+        })
+
+    return {
+        "status": "success",
+        "hall_id": req.hall_id,
+        "points": points
+    }
+
 def train_models():
     X_f = ops_df[['hourOfDay', 'day_code', 'venueRole_encoded']]
     y_f = ops_df['currentOccupancy']

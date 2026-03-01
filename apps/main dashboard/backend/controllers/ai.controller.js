@@ -203,3 +203,101 @@ return res.json({ ok: true, ts, rows: merged });
     return res.status(500).json({ ok: false, error: e.message });
   }
 };
+
+exports.getOccupancyForecast = async (req, res) => {
+  try {
+    const hallId = req.query.hall_id;
+    if (!hallId) return res.status(400).json({ ok: false, error: "hall_id is required" });
+
+    // Latest snapshot timestamp
+    const rTs = await analyticsDb.query(`SELECT MAX(ts) AS max_ts FROM interval_metrics`);
+    const ts = rTs.rows[0]?.max_ts;
+    if (!ts) return res.json({ ok: true, ts: null, hall_id: hallId, points: [] });
+
+    // Pull hall metadata + baseline occupancy info
+    const rHall = await analyticsDb.query(
+      `
+      SELECT hall_id, hall_name, venue_role, hall_capacity, current_occupancy, occupancy_ratio
+      FROM interval_metrics
+      WHERE ts = $1 AND hall_id = $2
+      LIMIT 1
+      `,
+      [ts, hallId]
+    );
+
+    if (!rHall.rows.length) {
+      return res.status(404).json({ ok: false, error: `No interval_metrics row found for hall_id=${hallId}` });
+    }
+
+    const row = rHall.rows[0];
+
+    // Day + hour derived from ts
+    const dt = new Date(ts);
+    const hourOfDay = dt.getHours();
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const dayOfWeek = dayNames[dt.getDay()];
+
+    // Call AI forecaster (baseline forecast)
+    const payload = {
+      hall_id: String(row.hall_id),
+      venueRole: String(row.venue_role || "default"),
+      hourOfDay,
+      dayOfWeek,
+    };
+
+    const resp = await fetch(`${AI_BASE}/api/occupancy-forecast`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await readJsonSafe(resp);
+    if (!resp.ok || data?.status !== "success") {
+      return res.status(502).json({ ok: false, error: "AI occupancy-forecast failed", data });
+    }
+
+    const capacity = Number(row.hall_capacity || 0);
+    const baseOccRatio = Number(row.occupancy_ratio || 0);
+    const baseCurrent = Number(row.current_occupancy || 0);
+
+    // ✅ Apply simulation override (if exists) by scaling forecast
+    const ov = SIM_OVERRIDES.get(String(row.hall_id));
+    let scale = 1;
+
+    if (ov && (!ov.expiresAt || ov.expiresAt >= Date.now())) {
+      const simOccRatio = Number(ov.occupancyRatio);
+      const simCurrent = capacity > 0 ? simOccRatio * capacity : baseCurrent;
+
+      // If baseline is tiny (like 10 ppl), scaling can explode. Guard it.
+      // Use ratio scaling when baseline ratio is non-trivial; else use delta shift.
+      if (baseOccRatio >= 0.05) {
+        scale = simOccRatio / baseOccRatio;
+      } else if (baseCurrent > 0) {
+        scale = simCurrent / baseCurrent;
+      } else {
+        scale = 1;
+      }
+    }
+
+    const points = (data.points || []).map((p) => {
+      const rawPred = Number(p.predictedOccupancy || 0);
+      let adjusted = Math.round(rawPred * scale);
+
+      // Clamp to [0, capacity] if capacity is known
+      if (capacity > 0) adjusted = Math.max(0, Math.min(capacity, adjusted));
+      return { ...p, predictedOccupancy: adjusted };
+    });
+
+    return res.json({
+      ok: true,
+      ts,
+      hall_id: row.hall_id,
+      hall_name: row.hall_name,
+      venue_role: row.venue_role,
+      scaleApplied: scale,
+      points,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+};
