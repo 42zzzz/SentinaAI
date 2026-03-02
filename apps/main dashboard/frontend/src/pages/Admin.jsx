@@ -52,11 +52,11 @@ export default function Admin() {
 
             if (field === "password") {
                 const tempPasswordRules = {
-                    length: value.length >= 8,
+                    length: value.length >= 12,
                     upper: /[A-Z]/.test(value),
                     lower: /[a-z]/.test(value),
                     number: /\d/.test(value),
-                    special: /[@$!%*?&.]/.test(value),
+                    special: /[^A-Za-z0-9]/.test(value),
                 };
 
                 const valid = Object.values(tempPasswordRules).every(Boolean);
@@ -94,11 +94,11 @@ export default function Admin() {
     };
 
     const passwordRules = {
-        length: form.password.length >= 8,
+        length: form.password.length >= 12,
         upper: /[A-Z]/.test(form.password),
         lower: /[a-z]/.test(form.password),
         number: /\d/.test(form.password),
-        special: /[@$!%*?&.]/.test(form.password),
+        special: /[^A-Za-z0-9]/.test(form.password), // any symbol
     };
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -142,7 +142,11 @@ export default function Admin() {
         const data = await res.json();
 
         if (!res.ok) {
-            setErrors({ api: data.error || "Failed to create user" });
+            const apiMsg = Array.isArray(data.error)
+                ? data.error.join(" | ")
+                : (data.error || "Failed to create user");
+
+            setErrors({ api: apiMsg });
             return;
         }
 
