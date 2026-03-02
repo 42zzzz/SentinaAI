@@ -44,7 +44,7 @@ from telemetry_processor import TelemetryProcessor
 from event_store import EventStore
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="/static")
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 CORS(app)
 
 
@@ -55,6 +55,7 @@ def _no_cache_static(resp):
     resp.headers["Expires"] = "0"
     return resp
 
+
 # Global state
 navmesh_data: Optional[Dict] = None
 transformer: Optional[CoordinateTransformer] = None
@@ -62,6 +63,47 @@ pathfinder: Optional[DijkstraPathfinder] = None
 telemetry: Optional[TelemetryProcessor] = None
 iot_sensor_data: Dict[str, float] = {}
 event_store: Optional[EventStore] = None
+
+
+def _ensure_rooms_metadata(nm: Dict) -> list[Dict]:
+    """
+    Guarantee nm['rooms_metadata'] exists.
+    Manual navmesh files may only contain nodes/edges (rooms exist as nodes of type='room').
+    """
+    rooms_md = nm.get("rooms_metadata")
+    if isinstance(rooms_md, list) and rooms_md:
+        # Also normalize position format just in case
+        for r in rooms_md:
+            if "position" in r and isinstance(r["position"], dict):
+                r["position"]["x"] = float(r["position"].get("x", 0))
+                r["position"]["y"] = float(r["position"].get("y", 0))
+        return rooms_md
+
+    rooms_md = []
+    for node in (nm.get("nodes", []) or []):
+        if node.get("type") != "room":
+            continue
+
+        # Support both formats: backend (position.x/y) and legacy manual (x/y)
+        if isinstance(node.get("position"), dict):
+            pos = node["position"]
+            x = float(pos.get("x", 0))
+            y = float(pos.get("y", 0))
+        else:
+            x = float(node.get("x", 0))
+            y = float(node.get("y", 0))
+
+        rooms_md.append(
+            {
+                "id": node.get("id"),
+                "name": node.get("name", node.get("id")),
+                "position": {"x": x, "y": y},
+                "polygon": node.get("polygon", []),
+            }
+        )
+
+    nm["rooms_metadata"] = rooms_md
+    return rooms_md
 
 
 def _polyline_length_px(coords: list[dict]) -> float:
@@ -102,10 +144,9 @@ def _smooth_path_coords(coords: list[dict], generator: Any, samples: int = 21) -
         while j > i + 1:
             # Calculate adaptive sample count based on segment length
             # Use at least 1 sample per 20 pixels to ensure we catch hall boundaries
-            dist = math.hypot(coords[j]["x"] - coords[i]["x"], 
-                            coords[j]["y"] - coords[i]["y"])
+            dist = math.hypot(coords[j]["x"] - coords[i]["x"], coords[j]["y"] - coords[i]["y"])
             adaptive_samples = max(samples, int(dist / 20) + 1)
-            
+
             if los_fn(coords[i], coords[j], samples=adaptive_samples):
                 break
             j -= 1
@@ -116,7 +157,7 @@ def _smooth_path_coords(coords: list[dict], generator: Any, samples: int = 21) -
 
 def _simplify_path_coords(coords: list[dict], generator: Any) -> list[dict]:
     """Remove redundant near-collinear nodes to reduce squiggly paths.
-    
+
     Uses angle-based filtering with strict line-of-sight validation.
     Only removes a node if:
     1. It's nearly collinear with neighbors (angle > 165 degrees)
@@ -124,71 +165,70 @@ def _simplify_path_coords(coords: list[dict], generator: Any) -> list[dict]:
     """
     if not coords or len(coords) <= 2:
         return coords
-    
+
     if generator is None:
         return coords
-    
+
     los_fn = getattr(generator, "_segment_walkable_corridor_only", None)
     if not callable(los_fn):
         return coords
-    
+
     # Angle threshold in degrees - only remove very collinear points
     angle_threshold = 165.0
-    
+
     simplified = [coords[0]]
-    
+
     i = 1
     while i < len(coords) - 1:
         prev = simplified[-1]
         curr = coords[i]
         next_pt = coords[i + 1]
-        
+
         # Calculate angle at current point
         v1_x = curr["x"] - prev["x"]
         v1_y = curr["y"] - prev["y"]
         v2_x = next_pt["x"] - curr["x"]
         v2_y = next_pt["y"] - curr["y"]
-        
+
         # Normalize vectors
         len1 = math.hypot(v1_x, v1_y)
         len2 = math.hypot(v2_x, v2_y)
-        
+
         if len1 < 1e-6 or len2 < 1e-6:
             # Skip near-duplicate points
             i += 1
             continue
-        
+
         v1_x /= len1
         v1_y /= len1
         v2_x /= len2
         v2_y /= len2
-        
+
         # Dot product gives cos(angle)
         dot = v1_x * v2_x + v1_y * v2_y
         dot = max(-1.0, min(1.0, dot))  # Clamp to [-1, 1]
         angle_deg = math.degrees(math.acos(dot))
-        
+
         # Check if nearly collinear and direct path is valid
         if angle_deg > angle_threshold:
             # Calculate adaptive samples based on distance
             dist = math.hypot(next_pt["x"] - prev["x"], next_pt["y"] - prev["y"])
             samples = max(25, int(dist / 15) + 1)
-            
+
             # Only skip this node if direct path is walkable
             if los_fn(prev, next_pt, samples=samples):
                 # Skip current node (don't add it to simplified)
                 i += 1
                 continue
-        
+
         # Keep this node
         simplified.append(curr)
         i += 1
-    
+
     # Always keep the last node
     simplified.append(coords[-1])
-    
-    return simplified
 
+    return simplified
 
 
 def _resolve_svg_path() -> Path:
@@ -219,7 +259,7 @@ def _resolve_telemetry_path() -> Optional[Path]:
             return p
 
     backend_dir = Path(__file__).resolve().parent
-    
+
     # Try multiple common locations
     candidates = [
         backend_dir.parent / "telemetry_stream_hall_v3__1_.jsonl",
@@ -231,13 +271,14 @@ def _resolve_telemetry_path() -> Optional[Path]:
         Path.cwd() / "telemetry_stream_hall_v3__1_.jsonl",
         Path.cwd() / "telemetry_stream_hall_v3.jsonl",
     ]
-    
+
     for candidate in candidates:
         if candidate.exists():
             return candidate
-    
+
     return None
-    
+
+
 def _resolve_events_dir() -> Path:
     env_path = os.environ.get("EVENTS_DIR")
     if env_path:
@@ -259,7 +300,7 @@ def _resolve_data_file(filename: str) -> Optional[Path]:
             return p
 
     backend_dir = Path(__file__).resolve().parent
-    
+
     # Try multiple common locations
     candidates = [
         backend_dir.parent / "data" / filename,
@@ -268,11 +309,11 @@ def _resolve_data_file(filename: str) -> Optional[Path]:
         Path.cwd() / "data" / filename,
         Path.cwd() / filename,
     ]
-    
+
     for candidate in candidates:
         if candidate.exists():
             return candidate
-    
+
     return None
 
 
@@ -289,9 +330,19 @@ def _looks_like_geometry_dict(obj: Any) -> bool:
 
 def _extract_geometry_from_parser(parser: Any) -> Dict:
     common_names = [
-        "extract_all", "parse", "extract", "run", "process",
-        "get_geometry", "extract_geometry", "extract_geometry_data",
-        "extract_shapes", "extract_polygons", "build", "build_geometry", "to_dict",
+        "extract_all",
+        "parse",
+        "extract",
+        "run",
+        "process",
+        "get_geometry",
+        "extract_geometry",
+        "extract_geometry_data",
+        "extract_shapes",
+        "extract_polygons",
+        "build",
+        "build_geometry",
+        "to_dict",
     ]
 
     for name in common_names:
@@ -320,7 +371,8 @@ def _extract_geometry_from_parser(parser: Any) -> Dict:
             continue
 
         if any(
-            p.default is inspect._empty and p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+            p.default is inspect._empty
+            and p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
             for p in sig.parameters.values()
         ):
             continue
@@ -347,26 +399,23 @@ def _get_actual_coordinate_bounds(geometry_data: Dict) -> tuple[float, float]:
     """Extract the actual min/max coordinates used in the geometry."""
     all_x = []
     all_y = []
-    
+
     for room in geometry_data.get("rooms", []):
         for point in room.get("polygon", []):
             all_x.append(point[0])
             all_y.append(point[1])
-    
+
     for corridor in geometry_data.get("corridors", []):
         for point in corridor.get("polygon", []):
             all_x.append(point[0])
             all_y.append(point[1])
-    
+
     if not all_x or not all_y:
-        return (
-            geometry_data["dimensions"]["width"],
-            geometry_data["dimensions"]["height"]
-        )
-    
+        return (geometry_data["dimensions"]["width"], geometry_data["dimensions"]["height"])
+
     actual_width = max(all_x) - min(all_x)
     actual_height = max(all_y) - min(all_y)
-    
+
     return (actual_width, actual_height)
 
 
@@ -374,15 +423,13 @@ def initialize_system() -> None:
     global navmesh_data, transformer, pathfinder, telemetry, event_store
 
     svg_path = _resolve_svg_path()
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Convention Center Navigation System - IoT Enabled")
-    print("="*60)
+    print("=" * 60)
     print(f"Using SVG: {svg_path}")
 
     if not svg_path.exists():
-        raise FileNotFoundError(
-            f"SVG file not found at {svg_path}. Set CONVENTION_SVG_PATH to override."
-        )
+        raise FileNotFoundError(f"SVG file not found at {svg_path}. Set CONVENTION_SVG_PATH to override.")
 
     # 1) Parse SVG
     parser = SVGParser(str(svg_path))
@@ -396,11 +443,11 @@ def initialize_system() -> None:
     actual_width, actual_height = _get_actual_coordinate_bounds(geometry_data)
     reported_width = geometry_data["dimensions"]["width"]
     reported_height = geometry_data["dimensions"]["height"]
-    
+
     print(f"\nCoordinate Space Analysis:")
     print(f"  Reported viewBox: {reported_width} × {reported_height}")
     print(f"  Actual coord space: {actual_width:.1f} × {actual_height:.1f}")
-    
+
     svg_dims_for_scaling = (actual_width, actual_height)
 
     # 3) Setup coordinate transformer
@@ -423,43 +470,45 @@ def initialize_system() -> None:
     )
 
     print(f"\nScale Calculation:")
-    print(f"  GeoJSON building: {transformer.building_dimensions_m['width']:.1f}m × {transformer.building_dimensions_m['height']:.1f}m")
+    print(
+        f"  GeoJSON building: {transformer.building_dimensions_m['width']:.1f}m × {transformer.building_dimensions_m['height']:.1f}m"
+    )
     print(f"  meters_per_pixel: {transformer.meters_per_pixel:.4f}")
     print(f"  Example: 1000px path = {1000 * transformer.meters_per_pixel:.1f} meters")
 
     # 4) Load or Generate navmesh
     navmesh_json_path = _resolve_data_file("navmesh_output.json")
-    
+
     if navmesh_json_path and navmesh_json_path.exists():
         print(f"\n{'='*60}")
         print(f"Loading MANUAL navmesh from: {navmesh_json_path}")
         print(f"{'='*60}")
-        
-        with open(navmesh_json_path, 'r') as f:
+
+        with open(navmesh_json_path, "r") as f:
             navmesh_data = json.load(f)
-        
+
         # Normalize node format - convert manual format (x/y) to backend format (position.x/y)
         for node in navmesh_data.get("nodes", []):
             if "position" not in node or not isinstance(node.get("position"), dict):
                 # Manual format - convert to backend format
-                node["position"] = {
-                    "x": float(node.get("x", 0)),
-                    "y": float(node.get("y", 0))
-                }
+                node["position"] = {"x": float(node.get("x", 0)), "y": float(node.get("y", 0))}
                 # Remove old keys to avoid confusion
                 node.pop("x", None)
                 node.pop("y", None)
-        
+
         # Create a minimal generator for compatibility
         generator = NavMeshGenerator(
             rooms=geometry_data.get("rooms", []),
             corridors=corridors,
             entrances=geometry_data.get("entrances", []),
         )
-        
+
         navmesh_data["transformer"] = transformer
         navmesh_data["generator"] = generator
         navmesh_data["corridor_polygons"] = geometry_data.get("corridors", [])
+
+        # IMPORTANT: manual navmesh may not have rooms_metadata; build it if possible
+        _ensure_rooms_metadata(navmesh_data)
 
         print(f"\nManual Navmesh Loaded:")
         print(f"  Nodes: {len(navmesh_data['nodes'])}")
@@ -468,7 +517,7 @@ def initialize_system() -> None:
     else:
         print(f"\nNo manual navmesh found at {navmesh_json_path}")
         print(f"Auto-generating navmesh from SVG...")
-        
+
         generator = NavMeshGenerator(
             rooms=geometry_data.get("rooms", []),
             corridors=corridors,
@@ -494,44 +543,36 @@ def initialize_system() -> None:
         print("Loading IoT Telemetry")
         print(f"{'='*60}")
         print(f"Telemetry file: {telemetry_path}")
-        
+
         try:
             telemetry = TelemetryProcessor()
             telemetry.load_jsonl_stream(telemetry_path)
-            
+
             # Map hall IDs - handle missing rooms_metadata
-            rooms_for_mapping = navmesh_data.get('rooms_metadata', [])
-            if not rooms_for_mapping:
-                # Try to extract from nodes
-                rooms_for_mapping = [
-                    {"id": n["id"], "name": n.get("name", n["id"])}
-                    for n in navmesh_data.get("nodes", [])
-                    if n.get("type") == "room"
-                ]
-            
+            rooms_for_mapping = _ensure_rooms_metadata(navmesh_data)
             if rooms_for_mapping:
                 telemetry.map_hall_ids_to_rooms(rooms_for_mapping)
             else:
                 print("Warning: No rooms found for telemetry mapping")
-            
+
             # Apply initial telemetry data to navmesh
             sensor_data = telemetry.get_sensor_data_for_navmesh()
             if sensor_data:
                 iot_sensor_data.update(sensor_data)
                 generator.update_edge_weights_from_iot(sensor_data)
                 pathfinder.update_weights(navmesh_data["edges"])
-                
+
                 summary = telemetry.get_summary()
                 print(f"\nTelemetry Applied:")
                 print(f"  Avg occupancy: {summary['avg_occupancy']:.1%}")
                 print(f"  Max occupancy: {summary['max_occupancy']:.1%}")
                 print(f"  Crowded halls (>50%): {len([h for h in summary['crowded_halls']])} halls")
-                
-                if summary['crowded_halls']:
+
+                if summary["crowded_halls"]:
                     print(f"\n  Most crowded:")
-                    for item in summary['crowded_halls'][:3]:
+                    for item in summary["crowded_halls"][:3]:
                         print(f"    {item['hallId']}: {item['occupancy']:.1%}")
-            
+
         except Exception as e:
             print(f"Warning: Could not load telemetry: {e}")
             telemetry = None
@@ -542,7 +583,7 @@ def initialize_system() -> None:
     print(f"\n{'='*60}")
     print("System Ready")
     print(f"{'='*60}\n")
-    
+
     # 7) Initialize events
     events_dir = _resolve_events_dir()
     if events_dir.exists():
@@ -551,7 +592,6 @@ def initialize_system() -> None:
     else:
         print(f"Events directory not found: {events_dir} (skipping)")
         event_store = None
-    
 
 
 @app.route("/api/navmesh", methods=["GET"])
@@ -559,39 +599,16 @@ def get_navmesh():
     if not navmesh_data or not transformer:
         return jsonify({"error": "System not initialized"}), 500
 
-    # Extract rooms_metadata - handle missing key
-    rooms_metadata = navmesh_data.get("rooms_metadata", [])
-    
-    # If missing, try to build from nodes with type="room"
-    if not rooms_metadata and "nodes" in navmesh_data:
-        rooms_metadata = []
-        for node in navmesh_data["nodes"]:
-            if node.get("type") == "room":
-                # Handle both formats: manual (x/y) and backend (position.x/y)
-                if "position" in node and isinstance(node["position"], dict):
-                    position = node["position"]
-                else:
-                    # Manual format - convert to backend format
-                    position = {
-                        "x": float(node.get("x", 0)),
-                        "y": float(node.get("y", 0))
-                    }
-                
-                rooms_metadata.append({
-                    "id": node["id"],
-                    "name": node.get("name", node["id"]),
-                    "position": position,
-                    "polygon": node.get("polygon", [])
-                })
+    rooms_metadata = _ensure_rooms_metadata(navmesh_data)
 
     response = {
-    "nodes": navmesh_data["nodes"],
-    "edges": navmesh_data["edges"],
-    "rooms": rooms_metadata,
-    "scale_info": transformer.get_scale_info(),
-    "corridor_polygons": navmesh_data.get("corridor_polygons", []),
-    "spine_nodes": navmesh_data.get("spine_nodes", []),
-    "spine_edges": navmesh_data.get("spine_edges", []),
+        "nodes": navmesh_data["nodes"],
+        "edges": navmesh_data["edges"],
+        "rooms": rooms_metadata,
+        "scale_info": transformer.get_scale_info(),
+        "corridor_polygons": navmesh_data.get("corridor_polygons", []),
+        "spine_nodes": navmesh_data.get("spine_nodes", []),
+        "spine_edges": navmesh_data.get("spine_edges", []),
     }
     return jsonify(response)
 
@@ -600,7 +617,7 @@ def get_navmesh():
 def get_rooms():
     if not navmesh_data:
         return jsonify({"error": "System not initialized"}), 500
-    return jsonify(navmesh_data["rooms_metadata"])
+    return jsonify(_ensure_rooms_metadata(navmesh_data))
 
 
 @app.route("/api/pathfind", methods=["POST", "OPTIONS"])
@@ -612,7 +629,7 @@ def calculate_path():
         response.headers.add("Access-Control-Allow-Headers", "Content-Type")
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
         return response
-    
+
     if not pathfinder or not transformer:
         return jsonify({"error": "System not initialized"}), 500
 
@@ -632,15 +649,15 @@ def calculate_path():
             for e in navmesh_data["edges"]:
                 e["effective_weight"] = e.get("weight", e.get("base_weight", 1.0))
             pathfinder.update_weights(navmesh_data["edges"])
-            
+
             path = pathfinder.find_path(start_id, end_id)
-            
+
             # Restore crowd-aware weights
             navmesh_data["edges"] = original_edges
             pathfinder.update_weights(navmesh_data["edges"])
         else:
             path = pathfinder.find_path(start_id, end_id)
-        
+
         if not path:
             return jsonify({"error": "No path found", "success": False}), 404
 
@@ -675,11 +692,13 @@ def calculate_path():
                 node = pathfinder.nodes.get(node_id)
                 if node and node.get("type") == "room":
                     occupancy = iot_sensor_data.get(node_id, 0.0)
-                    path_crowding.append({
-                        "node_id": node_id,
-                        "name": node.get("name", ""),
-                        "occupancy": round(occupancy, 3)
-                    })
+                    path_crowding.append(
+                        {
+                            "node_id": node_id,
+                            "name": node.get("name", ""),
+                            "occupancy": round(occupancy, 3),
+                        }
+                    )
 
         return jsonify(
             {
@@ -694,11 +713,12 @@ def calculate_path():
                 "cost": round(float(total_cost), 2),
                 "node_count": len(path),
                 "path_crowding": path_crowding,
-                "crowd_avoidance_enabled": avoid_crowds
+                "crowd_avoidance_enabled": avoid_crowds,
             }
         )
     except Exception as e:
         import traceback
+
         print(f"ERROR in pathfind: {e}")
         print(traceback.format_exc())
         return jsonify({"error": str(e), "success": False}), 500
@@ -736,11 +756,8 @@ def get_iot_data():
 def get_iot_summary():
     """Get telemetry summary statistics."""
     if not telemetry:
-        return jsonify({
-            "telemetry_enabled": False,
-            "message": "No telemetry data loaded"
-        })
-    
+        return jsonify({"telemetry_enabled": False, "message": "No telemetry data loaded"})
+
     summary = telemetry.get_summary()
     summary["telemetry_enabled"] = True
     return jsonify(summary)
@@ -750,44 +767,33 @@ def get_iot_summary():
 def reload_telemetry():
     """Reload telemetry from file (for testing)."""
     global telemetry
-    
+
     if not navmesh_data:
         return jsonify({"error": "System not initialized"}), 500
-    
+
     telemetry_path = _resolve_telemetry_path()
     if not telemetry_path:
         return jsonify({"error": "No telemetry file found"}), 404
-    
+
     try:
         telemetry = TelemetryProcessor()
         telemetry.load_jsonl_stream(telemetry_path)
-        
-        # Map hall IDs - handle missing rooms_metadata
-        rooms_for_mapping = navmesh_data.get('rooms_metadata', [])
-        if not rooms_for_mapping:
-            rooms_for_mapping = [
-                {"id": n["id"], "name": n.get("name", n["id"])}
-                for n in navmesh_data.get("nodes", [])
-                if n.get("type") == "room"
-            ]
-        
+
+        rooms_for_mapping = _ensure_rooms_metadata(navmesh_data)
         if rooms_for_mapping:
             telemetry.map_hall_ids_to_rooms(rooms_for_mapping)
-        
+
         sensor_data = telemetry.get_sensor_data_for_navmesh()
         iot_sensor_data.update(sensor_data)
         navmesh_data["generator"].update_edge_weights_from_iot(sensor_data)
         pathfinder.update_weights(navmesh_data["edges"])
-        
+
         summary = telemetry.get_summary()
-        
-        return jsonify({
-            "success": True,
-            "message": "Telemetry reloaded",
-            "summary": summary
-        })
+
+        return jsonify({"success": True, "message": "Telemetry reloaded", "summary": summary})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/events", methods=["GET"])
 def api_list_events():
@@ -795,21 +801,26 @@ def api_list_events():
         return jsonify({"events": [], "warning": "event_store_not_loaded"}), 200
     return jsonify({"events": event_store.list_events()})
 
+
 @app.route("/api/halls/<path:hall_name>/events", methods=["GET"])
 def api_events_for_hall(hall_name: str):
     if not event_store:
         return jsonify({"hall": hall_name, "events": [], "warning": "event_store_not_loaded"}), 200
     return jsonify({"hall": hall_name, "events": event_store.events_for_hall(hall_name)})
 
+
 @app.route("/api/halls/<path:hall_name>/events/<event_id>/exhibitors", methods=["GET"])
 def api_exhibitors_for_hall_event(hall_name: str, event_id: str):
     if not event_store:
         return jsonify({"hall": hall_name, "eventId": event_id, "assignments": [], "warning": "event_store_not_loaded"}), 200
-    return jsonify({
-        "hall": hall_name,
-        "eventId": event_id,
-        "assignments": event_store.exhibitors_for_hall_event(hall_name, event_id)
-    })
+    return jsonify(
+        {
+            "hall": hall_name,
+            "eventId": event_id,
+            "assignments": event_store.exhibitors_for_hall_event(hall_name, event_id),
+        }
+    )
+
 
 @app.route("/api/events/reload", methods=["POST"])
 def api_events_reload():
@@ -820,15 +831,20 @@ def api_events_reload():
     event_store = EventStore.load(events_dir)
     return jsonify({"ok": True, "loaded_from": str(events_dir)})
 
+
 @app.route("/api/health", methods=["GET"])
 def health_check():
+    rooms_count = 0
+    if navmesh_data:
+        rooms_count = len(_ensure_rooms_metadata(navmesh_data))
+
     return jsonify(
         {
             "status": "healthy",
             "system_initialized": navmesh_data is not None,
             "nodes": len(navmesh_data["nodes"]) if navmesh_data else 0,
             "edges": len(navmesh_data["edges"]) if navmesh_data else 0,
-            "rooms": len(navmesh_data["rooms_metadata"]) if navmesh_data else 0,
+            "rooms": rooms_count,
             "telemetry_enabled": telemetry is not None,
             "telemetry_halls": len(iot_sensor_data) if iot_sensor_data else 0,
         }

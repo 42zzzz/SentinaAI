@@ -3,9 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-// PNG pixel size (path points are now in THIS exact coordinate space)
-const IMG_W = 1600;
-const IMG_H = 900;
+// Your NEW map space (SVG viewBox / PNG export space)
+const MAP_W = 1600;
+const MAP_H = 900;
 
 function toRoomOption(r) {
   const id = r?.id || r?.room_id || r?.name || r?.label;
@@ -14,31 +14,28 @@ function toRoomOption(r) {
 }
 
 function normalizePoint(p) {
+  // backend may return {x,y} or [x,y]
   if (Array.isArray(p) && p.length >= 2) {
     const x = Number(p[0]);
     const y = Number(p[1]);
-    return Number.isFinite(x) && Number.isFinite(y) ? [x, y] : null;
+    return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
   }
   if (p && typeof p === "object") {
     const x = Number(p.x ?? p.X ?? p.cx ?? p.left ?? p[0]);
     const y = Number(p.y ?? p.Y ?? p.cy ?? p.top ?? p[1]);
-    return Number.isFinite(x) && Number.isFinite(y) ? [x, y] : null;
+    return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
   }
   return null;
 }
 
 export default function NavigationPage() {
   const [roomsRaw, setRoomsRaw] = useState([]);
-  const [navInfo, setNavInfo] = useState(null);
-
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
-
-  const [pathNav, setPathNav] = useState([]); // now already 1600x900 pixel coords
+  const [pathPts, setPathPts] = useState([]); // points in 1600x900 coord space now
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Load rooms + navmesh
   useEffect(() => {
     let alive = true;
 
@@ -47,22 +44,14 @@ export default function NavigationPage() {
       setError("");
 
       try {
-        const [roomsRes, navRes] = await Promise.all([
-          fetch(`${API_BASE}/nav/rooms`),
-          fetch(`${API_BASE}/nav/navmesh`),
-        ]);
-
+        const roomsRes = await fetch(`${API_BASE}/nav/rooms`);
         const roomsData = await roomsRes.json();
-        const navmeshData = await navRes.json();
 
         if (!alive) return;
-
         if (!roomsRes.ok) throw new Error(roomsData?.error || "Failed to load rooms");
-        if (!navRes.ok) throw new Error(navmeshData?.error || "Failed to load navmesh");
 
         const list = Array.isArray(roomsData) ? roomsData : roomsData.rooms || [];
         setRoomsRaw(Array.isArray(list) ? list : []);
-        setNavInfo(navmeshData);
 
         const opts = (Array.isArray(list) ? list : []).map(toRoomOption).filter(Boolean);
         if (!start && opts[0]) setStart(opts[0].id);
@@ -85,15 +74,9 @@ export default function NavigationPage() {
     return (Array.isArray(roomsRaw) ? roomsRaw : []).map(toRoomOption).filter(Boolean);
   }, [roomsRaw]);
 
-  // ✅ No scaling anymore: path coords are already in 1600x900 pixels
-  const pathPx = useMemo(() => {
-    if (!pathNav.length) return [];
-    return pathNav;
-  }, [pathNav]);
-
   async function findPath() {
     setError("");
-    setPathNav([]);
+    setPathPts([]);
 
     try {
       const r = await fetch(`${API_BASE}/nav/pathfind`, {
@@ -105,31 +88,28 @@ export default function NavigationPage() {
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || "Pathfind failed");
 
-      // prefer smooth coords if your Python returns them
       const raw = data.path_coordinates_smooth || data.path_coordinates || [];
       const normalized = (Array.isArray(raw) ? raw : []).map(normalizePoint).filter(Boolean);
 
-      setPathNav(normalized);
+      setPathPts(normalized);
 
-      // Debug: confirm these are already pixel coords for 1600x900
+      // Debug: prove coords are now inside ~1600x900 space
       if (normalized.length) {
-        const xs = normalized.map((p) => p[0]);
-        const ys = normalized.map((p) => p[1]);
+        const xs = normalized.map((p) => p.x);
+        const ys = normalized.map((p) => p.y);
         console.log("PATH x range:", Math.min(...xs), Math.max(...xs));
         console.log("PATH y range:", Math.min(...ys), Math.max(...ys));
-        console.log("Expected image:", IMG_W, IMG_H);
-        console.log("navInfo:", navInfo);
+        console.log("MAP:", { MAP_W, MAP_H });
       }
     } catch (e) {
       setError(e.message || "Pathfind failed");
     }
   }
 
-  const points = pathPx.map((p) => `${p[0]},${p[1]}`).join(" ");
+  const points = pathPts.map((p) => `${p.x},${p.y}`).join(" ");
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      {/* Controls */}
       <div style={card}>
         <div style={{ fontWeight: 900, marginBottom: 10 }}>Navigation</div>
 
@@ -157,25 +137,24 @@ export default function NavigationPage() {
           </button>
 
           <div style={{ fontSize: 12, opacity: 0.7 }}>
-            Rooms: {options.length} • Img: {IMG_W}×{IMG_H}
+            Rooms: {options.length} • Img: {MAP_W}×{MAP_H}
           </div>
 
           {error ? <div style={{ color: "#b91c1c", fontWeight: 800 }}>{error}</div> : null}
         </div>
       </div>
 
-      {/* Map + Path */}
       <div style={{ ...card, padding: 0, overflow: "hidden" }}>
         <svg
-          viewBox={`0 0 ${IMG_W} ${IMG_H}`}
+          viewBox={`0 0 ${MAP_W} ${MAP_H}`}
           preserveAspectRatio="xMidYMid meet"
           style={{ width: "100%", height: "auto", display: "block", background: "white" }}
         >
-          {/* PNG fills the SVG coordinate space exactly */}
-          <image href="/convention_map.png" x="0" y="0" width={IMG_W} height={IMG_H} />
+          {/* Draw the PNG in its native 1600x900 coordinate space */}
+          <image href="/convention_map.png" x="0" y="0" width={MAP_W} height={MAP_H} preserveAspectRatio="none" />
 
-          {/* Route in PNG pixel coords */}
-          {pathPx.length > 1 ? (
+          {/* Route (coords now match map space directly) */}
+          {pathPts.length > 1 ? (
             <polyline
               fill="none"
               stroke="red"
@@ -187,17 +166,15 @@ export default function NavigationPage() {
             />
           ) : null}
 
-          {/* Start dot */}
-          {pathPx.length > 0 ? <circle cx={pathPx[0][0]} cy={pathPx[0][1]} r="8" fill="blue" /> : null}
-
-          {/* End dot */}
-          {pathPx.length > 1 ? (
-            <circle cx={pathPx[pathPx.length - 1][0]} cy={pathPx[pathPx.length - 1][1]} r="8" fill="green" />
+          {/* Start/End dots */}
+          {pathPts.length > 0 ? <circle cx={pathPts[0].x} cy={pathPts[0].y} r="8" fill="blue" /> : null}
+          {pathPts.length > 1 ? (
+            <circle cx={pathPts[pathPts.length - 1].x} cy={pathPts[pathPts.length - 1].y} r="8" fill="green" />
           ) : null}
         </svg>
 
         <div style={{ padding: 12, fontSize: 12, opacity: 0.75 }}>
-          {pathPx.length ? `Path points: ${pathPx.length}` : "Choose Start/End and click Find Path."}
+          {pathPts.length ? `Path points: ${pathPts.length}` : "Choose Start/End and click Find Path."}
         </div>
       </div>
     </div>

@@ -83,6 +83,9 @@ app.use("/booths", require("./routes/booths.routes.js"));
 app.use("/dashboard", require("./routes/dashboard.routes.js"));
 app.use("/nav", require("./routes/nav.routes.js"));
 app.use("/ai", require("./routes/ai.routes.js"));
+app.use("/alerts", require("./routes/alerts.routes.js"));
+
+
 
 // 🔐 AUTH LAYER (ADDED BACK)
 app.use("/auth", require("./routes/auth"));
@@ -90,3 +93,17 @@ app.use("/users", require("./routes/users.routes.js"));
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`✅ API running on http://localhost:${PORT}`));
+
+try {
+  const enabled = String(process.env.ALERT_ENGINE_ENABLED ?? "true").toLowerCase() !== "false";
+  if (enabled) {
+    const { runOnce } = require("./utils/alertEngine");
+
+    runOnce().catch((e) => console.warn("[alertEngine] first run failed:", e.message));
+    setInterval(() => {
+      runOnce().catch((e) => console.warn("[alertEngine] run failed:", e.message));
+    }, 15000);
+  }
+} catch (e) {
+  console.warn("[alertEngine] disabled or not available:", e.message);
+}
