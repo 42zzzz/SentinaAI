@@ -34,7 +34,7 @@ export type ZoneState = {
   lastCpuPct?: number;
   lastMemPct?: number;
 
-  // Derived memory (optional)
+  // Derived memory
   lastCrowdRisk?: number;
   lastThermalRisk?: number;
   lastCo2Risk?: number;
