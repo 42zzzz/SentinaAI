@@ -18,9 +18,18 @@ if (typeof global.fetch !== "function") {
 
 const app = express();
 
-// ✅ Flexible CORS
+//Flexible CORS
 app.use(cors({ origin: true, credentials: true }));
+
+//Cookies (needed for inactivity logout)
+const cookieParser = require("cookie-parser");
+app.use(cookieParser());
+
 app.use(express.json());
+
+//Inactivity auto-logout middleware
+const idleTimeout = require("./middleware/idleTimeout.middleware");
+app.use(idleTimeout);
 
 app.get("/health", (req, res) =>
   res.json({ ok: true, service: "backend", time: new Date().toISOString() })

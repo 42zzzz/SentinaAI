@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./Login.css";
@@ -15,6 +15,16 @@ export default function Login() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [flash, setFlash] = useState("");
+
+  useEffect(() => {
+  const msg = sessionStorage.getItem("loginFlash");
+  if (msg) {
+    setFlash(msg);
+    sessionStorage.removeItem("loginFlash");
+  }
+}, []);
 
   const validateEmail = (value) => {
     const emailRegex =
@@ -98,6 +108,21 @@ export default function Login() {
       <div className="login-card">
 
         <div className="login-title">SentinaAI</div>
+
+        {flash && (
+  <div
+    style={{
+      padding: "10px",
+      marginBottom: "12px",
+      borderRadius: "10px",
+      background: "#fff7ed",
+      border: "1px solid #fdba74",
+      fontWeight: 700,
+    }}
+  >
+    {flash}
+  </div>
+)}
 
         <form onSubmit={handleLogin}>
 
