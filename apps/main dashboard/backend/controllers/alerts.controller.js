@@ -1,0 +1,203 @@
+const coreDb = require("../dbs/core.db");
+const { runOnce } = require("../utils/alertEngine");
+
+function toInt(v, def) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : def;
+}
+
+function severityOrderSql(dir = "DESC") {
+  const d = String(dir).toUpperCase() === "ASC" ? "ASC" : "DESC";
+  return `CASE a.severity
+    WHEN 'CRITICAL' THEN 4
+    WHEN 'HIGH' THEN 3
+    WHEN 'MEDIUM' THEN 2
+    WHEN 'LOW' THEN 1
+    ELSE 0
+  END ${d}`;
+}
+
+exports.getAlertFilters = async (req, res) => {
+  try {
+    const [domains, severities, statuses, zones, halls, rules] = await Promise.all([
+      coreDb.query(`SELECT DISTINCT domain FROM rules WHERE domain IS NOT NULL ORDER BY domain;`).catch(() => ({ rows: [] })),
+      coreDb.query(`SELECT DISTINCT severity FROM alerts WHERE severity IS NOT NULL ORDER BY severity;`).catch(() => ({ rows: [] })),
+      coreDb.query(`SELECT DISTINCT status FROM alerts WHERE status IS NOT NULL ORDER BY status;`).catch(() => ({ rows: [] })),
+      coreDb.query(`SELECT DISTINCT zone_id FROM zones WHERE zone_id IS NOT NULL ORDER BY zone_id;`).catch(() => ({ rows: [] })),
+      coreDb.query(`SELECT DISTINCT hall_id FROM halls WHERE hall_id IS NOT NULL ORDER BY hall_id;`).catch(() => ({ rows: [] })),
+      coreDb.query(`SELECT rule_key, rule_name FROM rules ORDER BY rule_key;`).catch(() => ({ rows: [] })),
+    ]);
+
+    const defaultSev = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+    const defaultStatus = ["NEW", "ACKNOWLEDGED", "RESOLVED", "CLOSED"];
+
+    res.json({
+      ok: true,
+      domains: domains.rows.map((r) => r.domain),
+      severities: severities.rows.length ? severities.rows.map((r) => r.severity) : defaultSev,
+      statuses: statuses.rows.length ? statuses.rows.map((r) => r.status) : defaultStatus,
+      zones: zones.rows.map((r) => r.zone_id),
+      halls: halls.rows.map((r) => r.hall_id),
+      rules: rules.rows,
+      sortOptions: ["detected_desc", "detected_asc", "severity_desc", "severity_asc", "status_asc", "status_desc"],
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+};
+
+exports.listAlerts = async (req, res) => {
+  try {
+    const q = (req.query.q || "").trim();
+    const domain = req.query.domain || null;
+    const severity = req.query.severity || null;
+    const status = req.query.status || null;
+    const ruleKey = req.query.rule_key || null;
+    const zoneId = req.query.zone_id || null;
+    const hallId = req.query.hall_id || null;
+    const deviceId = req.query.device_id || null;
+
+    const from = req.query.from || null;
+    const to = req.query.to || null;
+
+    const page = Math.max(toInt(req.query.page, 1), 1);
+    const pageSize = Math.min(Math.max(toInt(req.query.pageSize, 10), 1), 100);
+    const offset = (page - 1) * pageSize;
+
+    const sort = (req.query.sort || "detected_desc").toLowerCase();
+    const sortSql = {
+      detected_desc: `a.detected_at DESC NULLS LAST, a.alert_id DESC`,
+      detected_asc: `a.detected_at ASC NULLS LAST, a.alert_id ASC`,
+      severity_desc: `${severityOrderSql("DESC")}, a.detected_at DESC NULLS LAST`,
+      severity_asc: `${severityOrderSql("ASC")}, a.detected_at DESC NULLS LAST`,
+      status_asc: `a.status ASC NULLS LAST, a.detected_at DESC NULLS LAST`,
+      status_desc: `a.status DESC NULLS LAST, a.detected_at DESC NULLS LAST`,
+    }[sort] || `a.detected_at DESC NULLS LAST, a.alert_id DESC`;
+
+    const base = `
+      FROM alerts a
+      LEFT JOIN rules r ON r.rule_key = a.rule_key
+      WHERE 1=1
+        AND ($1::text IS NULL OR a.domain = $1)
+        AND ($2::text IS NULL OR a.severity = $2)
+        AND ($3::text IS NULL OR a.status = $3)
+        AND ($4::text IS NULL OR a.rule_key = $4)
+        AND ($5::text IS NULL OR a.zone_id = $5)
+        AND ($6::text IS NULL OR a.hall_id = $6)
+        AND ($7::text IS NULL OR a.device_id = $7)
+        AND (
+          $8::text = '' OR
+          a.message ILIKE '%' || $8 || '%' OR
+          a.rule_key ILIKE '%' || $8 || '%' OR
+          COALESCE(r.rule_name,'') ILIKE '%' || $8 || '%' OR
+          COALESCE(a.device_id,'') ILIKE '%' || $8 || '%' OR
+          COALESCE(a.hall_id,'') ILIKE '%' || $8 || '%' OR
+          COALESCE(a.zone_id,'') ILIKE '%' || $8 || '%'
+        )
+        AND ($9::timestamptz IS NULL OR a.detected_at >= $9)
+        AND ($10::timestamptz IS NULL OR a.detected_at < $10)
+    `;
+
+    const countSql = `SELECT COUNT(*)::int AS total ${base};`;
+
+    const dataSql = `
+      SELECT
+        a.alert_id,
+        a.rule_key,
+        COALESCE(r.rule_name, a.rule_key) AS rule_name,
+        a.domain,
+        a.severity,
+        a.status,
+        a.device_id,
+        a.zone_id,
+        a.hall_id,
+        a.event_timestamp,
+        a.detected_at,
+        a.trigger_value,
+        a.threshold_value,
+        a.message,
+        a.metadata,
+        a.recommended_action,
+        a.action_status,
+        a.auto_response_executed,
+        a.acknowledged_by,
+        a.acknowledged_at,
+        a.resolved_at,
+        a.response_type,
+        a.response_action
+      ${base}
+      ORDER BY ${sortSql}
+      LIMIT $11 OFFSET $12;
+    `;
+
+    const params = [domain, severity, status, ruleKey, zoneId, hallId, deviceId, q, from, to, pageSize, offset];
+
+    const [countRes, dataRes] = await Promise.all([
+      coreDb.query(countSql, params.slice(0, 10)),
+      coreDb.query(dataSql, params),
+    ]);
+
+    res.json({ ok: true, page, pageSize, total: countRes.rows[0]?.total || 0, rows: dataRes.rows || [] });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+};
+
+exports.acknowledgeAlert = async (req, res) => {
+  try {
+    const id = toInt(req.params.id, null);
+    if (!id) return res.status(400).json({ ok: false, error: "Invalid alert id" });
+
+    // MVP: optional user_id from UI (JWT middleware can replace this later)
+    const userId = req.body?.user_id ? String(req.body.user_id) : null;
+
+    const r = await coreDb.query(
+      `
+      UPDATE alerts
+      SET status = 'ACKNOWLEDGED',
+          acknowledged_by = COALESCE($2::bigint, acknowledged_by),
+          acknowledged_at = COALESCE(acknowledged_at, NOW())
+      WHERE alert_id = $1
+      RETURNING alert_id, status, acknowledged_by, acknowledged_at;
+      `,
+      [id, userId]
+    );
+
+    if (!r.rows.length) return res.status(404).json({ ok: false, error: "Alert not found" });
+    res.json({ ok: true, alert: r.rows[0] });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+};
+
+exports.resolveAlert = async (req, res) => {
+  try {
+    const id = toInt(req.params.id, null);
+    if (!id) return res.status(400).json({ ok: false, error: "Invalid alert id" });
+
+    const r = await coreDb.query(
+      `
+      UPDATE alerts
+      SET status = 'RESOLVED',
+          resolved_at = COALESCE(resolved_at, NOW())
+      WHERE alert_id = $1
+      RETURNING alert_id, status, resolved_at;
+      `,
+      [id]
+    );
+
+    if (!r.rows.length) return res.status(404).json({ ok: false, error: "Alert not found" });
+    res.json({ ok: true, alert: r.rows[0] });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+};
+
+exports.runEngineOnce = async (req, res) => {
+  try {
+    const out = await runOnce();
+    res.json({ ok: true, ...out });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+};
