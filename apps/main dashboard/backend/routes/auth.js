@@ -2,6 +2,8 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const core = require("../dbs/core.db");
+const authenticate = require("../middleware/auth.middleware");
+const { validatePassword } = require("./security/passwordPolicy");
 
 const router = express.Router();
 
@@ -86,6 +88,63 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+/* ===============================
+   CHANGE PASSWORD
+================================= */
+router.post("/change-password", authenticate, async (req, res) => {
+  const userId = req.user.user_id;
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: "currentPassword and newPassword are required" });
+  }
+
+  try {
+    const result = await core.query(
+      `SELECT user_id, full_name, email, password_hash
+       FROM users
+       WHERE user_id = $1 AND status = 'active'`,
+      [userId]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const user = result.rows[0];
+
+    const match = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!match) {
+      return res.status(401).json({ error: "Invalid current password" });
+    }
+
+    // Enforce strong policy
+    const v = validatePassword(newPassword, { email: user.email, name: user.full_name });
+    if (!v.ok) {
+      return res.status(400).json({ error: v.errors });
+    }
+
+    // Prevent reusing same password
+    const same = await bcrypt.compare(newPassword, user.password_hash);
+    if (same) {
+      return res.status(400).json({ error: ["New password must be different from the old password."] });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 12);
+
+    await core.query(
+      `UPDATE users SET password_hash = $1 WHERE user_id = $2`,
+      [hashed, userId]
+    );
+
+    return res.json({ message: "Password changed successfully" });
+  } catch (err) {
+    console.error("Change password error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
 
 /* ===============================
    TEST ROUTE

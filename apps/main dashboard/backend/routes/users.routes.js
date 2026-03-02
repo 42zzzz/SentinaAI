@@ -2,6 +2,7 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const core = require("../dbs/core.db");
 const authenticate = require("../middleware/auth.middleware");
+const { validatePassword } = require("./security/passwordPolicy");
 
 const router = express.Router();
 
@@ -73,15 +74,10 @@ router.post("/", authenticate, requireSuperAdmin, async (req, res) => {
     return res.status(400).json({ error: "All fields are required" });
   }
 
-  const passwordRegex =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.]).{8,}$/;
-
-  if (!passwordRegex.test(password)) {
-    return res.status(400).json({
-      error:
-        "Password must be 8+ characters, include upper, lower, number, special character",
-    });
-  }
+  const v = validatePassword(password, { email, name: full_name });
+  if (!v.ok) {
+      return res.status(400).json({ error: v.errors });
+}
 
   const client = await core.connect();
 
@@ -118,7 +114,7 @@ router.post("/", authenticate, requireSuperAdmin, async (req, res) => {
 
     const employee_id = `ED-${String(nextNumber).padStart(3, "0")}`;
 
-    const hashed = await bcrypt.hash(password, 10);
+    const hashed = await bcrypt.hash(password, 12);
 
     const userResult = await client.query(
       `INSERT INTO users
