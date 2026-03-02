@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTheme } from '../context/ThemeContext';
 
 const ALL_HALLS = [
   { id: 'northhall1', label: 'North Hall 1' }, { id: 'northhall2', label: 'North Hall 2' },
@@ -21,8 +22,10 @@ function Controls({
   currentLayer, onLayerChange, simMode, setSimMode,
   timeIndex, setTimeIndex, injectData
 }) {
+  const { theme, toggleTheme } = useTheme();
+  
   const views = [
-    { id: 'all', label: 'View All 🚀' }, 
+    { id: 'all', label: 'View All' }, 
     { id: 'north', label: 'North' },
     { id: 'east', label: 'East' },
     { id: 'south', label: 'South' },
@@ -46,11 +49,11 @@ function Controls({
     <div className="controls-wrapper" style={{
       position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
       zIndex: 10000, display: 'flex', flexDirection: 'column', gap: '12px',
-      background: 'rgba(15, 15, 15, 0.98)', padding: '20px', borderRadius: '12px',
-      border: '1px solid #333', backdropFilter: 'blur(15px)', width: 'fit-content'
+      background: 'var(--controls-bg)', padding: '20px', borderRadius: '12px',
+      border: '1px solid var(--border-color)', backdropFilter: 'blur(15px)', width: 'fit-content'
     }}>
       
-      {/* Top Row: Navigation + Modes */}
+      {/* Top Row: Navigation + Modes + Theme Toggle */}
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
         {views.map((v) => (
           <button key={v.id} className={currentView === v.id && !isEditMode ? 'active' : ''}
@@ -58,12 +61,30 @@ function Controls({
             {v.label}
           </button>
         ))}
-        <div style={{ width: '1px', height: '20px', background: '#444', margin: '0 8px' }} />
-        <button onClick={() => setSimMode('live')} style={{ background: simMode === 'live' ? '#10b981' : '#222', color: '#fff', border: '1px solid #444', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>🟢 Live IoT</button>
-        <button onClick={() => setSimMode('history')} style={{ background: simMode === 'history' ? '#9333ea' : '#222', color: '#fff', border: '1px solid #444', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>🕒 History</button>
-        <button onClick={() => setSimMode('sandbox')} style={{ background: simMode === 'sandbox' ? '#ef4444' : '#222', color: '#fff', border: '1px solid #444', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>🧪 Sandbox</button>
-        <div style={{ width: '1px', height: '20px', background: '#444', margin: '0 8px' }} />
+        <div style={{ width: '1px', height: '20px', background: 'var(--divider-color)', margin: '0 8px' }} />
+        <button onClick={() => setSimMode('live')} style={{ background: simMode === 'live' ? '#10b981' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>Live IoT</button>
+        <button onClick={() => setSimMode('history')} style={{ background: simMode === 'history' ? '#9333ea' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>History</button>
+        <button onClick={() => setSimMode('sandbox')} style={{ background: simMode === 'sandbox' ? '#ef4444' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>Sandbox</button>
+        <div style={{ width: '1px', height: '20px', background: 'var(--divider-color)', margin: '0 8px' }} />
         <button className={isEditMode ? 'active btn-edit' : 'btn-edit'} onClick={onToggleEdit} style={{ padding: '8px 14px', fontSize: '11px' }}>{isEditMode ? 'Exit Editor' : 'Edit Layout'}</button>
+        <div style={{ width: '1px', height: '20px', background: 'var(--divider-color)', margin: '0 8px' }} />
+        {/* Theme Toggle Button */}
+        <button 
+          onClick={toggleTheme} 
+          className="theme-toggle"
+          style={{ 
+            padding: '8px 14px', 
+            fontSize: '16px',
+            background: 'var(--button-bg)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
       </div>
 
       {/* 🕒 HISTORY SCRUBBER UI */}
@@ -80,16 +101,16 @@ function Controls({
       {simMode === 'sandbox' && (
         <div style={{ borderTop: '1px solid #ef4444', paddingTop: '12px', display: 'flex', gap: '10px', alignItems: 'center' }}>
           <span style={{ color: '#ef4444', fontSize: '10px', fontWeight: 'bold', marginRight: '10px' }}>DATA INJECTOR:</span>
-          <select value={injectHall} onChange={(e) => setInjectHall(e.target.value)} style={{ background: '#000', color: '#fff', padding: '6px', border: '1px solid #444', borderRadius: '4px', fontSize: '11px' }}>
+          <select value={injectHall} onChange={(e) => setInjectHall(e.target.value)} style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', padding: '6px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '11px' }}>
             {ALL_HALLS.map((hall) => <option key={hall.id} value={hall.id}>{hall.label}</option>)}
           </select>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <label style={{ color: '#888', fontSize: '10px' }}>Occ %:</label>
-            <input type="number" value={injectOcc} onChange={(e) => setInjectOcc(e.target.value)} style={{ width: '50px', background: '#000', color: '#fff', border: '1px solid #444', padding: '4px', fontSize: '11px' }} />
+            <label style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Occ %:</label>
+            <input type="number" value={injectOcc} onChange={(e) => setInjectOcc(e.target.value)} style={{ width: '50px', background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '4px', fontSize: '11px' }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <label style={{ color: '#888', fontSize: '10px' }}>CO₂:</label>
-            <input type="number" value={injectCO2} onChange={(e) => setInjectCO2(e.target.value)} style={{ width: '60px', background: '#000', color: '#fff', border: '1px solid #444', padding: '4px', fontSize: '11px' }} />
+            <label style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>CO₂:</label>
+            <input type="number" value={injectCO2} onChange={(e) => setInjectCO2(e.target.value)} style={{ width: '60px', background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '4px', fontSize: '11px' }} />
           </div>
           <button onClick={() => injectData(injectHall, injectOcc, injectCO2)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', fontSize: '11px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>
             ⚡ Inject Ripple
@@ -98,19 +119,18 @@ function Controls({
       )}
 
       {/* Bottom Row: Layers & Export */}
-      <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', alignItems: 'center', borderTop: '1px solid #333', paddingTop: '12px' }}>
+      <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <label style={{ color: '#888', fontSize: '10px', fontWeight: 'bold' }}>DATA LAYER:</label>
+          <label style={{ color: 'var(--text-secondary)', fontSize: '10px', fontWeight: 'bold' }}>DATA LAYER:</label>
           <select value={currentLayer} onChange={(e) => onLayerChange(e.target.value)}
-            style={{ background: '#000', color: '#fff', padding: '6px', borderRadius: '4px', border: '1px solid #444', fontSize: '11px' }}>
+            style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', padding: '6px', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '11px' }}>
             <option value="occupancy">Occupancy (%)</option>
             <option value="co2">CO₂ Levels (ppm)</option>
             <option value="aiAction">AI Recommendations</option>
           </select>
         </div>
 
-        <button onClick={handleExportSnapshot} style={{ background: '#2E86C1', color: 'white', border: 'none', padding: '8px 16px', fontSize: '11px', borderRadius: '4px', cursor: 'pointer' }}>
-          📸 Export Snapshot
+        <button onClick={handleExportSnapshot} style={{ background: '#2E86C1', color: 'white', border: 'none', padding: '8px 16px', fontSize: '11px', borderRadius: '4px', cursor: 'pointer' }}>Export Snapshot
         </button>
       </div>
     </div>

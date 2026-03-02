@@ -3,3 +3,4 @@ __pycache__ /
 node_modules/
 *.pyc
 /apps/navigation_web/backend/__pycache__
+apps/navigation_web/.claude/settings.local.json

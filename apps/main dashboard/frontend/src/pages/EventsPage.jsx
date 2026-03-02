@@ -238,7 +238,7 @@ export default function EventsPage() {
               rows.map((r) => (
                 <tr
                   key={r.event_id}
-                  onClick={() => navigate(`/events/${r.event_id}`)}
+                  onClick={() => navigate(`/operations/events/${r.event_id}`)}
                   style={{
                     borderBottom: "1px solid #f1f5f9",
                     cursor: "pointer",

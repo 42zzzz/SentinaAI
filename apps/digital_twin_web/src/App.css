@@ -1,13 +1,56 @@
+/* Theme Variables */
+:root[data-theme="dark"] {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #141414;
+  --bg-tertiary: #1a1a1a;
+  --controls-bg: rgba(15, 15, 15, 0.98);
+  --panel-bg: rgba(20, 20, 20, 0.95);
+  --button-bg: #1a1a1a;
+  --button-inactive-bg: #222;
+  --button-hover-bg: #252525;
+  --input-bg: #000;
+  --border-color: #333;
+  --divider-color: #444;
+  --text-primary: #e0e0e0;
+  --text-secondary: #888;
+  --text-tertiary: #666;
+  --text-accent: #999;
+  --canvas-bg: #0a0a0a;
+  --grid-color: #111;
+}
+
+:root[data-theme="light"] {
+  --bg-primary: #f5f5f5;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e5e5e5;
+  --controls-bg: rgba(255, 255, 255, 0.98);
+  --panel-bg: rgba(255, 255, 255, 0.95);
+  --button-bg: #f0f0f0;
+  --button-inactive-bg: #e0e0e0;
+  --button-hover-bg: #d5d5d5;
+  --input-bg: #ffffff;
+  --border-color: #d0d0d0;
+  --divider-color: #c0c0c0;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666;
+  --text-tertiary: #888;
+  --text-accent: #555;
+  --canvas-bg: #e8e8e8;
+  --grid-color: #d0d0d0;
+}
+
 .app {
   width: 100vw;
   height: 100vh;
   position: relative;
-  background: #0a0a0a;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .playback-container {
   position: fixed !important;
-  z-index: 999999 !important; /* Higher than everything else */
+  z-index: 999999 !important;
   pointer-events: auto !important;
   visibility: visible !important;
   display: flex !important;
@@ -18,7 +61,7 @@ input[type="range"] {
   -webkit-appearance: none;
   width: 100%;
   height: 6px;
-  background: #333;
+  background: var(--border-color);
   border-radius: 5px;
   outline: none;
 }
@@ -39,27 +82,28 @@ input[type="range"]::-webkit-slider-thumb {
   position: absolute;
   top: 20px;
   left: 20px;
-  background: rgba(20, 20, 20, 0.95);
+  background: var(--panel-bg);
   padding: 20px;
   border-radius: 12px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   backdrop-filter: blur(10px);
   max-width: 320px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   z-index: 100;
+  transition: all 0.3s ease;
 }
 
 .info-panel h1 {
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 8px;
-  color: #ffffff;
+  color: var(--text-primary);
   letter-spacing: -0.5px;
 }
 
 .info-panel .subtitle {
   font-size: 12px;
-  color: #666;
+  color: var(--text-tertiary);
   margin-bottom: 16px;
 }
 
@@ -67,7 +111,7 @@ input[type="range"]::-webkit-slider-thumb {
   font-size: 13px;
   font-weight: 500;
   margin: 16px 0 8px 0;
-  color: #999;
+  color: var(--text-accent);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -76,7 +120,7 @@ input[type="range"]::-webkit-slider-thumb {
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid var(--border-color);
   font-size: 14px;
 }
 
@@ -85,11 +129,11 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .info-panel .stat-label {
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .info-panel .stat-value {
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -112,22 +156,23 @@ input[type="range"]::-webkit-slider-thumb {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(20, 20, 20, 0.95);
+  background: var(--panel-bg);
   padding: 16px 24px;
   border-radius: 12px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   backdrop-filter: blur(10px);
   display: flex;
   gap: 16px;
   align-items: center;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   z-index: 100;
+  transition: all 0.3s ease;
 }
 
 button {
-  background: #1a1a1a;
-  border: 1px solid #333;
-  color: #e0e0e0;
+  background: var(--button-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
   padding: 10px 20px;
   border-radius: 8px;
   cursor: pointer;
@@ -137,8 +182,8 @@ button {
 }
 
 button:hover:not(:disabled) {
-  background: #252525;
-  border-color: #444;
+  background: var(--button-hover-bg);
+  border-color: var(--divider-color);
   transform: translateY(-1px);
 }
 
@@ -169,24 +214,29 @@ button.btn-edit.active {
   border-color: #f97316;
 }
 
+button.theme-toggle:hover {
+  transform: scale(1.1) translateY(-1px);
+}
+
 /* Legend */
 .legend {
   position: absolute;
   bottom: 20px;
   right: 20px;
-  background: rgba(20, 20, 20, 0.95);
+  background: var(--panel-bg);
   padding: 16px;
   border-radius: 12px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   backdrop-filter: blur(10px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   z-index: 100;
+  transition: all 0.3s ease;
 }
 
 .legend-title {
   font-size: 12px;
   font-weight: 600;
-  color: #999;
+  color: var(--text-accent);
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 12px;
@@ -198,13 +248,14 @@ button.btn-edit.active {
   gap: 10px;
   margin: 8px 0;
   font-size: 13px;
+  color: var(--text-primary);
 }
 
 .legend-color {
   width: 32px;
   height: 16px;
   border-radius: 4px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
 }
 
 /* Hall Details */
@@ -212,21 +263,22 @@ button.btn-edit.active {
   position: absolute;
   top: 20px;
   right: 20px;
-  background: rgba(20, 20, 20, 0.95);
+  background: var(--panel-bg);
   padding: 20px;
   border-radius: 12px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   backdrop-filter: blur(10px);
   max-width: 280px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   z-index: 100;
+  transition: all 0.3s ease;
 }
 
 .hall-details h1 {
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 16px;
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 .close-btn {
@@ -235,14 +287,14 @@ button.btn-edit.active {
   right: 12px;
   background: transparent;
   border: none;
-  color: #666;
+  color: var(--text-tertiary);
   cursor: pointer;
   font-size: 20px;
   padding: 4px 8px;
 }
 
 .close-btn:hover {
-  color: #fff;
+  color: var(--text-primary);
   background: transparent;
   transform: none;
 }
@@ -262,20 +314,21 @@ button.btn-edit.active {
 }
 
 .hall-editor-container {
-  background: #1a1a1a;
+  background: var(--bg-tertiary);
   border-radius: 12px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   width: 90vw;
   max-width: 1800px;
   height: 90vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+  transition: all 0.3s ease;
 }
 
 .editor-header {
   padding: 20px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -284,7 +337,7 @@ button.btn-edit.active {
 .editor-header h2 {
   font-size: 20px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -298,13 +351,14 @@ button.btn-edit.active {
   flex: 1;
   padding: 20px;
   overflow: auto;
-  background: #0a0a0a;
+  background: var(--canvas-bg);
   position: relative;
+  transition: background-color 0.3s ease;
 }
 
 .editor-canvas {
-  background: #1a1a1a;
-  border: 2px solid #333;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--border-color);
   border-radius: 8px;
   cursor: crosshair;
 }
@@ -312,22 +366,23 @@ button.btn-edit.active {
 .editor-controls {
   width: 320px;
   padding: 20px;
-  background: #141414;
-  border-left: 1px solid #333;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
   overflow-y: auto;
+  transition: all 0.3s ease;
 }
 
 .editor-controls h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
   margin: 0 0 16px 0;
 }
 
 .editor-controls h4 {
   font-size: 14px;
   font-weight: 600;
-  color: #999;
+  color: var(--text-accent);
   margin: 16px 0 8px 0;
 }
 
@@ -339,7 +394,7 @@ button.btn-edit.active {
   display: block;
   font-size: 12px;
   font-weight: 500;
-  color: #999;
+  color: var(--text-accent);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
@@ -348,10 +403,10 @@ button.btn-edit.active {
 .coord-input {
   width: 100%;
   padding: 8px 12px;
-  background: #0a0a0a;
-  border: 1px solid #333;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 14px;
   font-family: monospace;
   margin-bottom: 8px;
@@ -361,11 +416,11 @@ button.btn-edit.active {
 .coord-input:focus {
   outline: none;
   border-color: #4ade80;
-  background: #111;
+  background: var(--bg-secondary);
 }
 
 .coord-input:hover {
-  border-color: #444;
+  border-color: var(--divider-color);
 }
 
 .hall-info {
@@ -373,15 +428,15 @@ button.btn-edit.active {
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
   margin-top: 8px;
 }
 
 .hall-info span {
-  background: #0a0a0a;
+  background: var(--input-bg);
   padding: 6px 8px;
   border-radius: 4px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
 }
 
 .button-group {
@@ -401,7 +456,7 @@ button.btn-edit.active {
   gap: 10px;
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--border-color);
 }
 
 .btn-primary {
@@ -417,7 +472,7 @@ button.btn-edit.active {
 }
 
 .btn-secondary {
-  background: #1a1a1a;
+  background: var(--button-bg);
   border-color: #ef4444;
   color: #ef4444;
 }
@@ -430,7 +485,7 @@ button.btn-edit.active {
 
 .help-text {
   font-size: 13px;
-  color: #666;
+  color: var(--text-tertiary);
   font-style: italic;
   padding: 20px;
   text-align: center;
@@ -439,14 +494,14 @@ button.btn-edit.active {
 .editor-help {
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--border-color);
 }
 
 .editor-help ul {
   margin: 0;
   padding-left: 20px;
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
@@ -455,8 +510,25 @@ button.btn-edit.active {
 }
 
 .selected-hall-controls {
-  background: #0a0a0a;
+  background: var(--input-bg);
   padding: 16px;
   border-radius: 8px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition: background-color 0.3s ease, 
+              border-color 0.3s ease, 
+              color 0.3s ease;
+}
+
+/* Preserve specific transitions that should be faster */
+button,
+.theme-toggle {
+  transition: all 0.2s ease !important;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  transition: none !important;
 }

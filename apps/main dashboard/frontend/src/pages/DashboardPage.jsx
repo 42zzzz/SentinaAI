@@ -3,6 +3,7 @@ import axios from "axios";
 import TopHallsToday from "../components/TopHallsToday";
 import AiOpsPanel from "../components/AiOpsPanel";
 import AiSimulateSurge from "../components/AiSimulateSurge";
+import PredictedOccupancyChart from "../components/PredictedOccupancyChart";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -20,6 +21,7 @@ export default function DashboardPage() {
   const [overview, setOverview] = useState(null);
   const [zones, setZones] = useState([]);
   const [error, setError] = useState("");
+  const [simTick, setSimTick] = useState(0);
 
   // Poll every 10s (MVP “live”). Later swap to SSE/WebSocket.
   useEffect(() => {
@@ -107,7 +109,9 @@ export default function DashboardPage() {
       <AiSimulateSurge onSimulated={() => {
       }} />
       <AiOpsPanel />
+      <PredictedOccupancyChart refreshSignal={simTick} />
       <TopHallsToday zoneId="zoneB" limit={5} />
+
     </div>
   );
 }

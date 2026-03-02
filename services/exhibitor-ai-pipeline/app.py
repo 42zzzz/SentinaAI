@@ -1,15 +1,19 @@
 # app.py
-# Sentina Exhibitor AI API 
-# - Uses your existing artifacts in ./artifacts_st
+# Sentina Exhibitor AI API
+# - Uses artifacts in ./artifacts_st
 # - ExhibitorId-based endpoints
 # - Interval aggregation (15/30/60/120)
 # - Catchment-only + Competitive density
-# - Download as XLSX with 2 sheets 
+# - Download as XLSX with 2 sheets
+
+from dotenv import load_dotenv
+load_dotenv()
 
 import os
 import io
 import json
 from typing import Dict, List, Optional, Tuple, cast
+
 import numpy as np
 import pandas as pd
 import torch
@@ -22,12 +26,63 @@ from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.worksheet.worksheet import Worksheet
 
-# Optional scaler
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
+
+# =============================================================================
+# GLOBALS (initialized in startup)
+# =============================================================================
+CONFIG = None
+SCALER = None
+MODEL = None
+DF_RAW = None
+HALLNAME_TO_ROOM = None
+ROOM_TO_HALL = None
+A_NORM = None
+A_NORM_T = None
+ROOMS_DF = None
+
+CORE_ENGINE: Optional[Engine] = None
+ANALYTICS_ENGINE: Optional[Engine] = None
+
+# =============================================================================
+# ENV / DB
+# =============================================================================
+def _bool_env(name: str, default: str = "false") -> bool:
+    return os.getenv(name, default).strip().lower() in ("1", "true", "yes", "y")
+
+CORE_DATABASE_URL = os.getenv("CORE_DATABASE_URL", "")
+ANALYTICS_DATABASE_URL = os.getenv("ANALYTICS_DATABASE_URL", "")
+
+CORE_PGSSL = _bool_env("CORE_PGSSL", "false")
+ANALYTICS_PGSSL = _bool_env("ANALYTICS_PGSSL", "false")
+
+def _mk_engine(url: str, use_ssl: bool) -> Engine:
+    if not url:
+        raise RuntimeError("Missing DB URL env var.")
+    connect_args = {"sslmode": "require"} if use_ssl else {}
+    return create_engine(url, pool_pre_ping=True, connect_args=connect_args)
+
+# =============================================================================
+# Optional scaler (joblib)
+# =============================================================================
 try:
     import joblib
     _HAS_JOBLIB = True
 except Exception:
     _HAS_JOBLIB = False
+
+# =============================================================================
+# Helper getters + loaded checks
+# =============================================================================
+def require_loaded():
+    global CONFIG, MODEL, DF_RAW, HALLNAME_TO_ROOM, ROOM_TO_HALL, A_NORM_T, A_NORM
+    if (
+        CONFIG is None or MODEL is None or DF_RAW is None or
+        HALLNAME_TO_ROOM is None or ROOM_TO_HALL is None or
+        A_NORM_T is None or A_NORM is None
+    ):
+        raise HTTPException(status_code=500, detail="Server not initialized (artifacts not loaded).")
 
 def _cfg() -> dict:
     require_loaded()
@@ -57,13 +112,8 @@ def _a_norm_t() -> torch.Tensor:
     require_loaded()
     return cast(torch.Tensor, A_NORM_T)
 
-def require_loaded():
-    global CONFIG, MODEL, DF_RAW, HALLNAME_TO_ROOM, ROOM_TO_HALL, A_NORM_T, A_NORM
-    if CONFIG is None or MODEL is None or DF_RAW is None or HALLNAME_TO_ROOM is None or ROOM_TO_HALL is None or A_NORM_T is None or A_NORM is None:
-        raise HTTPException(status_code=500, detail="Server not initialized (artifacts not loaded).")
-
 # =============================================================================
-# PATHS 
+# PATHS
 # =============================================================================
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -75,28 +125,22 @@ MODEL_PATH = os.path.join(ART_DIR, "model.pt")
 CFG_PATH = os.path.join(ART_DIR, "config.json")
 SCALER_PATH = os.path.join(ART_DIR, "scaler.pkl")
 
-DATA_CSV = os.path.join(DATA_DIR, "syn_zone_metrics_15mins.csv")
+DATA_CSV = os.path.join(DATA_DIR, "syn_zone_metrics_15mins.csv")  # fallback
 NAV_JSON = os.path.join(GRAPH_DIR, "edgeweights.json")
 
 BASE_BUCKET_MINUTES = 15
 ALLOWED_INTERVALS = [15, 30, 60, 120]
-
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-
 # =============================================================================
-# EXHIBITOR MAPPING (DB)
+# DEMO fallback mapping (only used if CORE_ENGINE is None)
 # =============================================================================
 EXHIBITOR_PROFILE: Dict[str, Dict[str, str]] = {
     "EXH_1": {"name": "Exhibitor 1", "boothId": "B001", "hallName": "SouthHall1"},
-    # "EXH_2": {"name": "Exhibitor 2", "boothId": "B002", "hallName": "Hall2"},
 }
 
-#HERERRER IBRAR
-
-
 # =============================================================================
-# MODEL DEFINITION 
+# MODEL DEFINITION
 # =============================================================================
 class GCNLayer(nn.Module):
     def __init__(self, in_dim, out_dim):
@@ -104,11 +148,8 @@ class GCNLayer(nn.Module):
         self.lin = nn.Linear(in_dim, out_dim)
 
     def forward(self, X, A_norm):
-        # X: (B,N,F)
-        # A_norm: (N,N)
-        # propagate neighbors: (B,N,N) x (B,N,F) -> (B,N,F)
-        AX = torch.matmul(A_norm, X)           # (B,N,F) (broadcast A over batch)
-        return torch.relu(self.lin(AX))        # (B,N,out_dim)
+        AX = torch.matmul(A_norm, X)
+        return torch.relu(self.lin(AX))
 
 class STGCN_LSTM(nn.Module):
     def __init__(self, in_feat, gcn_hidden=32, lstm_hidden=32, gcn_layers=2, dropout=0.1):
@@ -120,7 +161,6 @@ class STGCN_LSTM(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
-        # LSTM runs over time for each room: (B*N, K, gcn_hidden)
         self.lstm = nn.LSTM(
             input_size=gcn_hidden,
             hidden_size=lstm_hidden,
@@ -133,7 +173,6 @@ class STGCN_LSTM(nn.Module):
         # X_seq: (B,K,N,F)
         B, K, N, F = X_seq.shape
 
-        # Apply GCN per timestep
         gcn_outs = []
         for t in range(K):
             Xt = X_seq[:, t, :, :]  # (B,N,F)
@@ -141,29 +180,24 @@ class STGCN_LSTM(nn.Module):
             for layer in self.gcn_layers:
                 H = layer(H, A_norm)
                 H = self.dropout(H)
-            gcn_outs.append(H)      # (B,N,Hg)
+            gcn_outs.append(H)
 
-        H_seq = torch.stack(gcn_outs, dim=1)   # (B,K,N,Hg)
-
-        # LSTM over time per room: reshape to (B*N, K, Hg)
+        H_seq = torch.stack(gcn_outs, dim=1)            # (B,K,N,Hg)
         H_seq = H_seq.permute(0, 2, 1, 3).contiguous()  # (B,N,K,Hg)
         H_seq = H_seq.view(B * N, K, -1)                # (B*N,K,Hg)
 
-        lstm_out, _ = self.lstm(H_seq)                  # (B*N,K,Hl)
-        last = lstm_out[:, -1, :]                       # (B*N,Hl)
-        y_hat = self.out(last).view(B, N)               # (B,N)
-        return torch.sigmoid(y_hat)                     # engagement is in [0,1]
-
-
+        lstm_out, _ = self.lstm(H_seq)
+        last = lstm_out[:, -1, :]
+        y_hat = self.out(last).view(B, N)
+        return torch.sigmoid(y_hat)
 
 # =============================================================================
 # FASTAPI APP
 # =============================================================================
 app = FastAPI(title="Exhibitor AI (Dynamic Inference)", version="1.0")
 
-
 # =============================================================================
-# HELPERS: loading + validation
+# LOADERS
 # =============================================================================
 def _require_file(path: str, label: str):
     if not os.path.exists(path):
@@ -179,20 +213,68 @@ def load_scaler():
         return joblib.load(SCALER_PATH)
     return None
 
-def load_raw_data():
-    _require_file(DATA_CSV, "syn_zone_metrics_15mins.csv")
-    df = pd.read_csv(DATA_CSV)
+def norm_hall(s: str) -> str:
+    return str(s).strip()
 
-    if "bucket_ts" not in df.columns:
-        raise RuntimeError("CSV must contain 'bucket_ts'.")
-    if "eventId" not in df.columns:
-        raise RuntimeError("CSV must contain 'eventId'.")
-    if "hallName" not in df.columns:
-        raise RuntimeError("CSV must contain 'hallName'.")
+def _compute_is_weekend(df: pd.DataFrame) -> pd.DataFrame:
+    if "day_of_week" not in df.columns:
+        df["is_weekend"] = 0
+        return df
+
+    dow = df["day_of_week"]
+    dow_num = pd.to_numeric(dow, errors="coerce")
+
+    if dow_num.notna().any():
+        # detect whether it is 0-6 or 1-7 style
+        if float(dow_num.min()) == 0.0:
+            df["is_weekend"] = dow_num.isin([5, 6]).astype(int)
+        else:
+            df["is_weekend"] = dow_num.isin([6, 7]).astype(int)
+    else:
+        df["is_weekend"] = dow.astype(str).str.lower().isin(
+            ["sat", "saturday", "sun", "sunday"]
+        ).astype(int)
+
+    return df
+
+def load_raw_data() -> pd.DataFrame:
+    """
+    Loads interval metrics from sentina_analytics.interval_metrics.
+    Falls back to CSV if ANALYTICS_ENGINE is None.
+    """
+    if ANALYTICS_ENGINE is None:
+        _require_file(DATA_CSV, "syn_zone_metrics_15mins.csv")
+        df = pd.read_csv(DATA_CSV)
+        if "bucket_ts" not in df.columns or "eventId" not in df.columns or "hallName" not in df.columns:
+            raise RuntimeError("CSV must contain bucket_ts, eventId, hallName.")
+        df["bucket_ts"] = pd.to_datetime(df["bucket_ts"], errors="coerce", utc=True)
+        df = df.dropna(subset=["bucket_ts"]).sort_values(["eventId", "hallName", "bucket_ts"])
+        return df
+
+    q = """
+        SELECT
+          ts AS bucket_ts,
+          event_id AS "eventId",
+          hall_name AS "hallName",
+          occupancy_ratio AS "occupancyRatio",
+          inflow_count AS "inflowCount",
+          outflow_count AS "outflowCount",
+          flow_congestion_index AS "flowCongestionIndex",
+          is_event AS "isEvent",
+          hour_of_day AS "hour",
+          day_of_week
+        FROM interval_metrics
+        ORDER BY event_id, hall_name, ts;
+    """
+    df = pd.read_sql(q, ANALYTICS_ENGINE)
 
     df["bucket_ts"] = pd.to_datetime(df["bucket_ts"], errors="coerce", utc=True)
-    df = df.dropna(subset=["bucket_ts"]).sort_values(["eventId", "hallName", "bucket_ts"])
+    df = df.dropna(subset=["bucket_ts"])
 
+    df["hallName"] = df["hallName"].astype(str).map(norm_hall)
+    df = _compute_is_weekend(df)
+
+    df = df.sort_values(["eventId", "hallName", "bucket_ts"])
     return df
 
 def load_navmesh_and_build_mappings():
@@ -211,20 +293,18 @@ def load_navmesh_and_build_mappings():
     if rooms_df.empty:
         raise RuntimeError("No rooms found in edgeweights.json (type=='room').")
 
-    # hallName (room 'name') -> room_id (room 'id')
     if "name" not in rooms_df.columns or "id" not in rooms_df.columns:
         raise RuntimeError("rooms_df must include columns 'name' and 'id'.")
 
     hallname_to_room = dict(zip(rooms_df["name"], rooms_df["id"]))
     room_to_hall = {v: k for k, v in hallname_to_room.items()}
 
-    # Build room-room adjacency: rooms connected if share a corridor (room-corridor-room)
     room_ids = rooms_df["id"].tolist()
     room_id_to_idx = {rid: i for i, rid in enumerate(room_ids)}
     N = len(room_ids)
 
     room_to_corridors = {rid: set() for rid in room_ids}
-    corridor_to_rooms = {}
+    corridor_to_rooms: Dict[str, set] = {}
 
     for e in edges:
         u, v = e.get("from"), e.get("to")
@@ -239,7 +319,7 @@ def load_navmesh_and_build_mappings():
 
     A = np.zeros((N, N), dtype=np.float32)
 
-    for corridor, linked_rooms in corridor_to_rooms.items():
+    for _, linked_rooms in corridor_to_rooms.items():
         linked_rooms = list(linked_rooms)
         for i in range(len(linked_rooms)):
             for j in range(i + 1, len(linked_rooms)):
@@ -249,10 +329,8 @@ def load_navmesh_and_build_mappings():
                     A[a, b] = 1.0
                     A[b, a] = 1.0
 
-    # self loops
     A = A + np.eye(N, dtype=np.float32)
 
-    # normalize: D^-1/2 A D^-1/2
     deg = A.sum(axis=1)
     D_inv_sqrt = np.diag(1.0 / np.sqrt(deg + 1e-6))
     A_norm = D_inv_sqrt @ A @ D_inv_sqrt
@@ -260,14 +338,12 @@ def load_navmesh_and_build_mappings():
     return rooms_df, hallname_to_room, room_to_hall, A_norm, room_ids
 
 def build_model_from_artifact(config: dict) -> nn.Module:
-
     _require_file(MODEL_PATH, "model.pt")
     ckpt = torch.load(MODEL_PATH, map_location="cpu")
-
     state = ckpt.get("model_state_dict", None)
     if state is None:
         raise RuntimeError("model.pt missing 'model_state_dict'.")
-    
+
     in_feat = len(config["feature_cols"])
     model = STGCN_LSTM(in_feat=in_feat)
     model.load_state_dict(state, strict=True)
@@ -275,47 +351,90 @@ def build_model_from_artifact(config: dict) -> nn.Module:
     model.eval()
     return model
 
+# =============================================================================
+# DB RESOLVERS
+# =============================================================================
+def resolve_exhibitor(exhibitor_id: str, event_id: Optional[str] = None) -> Dict[str, str]:
+    """
+    Returns: {name, boothId, hallName, eventId}
+    Uses sentina_core:
+      booth_assignments, booths, halls, exhibitors
+    """
+    if CORE_ENGINE is None:
+        prof = EXHIBITOR_PROFILE.get(exhibitor_id)
+        if not prof:
+            raise HTTPException(status_code=404, detail="Unknown exhibitorId (demo mapping missing).")
+        return {"name": prof["name"], "boothId": prof["boothId"], "hallName": prof["hallName"], "eventId": ""}
+
+    if event_id:
+        q = text("""
+            SELECT
+              ba.event_id,
+              ba.booth_id,
+              e.exhibitor_name,
+              h.hall_name
+            FROM booth_assignments ba
+            JOIN booths b
+              ON b.booth_id = ba.booth_id AND b.event_id = ba.event_id
+            JOIN halls h
+              ON h.hall_id = b.hall_id
+            JOIN exhibitors e
+              ON e.exhibitor_id = ba.exhibitor_id
+            WHERE ba.exhibitor_id = :exhibitor_id
+              AND ba.event_id = :event_id
+              AND ba.status = 'active'
+            LIMIT 1;
+        """)
+        params = {"exhibitor_id": exhibitor_id, "event_id": event_id}
+    else:
+        q = text("""
+            SELECT
+              ba.event_id,
+              ba.booth_id,
+              e.exhibitor_name,
+              h.hall_name
+            FROM booth_assignments ba
+            JOIN booths b
+              ON b.booth_id = ba.booth_id AND b.event_id = ba.event_id
+            JOIN halls h
+              ON h.hall_id = b.hall_id
+            JOIN exhibitors e
+              ON e.exhibitor_id = ba.exhibitor_id
+            WHERE ba.exhibitor_id = :exhibitor_id
+              AND ba.status = 'active'
+            ORDER BY ba.assigned_at DESC
+            LIMIT 1;
+        """)
+        params = {"exhibitor_id": exhibitor_id}
+
+    with CORE_ENGINE.connect() as conn:
+        row = conn.execute(q, params).mappings().fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="No active booth assignment found for exhibitor.")
+
+    return {
+        "name": str(row["exhibitor_name"]),
+        "boothId": str(row["booth_id"]),
+        "hallName": norm_hall(row["hall_name"]),
+        "eventId": str(row["event_id"]),
+    }
 
 # =============================================================================
 # INFERENCE HELPERS
 # =============================================================================
-def resolve_exhibitor(exhibitor_id: str) -> Dict[str, str]:
-    prof = EXHIBITOR_PROFILE.get(exhibitor_id)
-    if not prof:
-        raise HTTPException(status_code=404, detail="Unknown exhibitorId (demo mapping missing).")
-    return prof
-
 def parse_time(s: Optional[str]) -> Optional[pd.Timestamp]:
     if s is None:
+        return None
+    s = str(s).strip()
+    if s == "":
         return None
     try:
         return pd.to_datetime(s, utc=True)
     except Exception:
         raise HTTPException(status_code=400, detail=f"Invalid datetime: {s}")
 
-def resolve_event_for_exhibitor(df: pd.DataFrame, exhibitor_hall: str, from_ts: Optional[pd.Timestamp], to_ts: Optional[pd.Timestamp]) -> str:
-    """
-    Auto-select eventId based on the exhibitor's hall and time range.
-    Picks the most frequent eventId in that slice.
-    """
-    sub = df[df["hallName"] == exhibitor_hall]
-    if from_ts is not None:
-        sub = sub[sub["bucket_ts"] >= from_ts]
-    if to_ts is not None:
-        sub = sub[sub["bucket_ts"] <= to_ts]
-    if sub.empty:
-        # fallback: most frequent event overall for this hall
-        sub2 = df[df["hallName"] == exhibitor_hall]
-        if sub2.empty:
-            raise HTTPException(status_code=404, detail="No data found for exhibitor hallName.")
-        return str(sub2["eventId"].value_counts().idxmax())
-    return str(sub["eventId"].value_counts().idxmax())
-
 def add_engagement_lag1(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    compute it from engagement_truth per event+hallName if present.
-    If engagement_truth isn't available, we fill 0 (prototype).
-    """
     out = df.copy()
     if "engagement_truth" in out.columns:
         out["engagement_lag1"] = (
@@ -329,12 +448,10 @@ def add_engagement_lag1(df: pd.DataFrame) -> pd.DataFrame:
 
 def build_room_15m_table(df: pd.DataFrame, feature_cols: List[str]) -> pd.DataFrame:
     require_loaded()
-    """
-    Aggregate raw rows into one row per (eventId, bucket_ts, room_id).
-    We map hallName -> room_id using navmesh mapping.
-    """
     work = df.copy()
     work = add_engagement_lag1(work)
+
+    work["hallName"] = work["hallName"].astype(str).map(norm_hall)
 
     # map to room_id
     work["room_id"] = work["hallName"].map(HALLNAME_TO_ROOM)
@@ -342,14 +459,13 @@ def build_room_15m_table(df: pd.DataFrame, feature_cols: List[str]) -> pd.DataFr
 
     for c in feature_cols:
         if c in work.columns:
-            work[c] = pd.to_numeric(work[c], errors="coerce")
+            work[c] = pd.to_numeric(work[c], errors="coerce").fillna(0.0)
         else:
-            # missing feature col in CSV -> error
-            raise HTTPException(status_code=500, detail=f"Feature '{c}' missing from CSV.")
+            raise HTTPException(status_code=500, detail=f"Feature '{c}' missing from interval_metrics.")
 
     agg_map = {}
     for c in feature_cols:
-        if "count" in c.lower() or "Count" in c:
+        if "count" in c.lower():
             agg_map[c] = "sum"
         elif c in ["isEvent", "is_weekend"]:
             agg_map[c] = "max"
@@ -365,28 +481,25 @@ def build_room_15m_table(df: pd.DataFrame, feature_cols: List[str]) -> pd.DataFr
     return room_15m
 
 def build_event_matrices(event_df: pd.DataFrame, room_ids_order: List[str], feature_cols: List[str]) -> Tuple[List[pd.Timestamp], Dict[pd.Timestamp, np.ndarray]]:
-    """
-    Returns:
-      times: sorted timestamps
-      X_by_time: dict time -> (N,F) matrix aligned to room_ids_order
-    """
     event_df = event_df.sort_values(["bucket_ts", "room_id"])
     times = sorted(event_df["bucket_ts"].unique().tolist())
+
     room_to_idx = {rid: i for i, rid in enumerate(room_ids_order)}
     N = len(room_ids_order)
     F = len(feature_cols)
 
-    X_by_time = {}
+    X_by_time: Dict[pd.Timestamp, np.ndarray] = {}
     for t in times:
         gt = event_df[event_df["bucket_ts"] == t]
         X = np.zeros((N, F), dtype=np.float32)
-        # fill
+
         for _, r in gt.iterrows():
             rid = r["room_id"]
             idx = room_to_idx.get(rid, None)
             if idx is None:
                 continue
             X[idx, :] = r[feature_cols].astype(np.float32).values
+
         X_by_time[t] = X
 
     return times, X_by_time
@@ -416,21 +529,15 @@ def enable_dropout_only(m: nn.Module):
 @torch.no_grad()
 def predict_with_mc_dropout(X: torch.Tensor, mc_passes: int = 15) -> Tuple[np.ndarray, np.ndarray]:
     require_loaded()
-
-    """
-    X: (B,K,N,F)
-    Returns mean, std: (B,N)
-    """
-    # Base eval
     MODEL.eval()
-    # Turn on dropout only
     enable_dropout_only(MODEL)
 
     preds = []
     for _ in range(mc_passes):
-        y = MODEL(X, A_NORM_T)  # (B,N)
+        y = MODEL(X, A_NORM_T)
         preds.append(y.detach().cpu().numpy())
-    stack = np.stack(preds, axis=0)     # (P,B,N)
+
+    stack = np.stack(preds, axis=0)  # (P,B,N)
     mean = stack.mean(axis=0)
     std = stack.std(axis=0)
     return mean, std
@@ -438,15 +545,11 @@ def predict_with_mc_dropout(X: torch.Tensor, mc_passes: int = 15) -> Tuple[np.nd
 def aggregate_interval_matrix(y_times: List[pd.Timestamp], mat: np.ndarray, interval_minutes: int, agg: str = "mean") -> Tuple[List[str], np.ndarray]:
     require_loaded()
 
-    """
-    y_times: list length T of timestamps
-    mat: (T, Kcols)
-    Groups rows into larger time buckets.
-    """
     if interval_minutes not in ALLOWED_INTERVALS:
         raise HTTPException(status_code=400, detail=f"intervalMinutes must be one of {ALLOWED_INTERVALS}.")
+
     if interval_minutes == BASE_BUCKET_MINUTES:
-        y_labels = [str(pd.to_datetime(t).strftime("%Y-%m-%d %H:%M")) for t in y_times]
+        y_labels = [pd.to_datetime(t).strftime("%Y-%m-%d %H:%M") for t in y_times]
         return y_labels, mat
 
     df = pd.DataFrame(mat)
@@ -461,16 +564,12 @@ def aggregate_interval_matrix(y_times: List[pd.Timestamp], mat: np.ndarray, inte
     else:
         raise HTTPException(status_code=400, detail="agg must be mean or max.")
 
-    y_labels = [str(t.strftime("%Y-%m-%d %H:%M")) for t in g.index.to_list()]
+    y_labels = [t.strftime("%Y-%m-%d %H:%M") for t in g.index.to_list()]
     out = g.values.astype(np.float32)
     return y_labels, out
 
 def get_catchment_room_ids(center_room_id: str, k: int = 6) -> List[str]:
     require_loaded()
-
-    """
-    Use adjacency weights from A_NORM to pick top neighbors.
-    """
     room_ids = CONFIG["room_ids"]
     rid_to_idx = {rid: i for i, rid in enumerate(room_ids)}
     if center_room_id not in rid_to_idx:
@@ -482,19 +581,35 @@ def get_catchment_room_ids(center_room_id: str, k: int = 6) -> List[str]:
     neighbors = [room_ids[i] for i in order if i != c][: max(0, k - 1)]
     return [center_room_id] + neighbors
 
-
 # =============================================================================
-# STARTUP: load everything once
+# STARTUP
 # =============================================================================
 def startup():
     global CONFIG, SCALER, MODEL, A_NORM, A_NORM_T, ROOMS_DF, HALLNAME_TO_ROOM, ROOM_TO_HALL, DF_RAW
+    global CORE_ENGINE, ANALYTICS_ENGINE
+
+    # DB engines
+    if CORE_DATABASE_URL:
+        CORE_ENGINE = _mk_engine(CORE_DATABASE_URL, CORE_PGSSL)
+    if ANALYTICS_DATABASE_URL:
+        ANALYTICS_ENGINE = _mk_engine(ANALYTICS_DATABASE_URL, ANALYTICS_PGSSL)
 
     # config
     CONFIG = load_config()
 
-    # data + graph
+    # data (DB) + graph
     DF_RAW = load_raw_data()
-    ROOMS_DF, HALLNAME_TO_ROOM, ROOM_TO_HALL, A_NORM, nav_room_ids = load_navmesh_and_build_mappings()
+    rooms_df, hall_to_room, room_to_hall, a_norm, nav_room_ids = load_navmesh_and_build_mappings()
+
+    # normalize mappings safely
+    hall_to_room = {norm_hall(k): v for k, v in hall_to_room.items()}
+    room_to_hall = {v: norm_hall(k) for v, k in room_to_hall.items()}
+
+    # assign globals
+    ROOMS_DF = rooms_df
+    HALLNAME_TO_ROOM = hall_to_room
+    ROOM_TO_HALL = room_to_hall
+    A_NORM = a_norm
 
     cfg_room_ids = CONFIG["room_ids"]
     if set(cfg_room_ids) != set(nav_room_ids):
@@ -514,13 +629,16 @@ def startup():
 
     print(f"[startup] Loaded. DEVICE={DEVICE}, rooms={len(cfg_room_ids)}, features={len(CONFIG['feature_cols'])}, K={CONFIG['K']}")
 
+@app.on_event("startup")
+def _on_startup():
+    startup()
 
 # =============================================================================
 # ENDPOINTS
 # =============================================================================
-    
 @app.get("/health")
 def health():
+    require_loaded()
     return {
         "ok": True,
         "device": DEVICE,
@@ -540,42 +658,40 @@ def catchment_heatmap(
     catchmentK: int = Query(6, ge=1, le=26),
     mcPasses: int = Query(15, ge=5, le=50),
 ):
+    require_loaded()
+
     prof = resolve_exhibitor(exhibitorId)
-    hall_name = prof["hallName"]
+    hall_name = norm_hall(prof["hallName"])
+    event_id = prof["eventId"]
 
     from_ts = parse_time(from_)
     to_ts = parse_time(to)
 
-    # Resolve event automatically (unless you later add event selector)
-    event_id = resolve_event_for_exhibitor(DF_RAW, hall_name, from_ts, to_ts)
-
     # Slice raw data by event and time
     df_ev = DF_RAW[DF_RAW["eventId"].astype(str) == str(event_id)].copy()
+
+    # add K-history buffer
     if from_ts is not None:
         df_ev = df_ev[df_ev["bucket_ts"] >= (from_ts - pd.Timedelta(minutes=CONFIG["K"] * BASE_BUCKET_MINUTES))]
     if to_ts is not None:
         df_ev = df_ev[df_ev["bucket_ts"] <= to_ts]
 
     if df_ev.empty:
-        raise HTTPException(status_code=404, detail="No data for resolved event/time range.")
+        raise HTTPException(status_code=404, detail=f"No interval_metrics for eventId={event_id} in requested range.")
 
-    # Build room_15m (eventId, bucket_ts, room_id)
     feature_cols = CONFIG["feature_cols"]
     room_15m = build_room_15m_table(df_ev, feature_cols=feature_cols)
 
-    # Build matrices
     times, X_by_time = build_event_matrices(
         room_15m, room_ids_order=CONFIG["room_ids"], feature_cols=feature_cols
     )
 
-    # sequences
     K = int(CONFIG["K"])
     X_seqs_np, target_times = make_sequences(times, X_by_time, K=K)
     if len(target_times) == 0:
         raise HTTPException(status_code=404, detail="Not enough history to produce predictions (increase time range).")
 
-    # Apply scaler if available (assumes scaler was fit on feature columns)
-    # X: (T,K,N,F)
+    # scale
     if SCALER is not None:
         T, Kk, N, F = X_seqs_np.shape
         flat = X_seqs_np.reshape(-1, F)
@@ -584,10 +700,9 @@ def catchment_heatmap(
 
     X_t = torch.tensor(X_seqs_np, dtype=torch.float32, device=DEVICE)
 
-    # MC dropout predictions
     mean, std = predict_with_mc_dropout(X_t, mc_passes=mcPasses)  # (T,N)
 
-    # Filter predictions to requested window (target_times are prediction timestamps)
+    # Filter predictions to requested window
     pred_times = pd.to_datetime(target_times, utc=True)
     keep = np.ones(len(pred_times), dtype=bool)
     if from_ts is not None:
@@ -602,33 +717,27 @@ def catchment_heatmap(
     if len(pred_times) == 0:
         raise HTTPException(status_code=404, detail="No prediction timestamps inside requested from/to.")
 
-    # Catchment selection based on exhibitor hall -> room_id
+    # Catchment selection based on hall -> room_id
     if hall_name not in HALLNAME_TO_ROOM:
         raise HTTPException(status_code=404, detail=f"hallName '{hall_name}' not found in navmesh mapping.")
 
     center_room_id = HALLNAME_TO_ROOM[hall_name]
     catchment_room_ids = get_catchment_room_ids(center_room_id, k=catchmentK)
 
-    # Column indices
     rid_to_idx = {rid: i for i, rid in enumerate(CONFIG["room_ids"])}
     cols = [rid_to_idx[rid] for rid in catchment_room_ids if rid in rid_to_idx]
     if not cols:
         raise HTTPException(status_code=404, detail="Catchment rooms not found in config room_ids order.")
 
-    # Heatmap matrix = mean predictions for catchment rooms
-    heat = mean[:, cols]  # (T, Kc)
+    heat = mean[:, cols]
     heat_std = std[:, cols]
 
-    # Aggregate interval
     yLabels, heat_agg = aggregate_interval_matrix(pred_times, heat, interval_minutes=intervalMinutes, agg=agg)
     _, std_agg = aggregate_interval_matrix(pred_times, heat_std, interval_minutes=intervalMinutes, agg="mean")
 
-    # x labels = hall names
     xLabels = [ROOM_TO_HALL.get(rid, rid) for rid in catchment_room_ids if rid in rid_to_idx]
 
-    # confidence score (uncertainty based)
     avg_std = float(np.mean(std_agg))
-    # Map std to confidence 0..1 (tune denom if needed)
     confidence = float(np.clip(1.0 - (avg_std / 0.20), 0.0, 1.0))
 
     return {
@@ -651,7 +760,6 @@ def catchment_heatmap(
         "matrix": heat_agg.astype(float).tolist()
     }
 
-
 @app.get("/api/exhibitor/{exhibitorId}/competition/density")
 def competitive_density(
     exhibitorId: str,
@@ -661,11 +769,6 @@ def competitive_density(
     catchmentK: int = Query(6, ge=1, le=26),
     mcPasses: int = Query(15, ge=5, le=50),
 ):
-    # reuse the heatmap call logic but compute density = mean(neighbors excluding center)
-    prof = resolve_exhibitor(exhibitorId)
-    hall_name = prof["hallName"]
-
-    # 
     heat = catchment_heatmap(
         exhibitorId=exhibitorId,
         from_=from_,
@@ -676,17 +779,17 @@ def competitive_density(
         mcPasses=mcPasses,
     )
 
+    prof = resolve_exhibitor(exhibitorId)
+    hall_name = norm_hall(prof["hallName"])
+
     xLabels = heat["xLabels"]
     yLabels = heat["yLabels"]
     mat = np.array(heat["matrix"], dtype=np.float32)
 
-    center_hall = hall_name
-    # Find center column if present
-    if center_hall in xLabels and len(xLabels) > 1:
-        center_idx = xLabels.index(center_hall)
+    if hall_name in xLabels and len(xLabels) > 1:
+        center_idx = xLabels.index(hall_name)
         neighbor_cols = [i for i in range(len(xLabels)) if i != center_idx]
     else:
-        # fallback: treat all as neighbors
         neighbor_cols = list(range(len(xLabels)))
 
     scores = mat[:, neighbor_cols].mean(axis=1) if neighbor_cols else mat.mean(axis=1)
@@ -714,7 +817,6 @@ def competitive_density(
         "series": series
     }
 
-
 @app.get("/api/exhibitor/{exhibitorId}/report/download")
 def download_report_xlsx(
     exhibitorId: str,
@@ -724,7 +826,6 @@ def download_report_xlsx(
     catchmentK: int = Query(6, ge=1, le=26),
     mcPasses: int = Query(15, ge=5, le=50),
 ):
-    # Get B and C
     heat = catchment_heatmap(
         exhibitorId=exhibitorId,
         from_=from_,
@@ -743,14 +844,10 @@ def download_report_xlsx(
         mcPasses=mcPasses,
     )
 
-    # Sheet 1 df
     df1 = pd.DataFrame(heat["matrix"], columns=heat["xLabels"])
     df1.insert(0, "bucket_ts", heat["yLabels"])
-
-    # Sheet 2 df
     df2 = pd.DataFrame(density["series"])
 
-    # Create workbook
     wb = Workbook()
     ws1 = cast(Worksheet, wb.active)
     ws1.title = "Catchment_Zones"
@@ -777,7 +874,6 @@ def download_report_xlsx(
     for r in dataframe_to_rows(df2, index=False, header=True):
         ws2.append(r)
 
-    # Stream back
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
@@ -790,12 +886,3 @@ def download_report_xlsx(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers=headers
     )
-
-
-# =============================================================================
-# RUN:
-#   pip install -r requirements.txt
-#   uvicorn app:app --reload
-# then open:
-#   http://127.0.0.1:8000/docs
-# =============================================================================
