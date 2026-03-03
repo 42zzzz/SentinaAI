@@ -20,7 +20,6 @@ export default function AlertsPage() {
   const [filters, setFilters] = useState(null);
 
   const [q, setQ] = useState("");
-  const [domain, setDomain] = useState("");
   const [severity, setSeverity] = useState("");
   const [status, setStatus] = useState("");
   const [ruleKey, setRuleKey] = useState("");
@@ -61,7 +60,6 @@ export default function AlertsPage() {
         const res = await axios.get(`${API_BASE}/alerts`, {
           params: {
             q: qLive || undefined,
-            domain: domain || undefined,
             severity: severity || undefined,
             status: status || undefined,
             rule_key: ruleKey || undefined,
@@ -91,15 +89,14 @@ export default function AlertsPage() {
       alive = false;
       clearInterval(t);
     };
-  }, [qLive, domain, severity, status, ruleKey, zoneId, hallId, deviceId, sort, page, pageSize]);
+  }, [qLive, severity, status, ruleKey, zoneId, hallId, deviceId, sort, page, pageSize]);
 
-  useEffect(() => setPage(1), [domain, severity, status, ruleKey, zoneId, hallId, deviceId, sort, pageSize]);
+  useEffect(() => setPage(1), [severity, status, ruleKey, zoneId, hallId, deviceId, sort, pageSize]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
 
   const clearFilters = () => {
     setQ("");
-    setDomain("");
     setSeverity("");
     setStatus("");
     setRuleKey("");
@@ -111,30 +108,55 @@ export default function AlertsPage() {
     setPageSize(10);
   };
 
-  const ack = async (alertId) => {
-    try {
-      await axios.patch(`${API_BASE}/alerts/${alertId}/ack`, {
-        user_id: localStorage.getItem("user_id") || null,
-      });
-      setRows((prev) => prev.map((r) => (r.alert_id === alertId ? { ...r, status: "ACKNOWLEDGED" } : r)));
-    } catch (e) {
-      setError(e?.response?.data?.error || e.message || "Failed to acknowledge alert");
-    }
-  };
+const ack = async (alertId) => {
+  try {
+    const res = await axios.patch(`${API_BASE}/alerts/${alertId}/ack`, {
+      user_id: localStorage.getItem("user_id") || null,
+    });
 
-  const resolve = async (alertId) => {
-    try {
-      await axios.patch(`${API_BASE}/alerts/${alertId}/resolve`);
-      setRows((prev) => prev.map((r) => (r.alert_id === alertId ? { ...r, status: "RESOLVED" } : r)));
-    } catch (e) {
-      setError(e?.response?.data?.error || e.message || "Failed to resolve alert");
+    const updated = res.data?.alert;
+    if (updated) {
+      setRows((prev) =>
+        prev.map((r) =>
+          r.alert_id === alertId
+            ? { ...r, status: updated.status, acknowledged_by: updated.acknowledged_by, acknowledged_at: updated.acknowledged_at }
+            : r
+        )
+      );
     }
-  };
+  } catch (e) {
+    setError(e?.response?.data?.error || e.message || "Failed to acknowledge alert");
+  }
+};
+
+const resolve = async (alertId) => {
+  try {
+    const res = await axios.patch(`${API_BASE}/alerts/${alertId}/resolve`);
+    const updated = res.data?.alert;
+
+    if (updated) {
+      setRows((prev) =>
+        prev.map((r) =>
+          r.alert_id === alertId
+            ? { ...r, status: updated.status, resolved_at: updated.resolved_at }
+            : r
+        )
+      );
+    }
+  } catch (e) {
+    setError(e?.response?.data?.error || e.message || "Failed to resolve alert");
+  }
+};
 
   return (
     <div style={{ padding: 20, maxWidth: 1400 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
-        <h1 style={{ margin: 0 }}>Alerts</h1>
+        <div>
+          <h1 style={{ margin: 0 }}>Operations Alerts</h1>
+          <div style={{ fontSize: 13, opacity: 0.7, marginTop: 4 }}>
+            Domain locked to <b>OPERATIONS</b>
+          </div>
+        </div>
         <div style={{ fontSize: 13, opacity: 0.75 }}>{loading ? "Loading…" : `${total} alerts`}</div>
       </div>
 
@@ -150,11 +172,6 @@ export default function AlertsPage() {
         }}
       >
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search (message, rule, zone/hall/device)…" style={inputStyle} />
-
-        <select value={domain} onChange={(e) => setDomain(e.target.value)} style={selectStyle}>
-          <option value="">All Domains</option>
-          {filters?.domains?.map((d) => <option key={d} value={d}>{d}</option>)}
-        </select>
 
         <select value={severity} onChange={(e) => setSeverity(e.target.value)} style={selectStyle}>
           <option value="">All Severities</option>
@@ -215,7 +232,6 @@ export default function AlertsPage() {
               <th style={th}>Detected</th>
               <th style={th}>Severity</th>
               <th style={th}>Status</th>
-              <th style={th}>Domain</th>
               <th style={th}>Rule</th>
               <th style={th}>Location</th>
               <th style={th}>Trigger</th>
@@ -226,9 +242,9 @@ export default function AlertsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={10} style={{ padding: 14, opacity: 0.75 }}>Loading…</td></tr>
+              <tr><td colSpan={9} style={{ padding: 14, opacity: 0.75 }}>Loading…</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={10} style={{ padding: 14, opacity: 0.75 }}>No alerts found.</td></tr>
+              <tr><td colSpan={9} style={{ padding: 14, opacity: 0.75 }}>No alerts found.</td></tr>
             ) : (
               rows.flatMap((r) => {
                 const isOpen = expandedId === r.alert_id;
@@ -248,7 +264,6 @@ export default function AlertsPage() {
                       <td style={td}>{fmtTs(r.detected_at)}</td>
                       <td style={td}><span style={pillSeverity(r.severity)}>{r.severity}</span></td>
                       <td style={td}><span style={pillStatus(r.status)}>{r.status}</span></td>
-                      <td style={td}>{r.domain || "-"}</td>
                       <td style={tdStrong}>{r.rule_name || r.rule_key}</td>
                       <td style={tdMono}>{[r.zone_id, r.hall_id, r.device_id].filter(Boolean).join(" · ") || "-"}</td>
                       <td style={tdMono}>{triggerStr}</td>
@@ -276,7 +291,7 @@ export default function AlertsPage() {
                   ),
                   isOpen ? (
                     <tr key={`${r.alert_id}-details`} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td colSpan={10} style={{ padding: 14, background: "#fafafa" }}>
+                      <td colSpan={9} style={{ padding: 14, background: "#fafafa" }}>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                           <div>
                             <div style={{ fontWeight: 800, marginBottom: 6 }}>Details</div>
@@ -284,7 +299,8 @@ export default function AlertsPage() {
                             <div style={kv}><span style={k}>Rule Key</span><span style={v}>{r.rule_key}</span></div>
                             <div style={kv}><span style={k}>Event Timestamp</span><span style={v}>{fmtTs(r.event_timestamp)}</span></div>
                             <div style={kv}><span style={k}>Action Status</span><span style={v}>{r.action_status || "-"}</span></div>
-                            <div style={kv}><span style={k}>Auto-response Executed</span><span style={v}>{String(!!r.auto_response_executed)}</span></div>
+
+                            {/* ✅ These now stay "-" for NEW alerts */}
                             <div style={kv}><span style={k}>Acknowledged At</span><span style={v}>{fmtTs(r.acknowledged_at)}</span></div>
                             <div style={kv}><span style={k}>Resolved At</span><span style={v}>{fmtTs(r.resolved_at)}</span></div>
                           </div>
@@ -306,7 +322,7 @@ export default function AlertsPage() {
       </div>
 
       <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontSize: 13, opacity: 0.75 }}>Page {page} of {totalPages}</div>
+        <div style={{ fontSize: 13, opacity: 0.75 }}>Page {page} of {Math.max(1, Math.ceil(total / pageSize))}</div>
         <div style={{ display: "flex", gap: 8 }}>
           <button disabled={page <= 1} onClick={() => setPage(1)} style={btnSecondary}>{"<<"}</button>
           <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} style={btnSecondary}>Prev</button>
