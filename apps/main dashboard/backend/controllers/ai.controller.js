@@ -166,6 +166,8 @@ exports.getOpsLive = async (req, res) => {
     );
     // ✅ Apply simulation overlays (if any) on top of telemetry-driven rows
 const now = Date.now();
+
+
 const merged = inferred.map((h) => {
   const ov = SIM_OVERRIDES.get(String(h.hall_id));
   if (!ov) return h;

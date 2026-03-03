@@ -1,41 +1,53 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import TopHallsToday from "../components/TopHallsToday";
+
 import AiOpsPanel from "../components/AiOpsPanel";
 import AiSimulateSurge from "../components/AiSimulateSurge";
 import PredictedOccupancyChart from "../components/PredictedOccupancyChart";
 
+import TrendPanel from "../components/TrendPanel";
+import TopHallsEnergyBar from "../components/TopHallsEnergyBar";
+import ComfortGauge from "../components/ComfortGauge";
+import TopHallsBar from "../components/TopHallsBar";
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-function Card({ title, value, sub }) {
+function MiniCard({ title, value, sub }) {
   return (
-    <div style={{ padding: 16, borderRadius: 12, border: "1px solid #e5e7eb", background: "white" }}>
-      <div style={{ fontWeight: 800, opacity: 0.8 }}>{title}</div>
-      <div style={{ fontSize: 28, fontWeight: 900, marginTop: 6 }}>{value}</div>
-      {sub ? <div style={{ marginTop: 6, fontSize: 12, opacity: 0.7 }}>{sub}</div> : null}
+    <div
+      style={{
+        padding: 14,
+        borderRadius: 14,
+        border: "1px solid #e5e7eb",
+        background: "white",
+        minHeight: 110,
+      }}
+    >
+      <div style={{ fontWeight: 900, opacity: 0.85 }}>{title}</div>
+      <div style={{ fontSize: 30, fontWeight: 950, marginTop: 8, lineHeight: 1.05 }}>
+        {value}
+      </div>
+      {sub ? <div style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>{sub}</div> : null}
     </div>
   );
 }
 
 export default function DashboardPage() {
   const [overview, setOverview] = useState(null);
-  const [zones, setZones] = useState([]);
   const [error, setError] = useState("");
   const [simTick, setSimTick] = useState(0);
 
-  // Poll every 10s (MVP “live”). Later swap to SSE/WebSocket.
+  // ✅ NEW: congestion value from trends (latest point)
+  const [congestionLatest, setCongestionLatest] = useState(null);
+
   useEffect(() => {
     let alive = true;
 
     const fetchAll = async () => {
       try {
-        const [ov, zs] = await Promise.all([
-          axios.get(`${API_BASE}/dashboard/overview`),
-          axios.get(`${API_BASE}/dashboard/zones-summary`),
-        ]);
+        const ov = await axios.get(`${API_BASE}/dashboard/overview`);
         if (!alive) return;
         setOverview(ov.data);
-        setZones(zs.data.rows || []);
         setError("");
       } catch (e) {
         if (!alive) return;
@@ -49,9 +61,65 @@ export default function DashboardPage() {
       alive = false;
       clearInterval(t);
     };
-  }, []);
+  }, [simTick]);
+
+  // ✅ NEW: keep congestion mini-card always populated
+  useEffect(() => {
+    let alive = true;
+
+    const loadCongestion = async () => {
+      try {
+        const r = await axios.get(`${API_BASE}/dashboard/trends`, {
+          params: { metric: "congestion", limit: 1 },
+        });
+        if (!alive) return;
+        const pts = r.data?.points || [];
+        const v = pts.length ? Number(pts[pts.length - 1].value) : null;
+        setCongestionLatest(Number.isFinite(v) ? v : null);
+      } catch {
+        if (!alive) return;
+        setCongestionLatest(null);
+      }
+    };
+
+    loadCongestion();
+    const t = setInterval(loadCongestion, 10000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [simTick]);
 
   const k = overview?.kpis;
+
+  const latestTsLabel = useMemo(() => {
+    if (!overview?.ts) return "";
+    try {
+      return `Latest interval: ${new Date(overview.ts).toLocaleString()}`;
+    } catch {
+      return "";
+    }
+  }, [overview?.ts]);
+
+  const occupancyValue = useMemo(() => {
+    const n = Number(k?.currentOccupancy);
+    return Number.isFinite(n) ? String(Math.round(n)) : "—";
+  }, [k?.currentOccupancy]);
+
+  const tempValue = useMemo(() => {
+    const n = Number(k?.averageTemperatureC);
+    return Number.isFinite(n) ? n.toFixed(2) : "—";
+  }, [k?.averageTemperatureC]);
+
+  const crowdFlowValue = useMemo(() => {
+    const n = Number(k?.crowdFlowEfficiencyPct);
+    return Number.isFinite(n) ? `${Math.round(n)}%` : "—";
+  }, [k?.crowdFlowEfficiencyPct]);
+
+  const congestionValue = useMemo(() => {
+    if (congestionLatest === null) return "—";
+    return congestionLatest.toFixed(2);
+  }, [congestionLatest]);
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -62,56 +130,36 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      {/* KPI row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        <Card title="Current Occupancy" value={k ? k.currentOccupancy : "—"} sub={overview?.ts ? `Latest interval: ${new Date(overview.ts).toLocaleString()}` : ""} />
-        <Card title="Average Temperature (°C)" value={k ? k.averageTemperatureC : "—"} />
-        <Card title="Crowd Flow" value={k ? `${k.crowdFlowEfficiencyPct}%` : "—"} sub="Derived from congestion index" />
-        <Card title="Comfort Index" value={k ? k.comfortIndex : "—"} sub={`Overcrowded halls: ${k ? k.overcrowdedHalls : "—"}`} />
+      {/* Row 1: 4 small cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12 }}>
+        <MiniCard title="Occupancy" value={occupancyValue} sub={latestTsLabel} />
+        <MiniCard title="Avg Temp (°C)" value={tempValue} />
+        <MiniCard title="Crowd Flow" value={crowdFlowValue} sub="Derived from congestion index" />
+        <MiniCard title="Congestion" value={congestionValue} />
       </div>
 
-      {/* Zone table */}
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, background: "white", overflowX: "auto" }}>
-        <div style={{ padding: 14, fontWeight: 900 }}>Zone Overview</div>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ textAlign: "left", borderTop: "1px solid #e5e7eb", borderBottom: "1px solid #e5e7eb" }}>
-              <th style={{ padding: 12 }}>Zone</th>
-              <th style={{ padding: 12 }}>Occupancy Status</th>
-              <th style={{ padding: 12 }}>Crowd Flow</th>
-              <th style={{ padding: 12 }}>Comfort Score</th>
-              <th style={{ padding: 12 }}>Issues</th>
-            </tr>
-          </thead>
-          <tbody>
-            {zones.map((z) => (
-              <tr key={z.zone_id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                <td style={{ padding: 12, fontWeight: 900 }}>{z.zone_id}</td>
-                <td style={{ padding: 12 }}>{z.occupancyStatus}</td>
-                <td style={{ padding: 12 }}>{z.crowdFlow}</td>
-                <td style={{ padding: 12 }}>{z.comfortScore}</td>
-                <td style={{ padding: 12 }}>
-                  <span style={{ padding: "4px 10px", borderRadius: 999, background: z.issueStatus === "Critical" ? "#fee2e2" : "#dcfce7", fontWeight: 800, fontSize: 12 }}>
-                    {z.issues?.length ? z.issues.join(", ") : "Normal"}
-                  </span>
-                </td>
-              </tr>
-            ))}
-            {!zones.length ? (
-              <tr>
-                <td colSpan={5} style={{ padding: 12, opacity: 0.7 }}>No zone data yet.</td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
+      {/* Row 2: Big charts */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+        <TrendPanel title="Carbon" metric="carbon" unit="kgCO2" hours={6} />
+        <TrendPanel title="HVAC energy" metric="energy" unit="kWh" hours={6} />
       </div>
-      
-      <AiSimulateSurge onSimulated={() => {
-      }} />
-      <AiOpsPanel />
-      <PredictedOccupancyChart refreshSignal={simTick} />
-      <TopHallsToday zoneId="zoneB" limit={5} />
 
+      {/* Row 3: Top 5 energy + Comfort gauge */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+        <TopHallsEnergyBar title="Top 5 halls by energy" zoneId="zoneB" limit={5} />
+        <ComfortGauge title="Comfort Index" value={k ? k.comfortIndex : null} subtitle="Current interval" />
+      </div>
+
+      {/* Busiest halls snapshot */}
+      <TopHallsBar title="Busiest halls (snapshot)" zoneId="zoneB" limit={8} />
+
+      {/* Ops panels */}
+      <AiSimulateSurge onSimulated={() => setSimTick((t) => t + 1)} />
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <AiOpsPanel />
+        <PredictedOccupancyChart refreshSignal={simTick} />
+      </div>
     </div>
   );
 }

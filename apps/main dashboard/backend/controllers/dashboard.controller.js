@@ -168,3 +168,109 @@ exports.getMapLayer = async (req, res) => {
     res.status(500).json({ ok: false, error: err.message });
   }
 };
+
+// Generic time-series endpoint for dashboards (single-series)
+// GET /dashboard/trends?metric=occupancy|congestion|comfort|temperature|energy|carbon
+// Optional: event_id, zone_id, hall_id
+// Optional: hours (default 6), limit (overrides hours)
+exports.getTrends = async (req, res) => {
+  try {
+    const eventId = req.query.event_id || null;
+    const zoneId = req.query.zone_id || null;
+    const hallId = req.query.hall_id || null;
+
+    const metric = String(req.query.metric || "occupancy").toLowerCase();
+    const hours = Number(req.query.hours || 6);
+    const limit = Number.isFinite(Number(req.query.limit))
+      ? Number(req.query.limit)
+      : Math.max(8, Math.min(7 * 24 * 4, Math.round(hours * 4)));
+
+    // whitelist metrics -> SQL expressions
+    const metricExpr =
+      metric === "congestion" ? "AVG(flow_congestion_index)::float8" :
+      metric === "comfort" ? "AVG(comfort_index)::float8" :
+      metric === "temperature" ? "AVG(indoor_temp_c)::float8" :
+      metric === "energy" ? "AVG(hvac_energy_kwh)::float8" :
+      metric === "carbon" ? "AVG(carbon_kg_co2)::float8" :
+      "SUM(current_occupancy)::float8"; // occupancy
+
+    const unit =
+      metric === "congestion" ? "index" :
+      metric === "comfort" ? "index" :
+      metric === "temperature" ? "°C" :
+      metric === "energy" ? "kWh" :
+      metric === "carbon" ? "kgCO2" :
+      "people";
+
+    const r = await analyticsDb.query(
+      `
+      SELECT ts, ${metricExpr} AS value
+      FROM interval_metrics
+      WHERE ($1::text IS NULL OR event_id = $1)
+        AND ($2::text IS NULL OR zone_id = $2)
+        AND ($3::text IS NULL OR hall_id = $3)
+      GROUP BY ts
+      ORDER BY ts DESC
+      LIMIT $4;
+      `,
+      [eventId, zoneId, hallId, limit]
+    );
+
+    const points = (r.rows || [])
+      .map((x) => ({ ts: x.ts, value: Number(x.value || 0) }))
+      .reverse();
+
+    res.json({ ok: true, metric, unit, filters: { event_id: eventId, zone_id: zoneId, hall_id: hallId }, points });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+};
+
+// Snapshot leaderboard to replace large tables with a compact bar chart.
+// GET /dashboard/top-halls?metric=occupancy_ratio|congestion|comfort|energy&limit=8
+exports.getTopHalls = async (req, res) => {
+  try {
+    const eventId = req.query.event_id || null;
+    const zoneId = req.query.zone_id || null;
+    const metric = String(req.query.metric || "occupancy_ratio").toLowerCase();
+    const limit = Math.max(3, Math.min(20, Number(req.query.limit || 8)));
+
+    const ts = await getLatestTs({ eventId, zoneId });
+    if (!ts) return res.json({ ok: true, ts: null, metric, rows: [] });
+
+    const orderExpr =
+      metric === "congestion" ? "flow_congestion_index" :
+      metric === "comfort" ? "comfort_index" :
+      metric === "energy" ? "hvac_energy_kwh" :
+      "occupancy_ratio";
+
+    const r = await analyticsDb.query(
+      `
+      SELECT
+        zone_id,
+        hall_id,
+        hall_name,
+        hall_capacity,
+        current_occupancy,
+        occupancy_ratio,
+        flow_congestion_index,
+        comfort_index,
+        hvac_energy_kwh,
+        carbon_kg_co2,
+        is_overcrowded
+      FROM interval_metrics
+      WHERE ts = $1
+        AND ($2::text IS NULL OR event_id = $2)
+        AND ($3::text IS NULL OR zone_id = $3)
+        AND hall_id IS NOT NULL
+      ORDER BY ${orderExpr} DESC NULLS LAST
+      LIMIT $4;
+      `,
+      [ts, eventId, zoneId, limit]
+    );
+
+    res.json({ ok: true, ts, metric, rows: r.rows || [] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+};
