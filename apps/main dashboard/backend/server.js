@@ -2,7 +2,6 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const helmet = require("helmet");
 
 dotenv.config();
 
@@ -18,19 +17,6 @@ if (typeof global.fetch !== "function") {
 }
 
 const app = express();
-
-app.set("trust proxy", 1); // important when behind Cloud Run / LB
-app.use(helmet());
-
-if (process.env.NODE_ENV === "production") {
-  app.use(
-    helmet.hsts({
-      maxAge: 15552000,
-      includeSubDomains: true,
-      preload: true,
-    })
-  );
-}
 
 //Flexible CORS
 app.use(cors({ origin: true, credentials: true }));
