@@ -1,7 +1,7 @@
 const { Pool } = require("pg");
 const fs = require("fs");
 const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+require("dotenv").config();
 
 const SSL_ENABLED = process.env.CORE_PGSSL === "true";
 
