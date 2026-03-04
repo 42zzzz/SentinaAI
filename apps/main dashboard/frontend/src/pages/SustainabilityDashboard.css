@@ -1,4 +1,4 @@
-:root{
+.sustTheme{
   --green:#16a34a;
   --green-soft:#22c55e;
   --green-bg:#ecfdf5;
@@ -14,14 +14,14 @@
   --radius:16px;
 }
 
-.dashboardWrap{
+.sustTheme .dashboardWrap{
   display:flex;
   flex-direction:column;
   gap:22px;
   padding-top:24px;
 }
 
-.topRow{
+.sustTheme .topRow{
   display:grid;
   grid-template-columns: repeat(4,minmax(0,1fr));
   gap:16px;
@@ -29,14 +29,14 @@
 }
 
 @media (max-width:1200px){
-  .topRow{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .sustTheme .topRow{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
 
 @media (max-width:700px){
-  .topRow{grid-template-columns:1fr;}
+  .sustTheme .topRow{grid-template-columns:1fr;}
 }
 
-.card{
+.sustTheme .card{
   background:var(--card);
   border:1px solid var(--line);
   border-radius:var(--radius);
@@ -44,12 +44,12 @@
   overflow:visible;
 }
 
-.cardInner{
+.sustTheme .cardInner{
   padding:22px 16px 14px 16px;
   position:relative;
 }
 
-.cardTitle{
+.sustTheme .cardTitle{
   font-weight:800;
   color:var(--green);
   font-size:18px;
@@ -57,7 +57,7 @@
   margin:0;
 }
 
-.cardValue{
+.sustTheme .cardValue{
   font-weight:900;
   color:var(--ink);
   font-size:34px;
@@ -65,13 +65,13 @@
   margin:10px 0 6px 0;
 }
 
-.cardSub{
+.sustTheme .cardSub{
   color:var(--muted);
   font-size:12px;
   margin:0;
 }
 
-.iconCircle{
+.sustTheme .iconCircle{
   width:42px;
   height:42px;
   border-radius:999px;
@@ -90,19 +90,19 @@
   box-shadow:0 10px 22px rgba(15,23,42,0.12);
 }
 
-.iconCircle svg{
+.sustTheme .iconCircle svg{
   width:28px;
   height:28px;
 }
 
-.metricMetaRow{
+.sustTheme .metricMetaRow{
   display:flex;
   align-items:center;
   gap:10px;
   margin-top:8px;
 }
 
-.badge{
+.sustTheme .badge{
   display:inline-flex;
   align-items:center;
   gap:6px;
@@ -115,25 +115,25 @@
   color:var(--ink);
 }
 
-.badgeGreen{
+.sustTheme .badgeGreen{
   background:rgba(34,197,94,.15);
   border-color:rgba(34,197,94,.25);
   color:#166534;
 }
 
-.badgeYellow{
+.sustTheme .badgeYellow{
   background:rgba(245,158,11,.15);
   border-color:rgba(245,158,11,.30);
   color:#92400e;
 }
 
-.badgeRed{
+.sustTheme .badgeRed{
   background:rgba(239,68,68,.15);
   border-color:rgba(239,68,68,.25);
   color:#991b1b;
 }
 
-.grid2{
+.sustTheme .grid2{
   display:grid;
   grid-template-columns:1.35fr .9fr;
   gap:22px;
@@ -141,10 +141,10 @@
 }
 
 @media (max-width:1100px){
-  .grid2{grid-template-columns:1fr;}
+  .sustTheme .grid2{grid-template-columns:1fr;}
 }
 
-.cardHeaderRow{
+.sustTheme .cardHeaderRow{
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -156,34 +156,34 @@
   min-height:66px;
 }
 
-.cardHeaderLeft{
+.sustTheme .cardHeaderLeft{
   display:flex;
   align-items:center;
   gap:12px;
 }
 
-.cardHeaderRow h3{
+.sustTheme .cardHeaderRow h3{
   margin:0;
   font-size:22px;
   font-weight:900;
   color:var(--green);
 }
 
-.cardHeaderRow .hint{
+.sustTheme .cardHeaderRow .hint{
   color:var(--muted);
   font-size:13px;
   font-weight:800;
 }
 
-.cardBody{
+.sustTheme .cardBody{
   padding:16px 18px;
 }
 
-.cardBodyNoPad{
+.sustTheme .cardBodyNoPad{
   padding:0;
 }
 
-.iconCircleFloat{
+.sustTheme .iconCircleFloat{
   position:absolute;
   top:-22px;
   left:18px;
@@ -203,41 +203,41 @@
   z-index:2;
 }
 
-.iconCircleInline svg{
+.sustTheme .iconCircleInline svg{
   width:28px;
   height:28px;
 }
 
-.tableLike{
+.sustTheme .tableLike{
   width:100%;
   border-collapse:collapse;
 }
 
-.tableLike th,
-.tableLike td{
+.sustTheme .tableLike th,
+.sustTheme .tableLike td{
   padding:10px 16px;
   border-bottom:1px solid #f1f5f9;
   font-size:13px;
 }
 
-.tableLike th{
+.sustTheme .tableLike th{
   color:var(--muted);
   font-weight:900;
   text-align:left;
   font-size:12px;
 }
 
-.rowRight{
+.sustTheme .rowRight{
   text-align:right;
 }
 
-.floatRow{
+.sustTheme .floatRow{
   padding-top:24px;
 }
 
 /* subtle hover interaction */
 
-.card:hover{
+.sustTheme .card:hover{
   transform:translateY(-2px);
   box-shadow:0 14px 34px rgba(15,23,42,0.08);
   transition:all .18s ease;

@@ -1,4 +1,4 @@
-:root{
+.opsTheme{
   --pink:#E8486F;
   --ink:#0f172a;
   --muted:#6b7280;
@@ -10,21 +10,21 @@
   --radius: 16px;
 }
 
-.dashboardWrap{
+.opsTheme .dashboardWrap{
   display:flex;
   flex-direction:column;
   gap:22px;
   padding-top: 24px;
 }
 
-.topRow{
+.opsTheme .topRow{
   display:grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap:16px;
   overflow: visible;
 }
 
-.grid3{
+.opsTheme .grid3{
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 22px;
@@ -32,17 +32,17 @@
 }
 
 @media (max-width: 1200px){
-  .topRow{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .opsTheme .topRow{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 700px){
-  .topRow{ grid-template-columns: 1fr; }
+  .opsTheme .topRow{ grid-template-columns: 1fr; }
 }
 
 @media (max-width: 1200px){
-  .grid3{ grid-template-columns: 1fr; }
+  .opsTheme .grid3{ grid-template-columns: 1fr; }
 }
 
-.card{
+.opsTheme .card{
   background:var(--card);
   border:1px solid var(--line);
   border-radius: var(--radius);
@@ -50,12 +50,12 @@
   overflow: visible;
 }
 
-.cardInner{
+.opsTheme .cardInner{
   padding:22px 16px 14px 16px;
   position:relative;
 }
 
-.cardTitle{
+.opsTheme .cardTitle{
   font-weight:800;
   color:var(--pink);
   font-size:18px;
@@ -63,7 +63,7 @@
   margin:0;
 }
 
-.cardValue{
+.opsTheme .cardValue{
   font-weight:900;
   color:var(--ink);
   font-size:34px;
@@ -71,13 +71,13 @@
   margin:10px 0 6px 0;
 }
 
-.cardSub{
+.opsTheme .cardSub{
   color:var(--muted);
   font-size:12px;
   margin:0;
 }
 
-.iconCircle{
+.opsTheme .iconCircle{
   width: 42px;            /* bigger */
   height: 42px;           /* bigger */
   border-radius: 999px;
@@ -96,19 +96,19 @@
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12); /* subtle lift */
 }
 
-.iconCircle svg{
+.opsTheme .iconCircle svg{
   width: 28px;
   height: 28px;
 }
 
-.metricMetaRow{
+.opsTheme .metricMetaRow{
   display:flex;
   align-items:center;
   gap:10px;
   margin-top:8px;
 }
 
-.badge{
+.opsTheme .badge{
   display:inline-flex;
   align-items:center;
   gap:6px;
@@ -121,23 +121,22 @@
   color:var(--ink);
 }
 
-.badgeGreen{ background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.25); color:#166534; }
-.badgeYellow{ background: rgba(245,158,11,.14); border-color: rgba(245,158,11,.30); color:#92400e; }
-.badgeRed{ background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.25); color:#991b1b; }
+.opsTheme .badgeGreen{ background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.25); color:#166534; }
+.opsTheme .badgeYellow{ background: rgba(245,158,11,.14); border-color: rgba(245,158,11,.30); color:#92400e; }
+.opsTheme .badgeRed{ background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.25); color:#991b1b; }
 
-.grid2{
+.opsTheme .grid2{
   display:grid;
   grid-template-columns: 1.35fr .9fr;
   gap:22px;
   padding-top: 24px;
 }
 
-
 @media (max-width: 1100px){
-  .grid2{ grid-template-columns: 1fr; }
+  .opsTheme .grid2{ grid-template-columns: 1fr; }
 }
 
-.cardHeaderRow{
+.opsTheme .cardHeaderRow{
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -145,41 +144,41 @@
   border-bottom:1px solid var(--line);
 }
 
-.cardHeaderLeft{
+.opsTheme .cardHeaderLeft{
   display:flex;
   align-items:center;
   gap:12px;
 }
 
-.cardHeaderRow{
+.opsTheme .cardHeaderRow{
   position: relative;
   padding-top: 20px;
   padding-left: 15px;  /* pushes “Carbon” right */
   min-height: 66px;    /* keeps header tall enough */
 }
 
-.cardHeaderRow h3{
+.opsTheme .cardHeaderRow h3{
   margin:0;
   font-size:22px;
   font-weight:900;
   color:#E8486F;
 }
 
-.cardHeaderRow .hint{
+.opsTheme .cardHeaderRow .hint{
   color:var(--muted);
   font-size:13px;
   font-weight:800;
 }
 
-.cardBody{
+.opsTheme .cardBody{
   padding:16px 18px;
 }
 
-.cardBodyNoPad{
+.opsTheme .cardBodyNoPad{
   padding:0;
 }
 
-.iconCircleFloat{
+.opsTheme .iconCircleFloat{
   position: absolute;
   top: -22px;      /* half outside */
   left: 18px;
@@ -195,39 +194,39 @@
   z-index: 2;
 }
 
-.iconCircleInline svg{
+.opsTheme .iconCircleInline svg{
   width:28px;
   height:28px;
 }
 
-.tableLike{
+.opsTheme .tableLike{
   width:100%;
   border-collapse:collapse;
 }
 
-.tableLike th, .tableLike td{
+.opsTheme .tableLike th,
+.opsTheme .tableLike td{
   padding:10px 16px;
   border-bottom:1px solid #f1f5f9;
   font-size:13px;
 }
 
-.tableLike th{
+.opsTheme .tableLike th{
   color:var(--muted);
   font-weight:900;
   text-align:left;
   font-size:12px;
 }
 
-.rowRight{
+.opsTheme .rowRight{
   text-align:right;
 }
 
-.floatRow {
+.opsTheme .floatRow {
   padding-top: 24px;
 }
 
-
-.rangeSelect{
+.opsTheme .rangeSelect{
   border: 1px solid var(--line);
   background: #fff;
   border-radius: 10px;
@@ -237,13 +236,13 @@
   color: var(--ink);
   outline: none;
 }
-.rangeSelect:focus{
+.opsTheme .rangeSelect:focus{
   border-color: rgba(232,72,111,.55);
   box-shadow: 0 0 0 4px rgba(232,72,111,.14);
 }
 
 /* Bigger titles inside card headers */
-.cardTitleBig{
+.opsTheme .cardTitleBig{
   font-size: 22px;
   font-weight: 950;
   color: #E8486F;
@@ -252,7 +251,7 @@
 }
 
 /* Primary pink button */
-.btnPink{
+.opsTheme .btnPink{
   width: 100%;
   margin-top: 14px;
   padding: 14px 14px;
@@ -265,23 +264,23 @@
   cursor: pointer;
   box-shadow: 0 12px 24px rgba(232,72,111,.18);
 }
-.btnPink:disabled{
+.opsTheme .btnPink:disabled{
   opacity: .7;
   cursor: not-allowed;
 }
 
 /* Small muted note */
-.mutedNote{
+.opsTheme .mutedNote{
   font-size: 12px;
   opacity: .7;
 }
 
 /* Ops table styling to match theme */
-.opsTable{
+.opsTheme .opsTable{
   width: 100%;
   border-collapse: collapse;
 }
-.opsTable thead th{
+.opsTheme .opsTable thead th{
   text-align: left;
   font-size: 12px;
   font-weight: 900;
@@ -289,7 +288,9 @@
   padding: 12px 14px;
   border-bottom: 1px solid #e5e7eb;
 }
-.opsTable tbody td{
+.opsTheme .opsTable tbody td{
   padding: 12px 14px;
   border-bottom: 1px solid #f1f5f9;
 }
+
+.card:hover{ transform:translateY(-2px); box-shadow:0 14px 34px rgba(15,23,42,0.08); transition:all .18s ease; }

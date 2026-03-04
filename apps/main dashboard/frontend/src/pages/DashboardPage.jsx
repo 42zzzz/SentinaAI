@@ -336,6 +336,7 @@ export default function DashboardPage() {
   }, [congestionLatest]);
 
   return (
+    <div className="opsTheme">
     <div className="dashboardWrap">
       {error ? (
         <div className="card" style={{ borderColor: "rgba(232,72,111,.35)" }}>
@@ -346,6 +347,7 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
+    
       ) : null}
 
       {/* Row 1: 4 KPI cards with icon circles */}
@@ -394,6 +396,7 @@ export default function DashboardPage() {
         <AiOpsPanel />
         <PredictedOccupancyChart refreshSignal={simTick} />
       </div>
+    </div>
     </div>
   );
 }

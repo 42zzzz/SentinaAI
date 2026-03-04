@@ -1,4 +1,4 @@
-import "./sustainabilityDashboard.css";
+import "./SustainabilityDashboard.css";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
@@ -113,7 +113,7 @@ export default function SustainabilityDashboard() {
   }, [hvacEfficiency]);
 
   return (
-
+    <div className="dashboardWrap sustTheme">
     <div className="dashboardWrap">
 
       {/* KPI ROW */}
@@ -201,6 +201,6 @@ export default function SustainabilityDashboard() {
       </div>
 
     </div>
-
+  </div>
   );
 }
