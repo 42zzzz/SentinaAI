@@ -51,15 +51,15 @@ print("Models trained successfully! API is ready.")
 
 # --- 2. AUTOMATIC RETRIGGERING LOGIC ---
 def auto_retrain_pipeline():
-    print("\n⚙️ AUTO-RETRIGGER: Anomaly detected by Edge Node!")
-    print("⚙️ Step 7: Syncing new surge data to Cloud...")
-    print("⚙️ Step 8: Updating Random Forest weights...")
+    print("\n AUTO-RETRIGGER: Anomaly detected by Edge Node!")
+    print(" Step 7: Syncing new surge data to Cloud...")
+    print(" Step 8: Updating Random Forest weights...")
     try:
         # Re-run the training function to simulate continuous learning
         train_models()
-        print("✅ Models successfully retrained and redeployed!")
+        print(" Models successfully retrained and redeployed!")
     except Exception as e:
-        print(f"❌ Retraining Error: {e}")
+        print(f" Retraining Error: {e}")
 
 # --- 3. LIVE VENUE STATUS ENDPOINT ---
 @app.get("/api/venue-status")
@@ -98,21 +98,39 @@ class SimulationRequest(BaseModel):
     co2: int
 
 ADJACENCY_MAP = {
-    "hall1": ["hall2", "northhall4", "southhall1", "easthall1"],
-    "hall2": ["hall1", "hall3"],
-    "hall3": ["hall2", "hall4"],
-    "northhall1": ["northhall2"],
-    "northhall2": ["northhall1", "northhall3"],
-    "northhall3": ["northhall2", "northhall4"], 
-    "northhall4": ["northhall3", "northhall5", "hall1"],
-    "northhall5": ["northhall4", "northhall6"],
-    "northhall6": ["northhall5"],
-    "southhall1": ["southhall2", "hall1"],
-    "southhall2": ["southhall1", "southhall3"],
-    "southhall3": ["southhall2", "southhall4"],
-    "easthall1": ["easthall2", "hall1"],
-    "easthall2": ["easthall1", "easthall3"],
-    "easthall3": ["easthall2", "easthall4"]
+    # Central Halls (1-10)
+    "hall1": ["hall3"], 
+    "hall2": ["hall3", "hall4"],
+    "hall3": ["hall1", "hall4", "hall2", "northhall2"],
+    "hall4": ["hall3", "hall5", "hall2", "northhall2"],
+    "hall5": ["hall4", "hall6", "northhall1"],
+    "hall6": ["hall5", "hall7", "easthall1"],
+    "hall7": ["hall6", "hall8", "easthall2"],
+    "hall8": ["hall7", "hall9", "easthall3"],
+    "hall9": ["hall8", "hall10", "easthall3", "southhall1"],
+    "hall10": ["hall9", "easthall4", "southhall1"],
+
+    # North Halls (1-6)
+    "northhall1": ["northhall2", "northhall6", "hall5"],
+    "northhall2": ["northhall1", "northhall4", "hall3", "hall4"],
+    "northhall3": ["northhall4"], 
+    "northhall4": ["northhall3", "northhall5", "northhall2"],
+    "northhall5": ["northhall4"],
+    "northhall6": ["northhall1"],
+
+    # East Halls (1-4)
+    "easthall1": ["easthall2", "hall6"],
+    "easthall2": ["easthall1", "easthall3", "hall7"],
+    "easthall3": ["easthall2", "easthall4", "hall8", "hall9"],
+    "easthall4": ["easthall3", "hall10"],
+
+    # South Halls (1-6)
+    "southhall1": ["southhall2", "southhall4", "hall9", "hall10"],
+    "southhall2": ["southhall1", "southhall3", "southhall4", "southhall5"],
+    "southhall3": ["southhall2", "southhall5", "southhall6"],
+    "southhall4": ["southhall1", "southhall2", "southhall5"],
+    "southhall5": ["southhall4", "southhall2", "southhall3", "southhall6"],
+    "southhall6": ["southhall5", "southhall3"]
 }
 
 def run_ai_pipeline(occ_percent, co2_level):
@@ -138,7 +156,7 @@ def simulate_prediction(data: SimulationRequest):
     # Process Ground Zero
     occ_ratio, ai_action, is_anomaly = run_ai_pipeline(data.occupancy, data.co2)
     updates.append({
-        "hall_id": data.hall_id,
+        "id": data.hall_id,
         "occupancyRatio": occ_ratio,
         "co2": data.co2,
         "aiAction": ai_action,
@@ -169,3 +187,4 @@ def simulate_prediction(data: SimulationRequest):
         "status": "success",
         "updates": updates
     }
+

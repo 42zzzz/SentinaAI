@@ -1,65 +1,93 @@
 import React, { useState, useMemo } from 'react';
 import * as THREE from 'three';
+import { Text, Html } from '@react-three/drei';
 import { SCALE, HALL_HEIGHT, isPolygonHall } from '../data/hallsLayout';
 
-// 🔥 NEW: Added currentLayer to the props
+// 🔥 THE UNIVERSAL TRANSLATOR 🔥
+// This forces the Live API, the Sandbox, and the 3D map to all share data perfectly
+const findMatchingTelemetry = (hall, telemetryData) => {
+  if (!telemetryData || Object.keys(telemetryData).length === 0) return {};
+  
+  // 1. Try a direct exact match first
+  if (telemetryData[hall.id]) return telemetryData[hall.id];
+  if (telemetryData[hall.telemetryId]) return telemetryData[hall.telemetryId];
+  
+  // 2. Strip formatting (turns "Central_Hall_3" and "Hall3" both into "hall3")
+  const normId = String(hall.id).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  const normTel = String(hall.telemetryId).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  
+  for (const key in telemetryData) {
+    const normKey = String(key).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    
+    if (normKey === normId || normKey === normTel) {
+      return telemetryData[key];
+    }
+    
+    // 3. Fix the "Central Hall" prefix bug (if API says "centralhall3" but map says "hall3")
+    if (hall.zone && hall.zone.toLowerCase() === 'central') {
+      if (normKey === `central${normId}`) return telemetryData[key];
+    }
+  }
+  
+  return {};
+};
+
 function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView, isSelected, currentLayer = 'occupancy' }) {
   const [hovered, setHovered] = useState(false);
 
-  // Safely grab the AI data for this specific hall
-  const data = telemetryData[hall.id] || telemetryData[hall.telemetryId] || {};
+  // 🔥 Use the new smart matcher to grab the data!
+  const data = findMatchingTelemetry(hall, telemetryData);
   
-  // 🔥 NEW: Dynamic Color & Glow Logic based on the Dropdown!
-  let blockColor = '#4ade80'; // Default Green
+  let blockColor = '#4ade80'; 
   let glowIntensity = 0.2;
 
   if (currentLayer === 'occupancy') {
-    // 1. OCCUPANCY LAYER (Green -> Red)
     const rate = data.occupancyRatio || (data.occupancy || 0) / 100;
-    if (rate < 0.25) blockColor = '#4ade80'; // Low
-    else if (rate < 0.60) blockColor = '#fbbf24'; // Medium
-    else if (rate < 0.80) blockColor = '#f97316'; // High
-    else blockColor = '#ef4444'; // Critical
+    if (rate < 0.25) blockColor = '#4ade80'; 
+    else if (rate < 0.60) blockColor = '#fbbf24'; 
+    else if (rate < 0.80) blockColor = '#f97316'; 
+    else blockColor = '#ef4444'; 
     glowIntensity = 0.2 + (rate * 0.3);
 
   } else if (currentLayer === 'co2') {
-    // 2. CO2 AIR QUALITY LAYER (Green -> Purple)
     const co2 = data.co2 || 400;
-    if (co2 < 600) blockColor = '#4ade80'; // Good
-    else if (co2 < 800) blockColor = '#fbbf24'; // Fair
-    else if (co2 < 1000) blockColor = '#f97316'; // Poor
-    else blockColor = '#9333ea'; // Toxic (Purple!)
+    if (co2 < 600) blockColor = '#4ade80'; 
+    else if (co2 < 800) blockColor = '#fbbf24'; 
+    else if (co2 < 1000) blockColor = '#f97316'; 
+    else blockColor = '#9333ea'; 
     glowIntensity = 0.2 + ((co2 - 400) / 1000 * 0.5);
 
   } else if (currentLayer === 'aiAction') {
-    // 3. SENTINAAI DIAGNOSTICS LAYER (Dark -> Bright Red)
     if (data.isAnomaly) {
-      blockColor = '#ff0000'; // Pure bright red for anomalies
-      glowIntensity = 0.8; // High glow to grab attention
+      blockColor = '#ff0000'; 
+      glowIntensity = 0.8; 
     } else {
-      blockColor = '#1f2937'; // Dark gray (dormant/safe)
+      blockColor = '#1f2937'; 
       glowIntensity = 0.05;
     }
+  } else if (currentLayer === 'sustainability') {
+    // 🔥 The ESG Carbon Layer logic
+    const co2Footprint = data.co2 || 400; 
+    if (co2Footprint < 500) blockColor = '#22c55e'; // Efficient Green
+    else if (co2Footprint < 700) blockColor = '#94a3b8'; // Moderate Gray
+    else if (co2Footprint < 900) blockColor = '#475569'; // High Smog
+    else blockColor = '#0f172a'; // Critical Emissions (Near Black)
+    glowIntensity = 0.1;
   }
 
-  // Override color if the user clicks on it
   if (isSelected) {
-    blockColor = '#3b82f6'; // Bright blue when selected
+    blockColor = '#3b82f6'; 
     glowIntensity = 0.6;
   }
 
-  // --- Spatial Geometry (Unchanged) ---
   const geometry = useMemo(() => {
     if (isPolygonHall(hall)) {
       const shape = new THREE.Shape();
       hall.vertices.forEach((vertex, i) => {
         const x = (vertex[0] - centerX) * SCALE;
         const z = (vertex[1] - centerY) * SCALE;
-        if (i === 0) {
-          shape.moveTo(x, z);
-        } else {
-          shape.lineTo(x, z);
-        }
+        if (i === 0) shape.moveTo(x, z);
+        else shape.lineTo(x, z);
       });
       shape.closePath();
       return new THREE.ExtrudeGeometry(shape, { depth: HALL_HEIGHT, bevelEnabled: false });
@@ -71,21 +99,15 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
   }, [hall, centerX, centerY]);
 
   const position = useMemo(() => {
-    if (isPolygonHall(hall)) {
-      return [0, HALL_HEIGHT / 2, 0];
-    } else {
-      const x = (hall.x + hall.width / 2 - centerX) * SCALE;
-      const z = (hall.y + hall.height / 2 - centerY) * SCALE;
-      return [x, HALL_HEIGHT / 2, z];
-    }
+    if (isPolygonHall(hall)) return [0, HALL_HEIGHT / 2, 0];
+    const x = (hall.x + hall.width / 2 - centerX) * SCALE;
+    const z = (hall.y + hall.height / 2 - centerY) * SCALE; 
+    return [x, HALL_HEIGHT / 2, z];
   }, [hall, centerX, centerY]);
 
   const rotation = useMemo(() => {
-    if (isPolygonHall(hall)) {
-      return [0, 0, 0];
-    } else {
-      return [0, (hall.rotation || 0) * Math.PI / 180, 0];
-    }
+    if (isPolygonHall(hall)) return [0, 0, 0];
+    return [0, (hall.rotation || 0) * Math.PI / 180, 0];
   }, [hall]);
 
   if (currentView !== 'all' && (!hall.zone || !hall.zone.toLowerCase().includes(currentView))) {
@@ -111,6 +133,35 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
           metalness={0.3}
         />
       </mesh>
+
+      {/* The Map Label */}
+      <Text
+        position={[0, (HALL_HEIGHT / 2) + 0.2, 0]}
+        rotation={[-Math.PI / 2, 0, 0]} 
+        fontSize={0.8}
+        color="#1e293b" // Dark text for light mode
+        fontWeight="bold"
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.03}
+        outlineColor="#ffffff"
+        depthOffset={-1} 
+      >
+        {hall.id.replace(/hall/i, ' HALL ').toUpperCase()}
+      </Text>
+
+      {/* 🔥 THE IOT SECURITY BEACON 🔥 */}
+      {data.isAnomaly && currentLayer === 'aiAction' && (
+        <Html
+          position={[0, HALL_HEIGHT + 3, 0]}
+          center
+          zIndexRange={[100, 0]}
+        >
+          <div className="device-alert">
+            ⚠️ BREACH: {data.compromisedDevice || 'IOT_SENSOR_CRITICAL'}
+          </div>
+        </Html>
+      )}
     </group>
   );
 }
