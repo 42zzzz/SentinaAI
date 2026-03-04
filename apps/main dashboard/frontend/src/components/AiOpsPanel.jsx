@@ -28,7 +28,6 @@ export default function AiOpsPanel() {
 
     const load = async () => {
       try {
-        // ✅ Telemetry-driven AI (Option A)
         const r = await axios.get(`${API_BASE}/ai/ops-live`);
         if (!alive) return;
 
@@ -53,55 +52,66 @@ export default function AiOpsPanel() {
   }, []);
 
   return (
-    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, background: "white", overflowX: "auto" }}>
-      <div style={{ padding: 14, fontWeight: 900, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>AI Operations – Live Status</div>
-        <div style={{ fontSize: 12, opacity: 0.7 }}>Source: /ai/ops-live</div>
+    <div className="card" style={{ overflowX: "auto" }}>
+      <div className="cardHeaderRow">
+        <div className="cardHeaderLeft">
+          <h3 className="cardTitleBig" style={{ margin: 0 }}>
+            AI Operations – Live Status
+          </h3>
+        </div>
+        <div className="hint">Source: /ai/ops-live</div>
       </div>
 
       {err ? (
-        <div style={{ padding: 12, background: "#fff1f2" }}>
-          <div style={{ fontWeight: 800 }}>AI Error</div>
+        <div style={{ padding: 12, background: "#fff1f2", borderTop: "1px solid #fecdd3" }}>
+          <div style={{ fontWeight: 900 }}>AI Error</div>
           <div style={{ fontFamily: "monospace", fontSize: 12 }}>{err}</div>
         </div>
       ) : null}
 
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ textAlign: "left", borderTop: "1px solid #e5e7eb", borderBottom: "1px solid #e5e7eb" }}>
-            <th style={{ padding: 12 }}>Hall</th>
-            <th style={{ padding: 12 }}>Occupancy</th>
-            <th style={{ padding: 12 }}>CO₂</th>
-            <th style={{ padding: 12 }}>Congestion</th>
-            <th style={{ padding: 12 }}>AI Action</th>
-            <th style={{ padding: 12 }}>Anomaly</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((h) => (
-            <tr key={h.hall_id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-              <td style={{ padding: 12, fontWeight: 900 }}>{h.hall_name ? `${h.hall_name} (${h.hall_id})` : h.hall_id}</td>
-              <td style={{ padding: 12 }}>{Math.round((h.occupancyRatio ?? 0) * 100)}%</td>
-              <td style={{ padding: 12 }}>{Math.round(Number(h.co2 || 0))}</td>
-              <td style={{ padding: 12 }}>{Number(h.flowCongestionIndex ?? 0).toFixed(2)}</td>
-              <td style={{ padding: 12 }}>
-                <Badge danger={h.aiAction && String(h.aiAction).toLowerCase() !== "none"}>{h.aiAction || "none"}</Badge>
-              </td>
-              <td style={{ padding: 12 }}>
-                <Badge danger={!!h.isAnomaly}>{h.isAnomaly ? "Yes" : "No"}</Badge>
-              </td>
-            </tr>
-          ))}
-
-          {!rows.length ? (
+      <div className="cardBody cardBodyNoPad">
+        <table className="opsTable">
+          <thead>
             <tr>
-              <td colSpan={6} style={{ padding: 12, opacity: 0.7 }}>
-                No AI rows yet.
-              </td>
+              <th>Hall</th>
+              <th>Occupancy</th>
+              <th>CO₂</th>
+              <th>Congestion</th>
+              <th>AI Action</th>
+              <th>Anomaly</th>
             </tr>
-          ) : null}
-        </tbody>
-      </table>
+          </thead>
+
+          <tbody>
+            {rows.map((h) => (
+              <tr key={h.hall_id}>
+                <td style={{ fontWeight: 900 }}>
+                  {h.hall_name ? `${h.hall_name} (${h.hall_id})` : h.hall_id}
+                </td>
+                <td>{Math.round((h.occupancyRatio ?? 0) * 100)}%</td>
+                <td>{Math.round(Number(h.co2 || 0))}</td>
+                <td>{Number(h.flowCongestionIndex ?? 0).toFixed(2)}</td>
+                <td>
+                  <Badge danger={h.aiAction && String(h.aiAction).toLowerCase() !== "none"}>
+                    {h.aiAction || "none"}
+                  </Badge>
+                </td>
+                <td>
+                  <Badge danger={!!h.isAnomaly}>{h.isAnomaly ? "Yes" : "No"}</Badge>
+                </td>
+              </tr>
+            ))}
+
+            {!rows.length ? (
+              <tr>
+                <td colSpan={6} style={{ padding: 12, opacity: 0.7 }}>
+                  No AI rows yet.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

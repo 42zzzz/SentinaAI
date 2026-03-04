@@ -1,30 +1,30 @@
 import React, { useMemo } from "react";
 
-function fmtSmall(n) {
+function fmtCount(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "—";
-  if (Math.abs(x) >= 1000) return x.toFixed(0);
-  if (Math.abs(x) >= 100) return x.toFixed(1);
-  return x.toFixed(2);
+  return String(Math.round(x));
 }
 
-function fmtTime(ts) {
+function fmtX(ts, xMode) {
   try {
     const d = new Date(ts);
+    if (xMode === "date") {
+      return d.toLocaleDateString([], { month: "short", day: "2-digit" });
+    }
+    // time
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   } catch {
     return "";
   }
 }
 
-export default function Sparkline({ points = [], height = 110 }) {
+export default function Sparkline({ points = [], height = 110, xMode = "time" }) {
   const ACCENT = "#E8486F";
 
-  // ✅ Bigger chart width/height
   const w = 320;
   const h = height;
 
-  // room for labels/axes (scaled up slightly)
   const padLeft = 34;
   const padRight = 10;
   const padTop = 10;
@@ -34,9 +34,13 @@ export default function Sparkline({ points = [], height = 110 }) {
     return <div style={{ width: w, height: h, opacity: 0.4, fontSize: 12 }}>—</div>;
   }
 
-  const ys = points.map((p) => Number(p.value || 0));
-  const yMin = Math.min(...ys);
-  const yMax = Math.max(...ys);
+  const ys = points.map((p) => Number(p.value || 0)).filter(Number.isFinite);
+  const yRawMax = Math.max(...ys, 0);
+  const yLabelMax = Math.max(1, Math.ceil(yRawMax)); // integer ceiling
+
+  // scale from 0..yLabelMax so axis always makes sense for "counts"
+  const yMin = 0;
+  const yMax = yLabelMax;
 
   const xMin = 0;
   const xMax = Math.max(1, points.length - 1);
@@ -48,11 +52,13 @@ export default function Sparkline({ points = [], height = 110 }) {
   };
 
   const d = points
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${xScale(i).toFixed(2)} ${yScale(p.value).toFixed(2)}`)
+    .map((p, i) => {
+      const v = Number(p.value || 0);
+      return `${i === 0 ? "M" : "L"} ${xScale(i).toFixed(2)} ${yScale(v).toFixed(2)}`;
+    })
     .join(" ");
 
-  // ✅ Area fill path (line + down to baseline + back)
-  const baselineY = h - padBottom;
+  const baselineY = yScale(0);
   const areaD = `${d} L ${xScale(points.length - 1).toFixed(2)} ${baselineY.toFixed(
     2
   )} L ${xScale(0).toFixed(2)} ${baselineY.toFixed(2)} Z`;
@@ -60,25 +66,22 @@ export default function Sparkline({ points = [], height = 110 }) {
   const firstTs = points[0]?.ts;
   const lastTs = points[points.length - 1]?.ts;
 
-  const gridYs = useMemo(() => {
-    const mid = (yMin + yMax) / 2;
-    return [yMax, mid, yMin];
-  }, [yMin, yMax]);
-
-  // ✅ last point marker (optional)
   const lastX = xScale(points.length - 1);
   const lastY = yScale(points[points.length - 1]?.value);
 
+  // only 2 meaningful grid lines: max + 0
+  const grid = useMemo(() => [yMax, 0], [yMax]);
+
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block" }}>
-      {/* Y grid + labels */}
-      {gridYs.map((v, idx) => {
+      {/* Y grid + labels (max & 0 only) */}
+      {grid.map((v, idx) => {
         const y = yScale(v);
         return (
           <g key={idx}>
             <line x1={padLeft} x2={w - padRight} y1={y} y2={y} stroke="#e5e7eb" strokeWidth="1" />
             <text x={padLeft - 8} y={y + 4} fontSize="10" textAnchor="end" fill="#6b7280">
-              {idx === 0 ? fmtSmall(yMax) : idx === 2 ? fmtSmall(yMin) : ""}
+              {fmtCount(v)}
             </text>
           </g>
         );
@@ -95,21 +98,21 @@ export default function Sparkline({ points = [], height = 110 }) {
         strokeWidth="1"
       />
 
-      {/* ✅ Soft area fill */}
+      {/* Area fill */}
       <path d={areaD} fill={ACCENT} opacity="0.12" />
 
-      {/* ✅ Pink line */}
+      {/* Line */}
       <path d={d} fill="none" stroke={ACCENT} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
 
-      {/* ✅ Optional last-point dot */}
+      {/* Last point dot */}
       <circle cx={lastX} cy={lastY} r="3.5" fill={ACCENT} stroke="#ffffff" strokeWidth="2" />
 
-      {/* X labels: start/end time */}
+      {/* X labels */}
       <text x={padLeft} y={h - 6} fontSize="10" textAnchor="start" fill="#6b7280">
-        {fmtTime(firstTs)}
+        {fmtX(firstTs, xMode)}
       </text>
       <text x={w - padRight} y={h - 6} fontSize="10" textAnchor="end" fill="#6b7280">
-        {fmtTime(lastTs)}
+        {fmtX(lastTs, xMode)}
       </text>
     </svg>
   );
