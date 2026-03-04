@@ -1,0 +1,125 @@
+// frontend/src/components/AlertsTrendPanel.jsx
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import Sparkline from "./Sparkline";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
+function rangeToParams(range) {
+  const r = String(range || "lifetime").toLowerCase();
+  if (r === "lifetime") return { lifetime: 1 };
+
+  // Accept "30d"/"14d"/"7d"/"1d"
+  const m = r.match(/^(\d+)\s*d$/);
+  if (m) return { days: Number(m[1]) };
+
+  // fallback
+  return { lifetime: 1 };
+}
+
+function subtitleFor(range) {
+  const r = String(range || "lifetime").toLowerCase();
+  if (r === "lifetime") return "Total alerts (lifetime)";
+  return `Total alerts (last ${r})`;
+}
+
+export default function AlertsTrendPanel({ range = "lifetime", embedded = false }) {
+  const [points, setPoints] = useState([]);
+  const [total, setTotal] = useState(null); // null means “loading/unknown”
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+
+    const load = async () => {
+      try {
+        const r = await axios.get(`${API_BASE}/dashboard/alerts-trend`, {
+          params: rangeToParams(range),
+        });
+        if (!alive) return;
+
+        setPoints(r.data?.points || []);
+        const t = r.data?.total;
+        setTotal(Number.isFinite(Number(t)) ? Number(t) : null);
+        setErr("");
+      } catch (e) {
+        if (!alive) return;
+        setErr(e?.response?.data?.error || e.message || "Failed to load alerts trend");
+        setTotal(null);
+        setPoints([]);
+      }
+    };
+
+    load();
+    const t = setInterval(load, 15000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [range]);
+
+  // fallback: if backend didn’t send total, compute from points
+  const sumFromPoints = useMemo(
+    () => points.reduce((s, p) => s + Number(p.value || 0), 0),
+    [points]
+  );
+
+  const headline = useMemo(() => {
+    // don’t show 0 — show dash if no alerts
+    if (total === null) return "—";
+    if (total === 0) return "—";
+    return String(total);
+  }, [total]);
+
+  const subtitle = useMemo(() => subtitleFor(range), [range]);
+  const r = String(range || "lifetime").toLowerCase();
+
+  const daysMatch = r.match(/^(\d+)\s*d$/);
+
+  const days = daysMatch ? Number(daysMatch[1]) : null;
+
+// time labels only for 1d, otherwise dates
+  const xMode = days === 1 ? "time" : "date";
+
+// optional helper caption (not required)
+  const yCaption = days === 1 ? "alerts / 15 min" : "alerts / day";
+  const body = (
+<div className="alertsPanel">
+    <div className="alertsLeft">
+    <div style={{ fontSize: 40, fontWeight: 950, lineHeight: 1.02 }}>{headline}</div>
+    <div style={{ marginTop: 10, fontSize: 13, opacity: 0.75 }}>{subtitle}</div>
+
+    {total === null && sumFromPoints > 0 ? (
+        <div style={{ marginTop: 6, fontSize: 12, opacity: 0.65 }}>Computed: {sumFromPoints}</div>
+    ) : null}
+
+    {err ? (
+        <div
+        style={{
+            marginTop: 8,
+            padding: 10,
+            borderRadius: 10,
+            background: "#fff1f2",
+            border: "1px solid #fecdd3",
+            fontSize: 12,
+        }}
+        >
+        {err}
+        </div>
+    ) : null}
+    </div>
+
+    <div className="alertsRight">
+    <Sparkline points={points} height={120} xMode={xMode} />
+    </div>
+</div>
+);
+
+  if (embedded) return body;
+
+  return (
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: 16, background: "white", padding: 16 }}>
+      {body}
+    </div>
+  );
+}

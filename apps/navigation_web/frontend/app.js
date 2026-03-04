@@ -11,7 +11,7 @@ class ConventionCenterApp {
         this.currentPath = null;
         this.iotSummary = null;
         this.iotData = {};
-        this.heatmapEnabled = true; // show/hide heatmap overlay
+        this.heatmapEnabled = false; // show/hide heatmap overlay
         this.heatmapOpacity = 1.0; // opaque overlay opacity (traffic light scale)
         this.demoMode = true; // DEMO: simulate varied occupancy (green/yellow/red)
         this._iotDataReal = {}; // last real telemetry payload
@@ -39,13 +39,18 @@ class ConventionCenterApp {
             path: null,
             interactive: null
         };
-        
+
+        // Fallback corridor geometry (if backend navmesh lacks corridor_polygons)
+        this.svgCorridorPolygons = [];
+        this._svgCorridorsLoaded = false;
+
         this.init();
     }
 
     async init() {
         this.setupPixi();
         await this.loadNavmesh();
+        await this.loadSvgCorridors();
         await this.loadIoTData();
         // Keep telemetry + heatmap live
         setInterval(() => this.refreshTelemetry(), 5000);
@@ -63,7 +68,7 @@ class ConventionCenterApp {
 	            width: container.clientWidth,
 	            height: container.clientHeight,
 	            // Background Color
-	            backgroundColor: 0xffffff,
+	            backgroundColor: 0xf5f5f5,
 	            antialias: true,
 	            resolution: window.devicePixelRatio || 1,
 	        });
@@ -90,12 +95,12 @@ class ConventionCenterApp {
         this.layers.path.zIndex = 50;
         this.layers.interactive.zIndex = 60;
 
-        // Draw order: background → corridors → rooms → heatmap → path → interactive
+        // Draw order: background → corridors → heatmap → corridorOutlines → rooms → path → interactive
         this.app.stage.addChild(this.layers.background);
         this.app.stage.addChild(this.layers.corridors);
+        this.app.stage.addChild(this.layers.heatmap);
         this.app.stage.addChild(this.layers.corridorOutlines);
         this.app.stage.addChild(this.layers.rooms);
-        this.app.stage.addChild(this.layers.heatmap);
         this.app.stage.addChild(this.layers.path);
         this.app.stage.addChild(this.layers.interactive);
 
@@ -565,7 +570,91 @@ class ConventionCenterApp {
         });
     }
 
-    renderMap() {
+    
+    async loadSvgCorridors() {
+        // If backend provides corridor_polygons, prefer those.
+        const backendPolys = (this.navmeshData && Array.isArray(this.navmeshData.corridor_polygons)) ? this.navmeshData.corridor_polygons : null;
+        if (backendPolys && backendPolys.length) {
+            this._svgCorridorsLoaded = true;
+            return;
+        }
+        if (this._svgCorridorsLoaded) return;
+
+        try {
+            // SVG is bundled into frontend/assets so it's always reachable by the static server.
+            const res = await fetch('./assets/convention_map.svg', { cache: 'no-store' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const svgText = await res.text();
+
+            // Create a real SVG element in the DOM so SVGPathElement geometry APIs work reliably.
+            const holder = document.createElement('div');
+            holder.style.position = 'absolute';
+            holder.style.left = '-99999px';
+            holder.style.top = '-99999px';
+            holder.style.width = '1px';
+            holder.style.height = '1px';
+            holder.style.overflow = 'hidden';
+            holder.innerHTML = svgText;
+
+            document.body.appendChild(holder);
+            const svgEl = holder.querySelector('svg');
+            if (!svgEl) throw new Error('SVG <svg> root not found');
+
+            const redPaths = Array.from(svgEl.querySelectorAll('path'))
+                .filter(p => {
+                    const style = (p.getAttribute('style') || '').toLowerCase().replace(/\s+/g,'');
+                    const fill = (p.getAttribute('fill') || '').toLowerCase().replace(/\s+/g,'');
+                    // Accept fill in style or attribute (#ff0000 or rgb(255,0,0))
+                    return style.includes('fill:#ff0000') || fill === '#ff0000' || style.includes('fill:rgb(255,0,0)');
+                });
+
+            const corridors = [];
+
+            for (const p of redPaths) {
+                let total = 0;
+                try { total = p.getTotalLength(); } catch (_) { total = 0; }
+                if (!isFinite(total) || total <= 0) continue;
+
+                const id = p.getAttribute('id') || 'corridor';
+                // corridor_02 is curvy and long; sample denser so the outline looks smooth.
+                const samples = (id === 'corridor_02') ? 220 : 80;
+
+                const pts = [];
+                for (let i = 0; i <= samples; i++) {
+                    const t = (i / samples) * total;
+                    const pt = p.getPointAtLength(t);
+                    pts.push([pt.x, pt.y]);
+                }
+                // Reduce noise: drop near-duplicate consecutive points
+                const simplified = [];
+                const eps2 = 0.25; // ~0.5px squared
+                for (const q of pts) {
+                    if (!simplified.length) { simplified.push(q); continue; }
+                    const a = simplified[simplified.length - 1];
+                    const dx = q[0] - a[0], dy = q[1] - a[1];
+                    if ((dx*dx + dy*dy) > eps2) simplified.push(q);
+                }
+                if (simplified.length >= 3) corridors.push({ id, polygon: simplified });
+            }
+
+            document.body.removeChild(holder);
+
+            this.svgCorridorPolygons = corridors;
+            this._svgCorridorsLoaded = true;
+
+            if (corridors.length) {
+                console.log(`✓ SVG corridor fallback loaded: ${corridors.length} corridor paths`);
+            } else {
+                console.warn('⚠ No red corridor paths found in SVG (fallback corridors empty)');
+            }
+        } catch (e) {
+            console.warn('⚠ Failed to load SVG corridor fallback:', e);
+            this.svgCorridorPolygons = [];
+            this._svgCorridorsLoaded = true;
+        }
+    }
+
+renderMap() {
         if (!this.navmeshData) return;
         this.updateStatus('Rendering map...', true);
         this.layers.rooms.removeChildren();
@@ -720,11 +809,13 @@ class ConventionCenterApp {
     }
 
     renderCorridors() {
-        if (!this.navmeshData.corridor_polygons) return;
+        const backendPolys = (this.navmeshData && Array.isArray(this.navmeshData.corridor_polygons)) ? this.navmeshData.corridor_polygons : [];
+        const corridorPolys = backendPolys.length ? backendPolys : (this.svgCorridorPolygons || []);
+        if (!corridorPolys.length) return;
 
         if (this.layers.corridorOutlines) this.layers.corridorOutlines.removeChildren();
 
-        this.navmeshData.corridor_polygons.forEach(corridor => {
+        corridorPolys.forEach(corridor => {
             const polygon = corridor?.polygon;
             if (!polygon || polygon.length < 3) return;
 
@@ -744,13 +835,13 @@ class ConventionCenterApp {
             outG.zIndex = 11;
 
             // Outer dark stroke for visibility on light background
-            outG.lineStyle(12, 0x111111, 0.95);
+            outG.lineStyle({ width: 12, color: 0x111111, alpha: 0.95, join: PIXI.LINE_JOIN.MITER, cap: PIXI.LINE_CAP.BUTT });
             outG.moveTo(polygon[0][0], polygon[0][1]);
             for (let i = 1; i < polygon.length; i++) outG.lineTo(polygon[i][0], polygon[i][1]);
             outG.closePath();
 
             // Inner light stroke (gives a crisp edge against red fill)
-            outG.lineStyle(6, 0xffffff, 0.95);
+            outG.lineStyle({ width: 6, color: 0xF2F0E6, alpha: 0.95, join: PIXI.LINE_JOIN.MITER, cap: PIXI.LINE_CAP.BUTT });
             outG.moveTo(polygon[0][0], polygon[0][1]);
             for (let i = 1; i < polygon.length; i++) outG.lineTo(polygon[i][0], polygon[i][1]);
             outG.closePath();

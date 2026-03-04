@@ -5,6 +5,7 @@ import Controls from './components/Controls';
 import Legend from './components/Legend';
 import HallDetails from './components/HallDetails';
 import { HallsProvider, useHalls } from './context/HallsContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { useTelemetry } from './hooks/useTelemetry';
 import './App.css';
 
@@ -69,5 +70,11 @@ function HallDetailsWrapper({ telemetryData }) {
 }
 
 export default function App() {
-  return ( <HallsProvider> <AppContent /> </HallsProvider> );
+  return ( 
+    <ThemeProvider>
+      <HallsProvider> 
+        <AppContent /> 
+      </HallsProvider> 
+    </ThemeProvider>
+  );
 }

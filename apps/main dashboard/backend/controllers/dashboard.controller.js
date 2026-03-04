@@ -1,5 +1,5 @@
 const analyticsDb = require("../dbs/analytics.db");
-
+const coreDb = require("../dbs/core.db");
 // Helper: pick the latest timestamp (interval) for a given event/zone
 async function getLatestTs({ eventId, zoneId }) {
   const r = await analyticsDb.query(
@@ -166,5 +166,243 @@ exports.getMapLayer = async (req, res) => {
     res.json({ ok: true, ts, metric, rows: r.rows });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
+  }
+};
+
+// Generic time-series endpoint for dashboards (single-series)
+// GET /dashboard/trends?metric=occupancy|congestion|comfort|temperature|energy|carbon
+// Optional: event_id, zone_id, hall_id
+// Optional: hours (default 6), limit (overrides hours)
+exports.getTrends = async (req, res) => {
+  try {
+    const eventId = req.query.event_id || null;
+    const zoneId = req.query.zone_id || null;
+    const hallId = req.query.hall_id || null;
+
+    const metric = String(req.query.metric || "occupancy").toLowerCase();
+    const hours = Number(req.query.hours || 6);
+    const limit = Number.isFinite(Number(req.query.limit))
+      ? Number(req.query.limit)
+      : Math.max(8, Math.min(7 * 24 * 4, Math.round(hours * 4)));
+
+    // whitelist metrics -> SQL expressions
+    const metricExpr =
+      metric === "congestion" ? "AVG(flow_congestion_index)::float8" :
+      metric === "comfort" ? "AVG(comfort_index)::float8" :
+      metric === "temperature" ? "AVG(indoor_temp_c)::float8" :
+      metric === "energy" ? "AVG(hvac_energy_kwh)::float8" :
+      metric === "carbon" ? "AVG(carbon_kg_co2)::float8" :
+      "SUM(current_occupancy)::float8"; // occupancy
+
+    const unit =
+      metric === "congestion" ? "index" :
+      metric === "comfort" ? "index" :
+      metric === "temperature" ? "°C" :
+      metric === "energy" ? "kWh" :
+      metric === "carbon" ? "kgCO2" :
+      "people";
+
+    const r = await analyticsDb.query(
+      `
+      SELECT ts, ${metricExpr} AS value
+      FROM interval_metrics
+      WHERE ($1::text IS NULL OR event_id = $1)
+        AND ($2::text IS NULL OR zone_id = $2)
+        AND ($3::text IS NULL OR hall_id = $3)
+      GROUP BY ts
+      ORDER BY ts DESC
+      LIMIT $4;
+      `,
+      [eventId, zoneId, hallId, limit]
+    );
+
+    const points = (r.rows || [])
+      .map((x) => ({ ts: x.ts, value: Number(x.value || 0) }))
+      .reverse();
+
+    res.json({ ok: true, metric, unit, filters: { event_id: eventId, zone_id: zoneId, hall_id: hallId }, points });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+};
+
+// Snapshot leaderboard to replace large tables with a compact bar chart.
+// GET /dashboard/top-halls?metric=occupancy_ratio|congestion|comfort|energy&limit=8
+exports.getTopHalls = async (req, res) => {
+  try {
+    const eventId = req.query.event_id || null;
+    const zoneId = req.query.zone_id || null;
+    const metric = String(req.query.metric || "occupancy_ratio").toLowerCase();
+    const limit = Math.max(3, Math.min(20, Number(req.query.limit || 8)));
+
+    const ts = await getLatestTs({ eventId, zoneId });
+    if (!ts) return res.json({ ok: true, ts: null, metric, rows: [] });
+
+    const orderExpr =
+      metric === "congestion" ? "flow_congestion_index" :
+      metric === "comfort" ? "comfort_index" :
+      metric === "energy" ? "hvac_energy_kwh" :
+      "occupancy_ratio";
+
+    const r = await analyticsDb.query(
+      `
+      SELECT
+        zone_id,
+        hall_id,
+        hall_name,
+        hall_capacity,
+        current_occupancy,
+        occupancy_ratio,
+        flow_congestion_index,
+        comfort_index,
+        hvac_energy_kwh,
+        carbon_kg_co2,
+        is_overcrowded
+      FROM interval_metrics
+      WHERE ts = $1
+        AND ($2::text IS NULL OR event_id = $2)
+        AND ($3::text IS NULL OR zone_id = $3)
+        AND hall_id IS NOT NULL
+      ORDER BY ${orderExpr} DESC NULLS LAST
+      LIMIT $4;
+      `,
+      [ts, eventId, zoneId, limit]
+    );
+
+    res.json({ ok: true, ts, metric, rows: r.rows || [] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+};
+
+// ✅ Devices status summary (Active / Inactive / Quarantined)
+// GET /dashboard/device-status?zone_id=&hall_id=
+exports.getDeviceStatusSummary = async (req, res) => {
+  try {
+    const zoneId = req.query.zone_id || null;
+    const hallId = req.query.hall_id || null;
+
+    const r = await coreDb.query(
+      `
+      SELECT COALESCE(status,'UNKNOWN') AS status, COUNT(*)::int AS count
+      FROM devices
+      WHERE ($1::text IS NULL OR zoneid = $1)
+        AND ($2::text IS NULL OR hallid = $2)
+      GROUP BY COALESCE(status,'UNKNOWN')
+      `,
+      [zoneId, hallId]
+    );
+
+    const raw = r.rows || [];
+    const norm = (s) => String(s || "").toLowerCase().trim();
+
+    const isActive = (s) => ["active", "online", "connected"].includes(norm(s));
+    const isInactive = (s) => ["inactive", "offline", "disconnected"].includes(norm(s));
+    const isQuarantined = (s) =>
+      norm(s).includes("quarantine") || norm(s).includes("isolat") || norm(s) === "quarantined";
+
+    let active = 0,
+      inactive = 0,
+      quarantined = 0,
+      other = 0;
+
+    for (const row of raw) {
+      const s = row.status;
+      const c = Number(row.count || 0);
+      if (isActive(s)) active += c;
+      else if (isInactive(s)) inactive += c;
+      else if (isQuarantined(s)) quarantined += c;
+      else other += c;
+    }
+
+    res.json({
+      ok: true,
+      filters: { zone_id: zoneId, hall_id: hallId },
+      counts: { active, inactive, quarantined, other },
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+};
+
+exports.getAlertsTrend = async (req, res) => {
+  try {
+    const lifetime =
+      String(req.query.lifetime || "").toLowerCase() === "1" ||
+      String(req.query.lifetime || "").toLowerCase() === "true";
+
+    const daysRaw = Number(req.query.days || 0);
+    const days = Number.isFinite(daysRaw) ? Math.max(1, Math.min(365, daysRaw)) : 0;
+
+    const hoursRaw = Number(req.query.hours || 6);
+    const hours = Number.isFinite(hoursRaw) ? Math.max(1, Math.min(72, hoursRaw)) : 6;
+
+    const bucketMins = 15;
+
+    // precedence: lifetime > days > hours
+    const mode = lifetime ? "lifetime" : days > 0 ? "days" : "hours";
+
+    const timeClause =
+      mode === "lifetime"
+        ? ""
+        : mode === "days"
+          ? "AND detected_at >= NOW() - ($1 || ' days')::interval"
+          : "AND detected_at >= NOW() - ($1 || ' hours')::interval";
+
+    // Trend query params
+    const trendParams =
+      mode === "lifetime" ? [bucketMins] : mode === "days" ? [days, bucketMins] : [hours, bucketMins];
+
+    // Determine which placeholder index holds bucketMins (1 if lifetime, else 2)
+    const bucketIdx = mode === "lifetime" ? 1 : 2;
+
+    const r = await coreDb.query(
+      `
+      SELECT
+        to_timestamp(
+          floor(extract(epoch from detected_at) / ($${bucketIdx} * 60)) * ($${bucketIdx} * 60)
+        ) AS ts,
+        COUNT(*)::int AS value
+      FROM alerts
+      WHERE domain = 'OPERATIONS'
+      ${timeClause}
+      GROUP BY 1
+      ORDER BY 1 ASC;
+      `,
+      trendParams
+    );
+
+    // Total query (same time window)
+    const totalParams = mode === "lifetime" ? [] : mode === "days" ? [days] : [hours];
+    const totalTimeClause =
+      mode === "lifetime"
+        ? ""
+        : mode === "days"
+          ? "AND detected_at >= NOW() - ($1 || ' days')::interval"
+          : "AND detected_at >= NOW() - ($1 || ' hours')::interval";
+
+    const totalQ = await coreDb.query(
+      `
+      SELECT COUNT(*)::int AS total
+      FROM alerts
+      WHERE domain = 'OPERATIONS'
+      ${totalTimeClause}
+      `,
+      totalParams
+    );
+
+    res.json({
+      ok: true,
+      metric: "alerts",
+      unit: "alerts",
+      range: mode === "lifetime" ? "lifetime" : mode === "days" ? `${days}d` : `${hours}h`,
+      lifetime: mode === "lifetime",
+      days: mode === "days" ? days : null,
+      hours: mode === "hours" ? hours : null,
+      total: Number(totalQ.rows?.[0]?.total || 0),
+      points: (r.rows || []).map((x) => ({ ts: x.ts, value: Number(x.value || 0) })),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 };

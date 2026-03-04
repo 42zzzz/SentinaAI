@@ -13,7 +13,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: linear-gradient(135deg, #111111 0%, #2a2a2a 100%);
             overflow: hidden;
             height: 100vh;
         }
@@ -26,51 +26,54 @@
         #canvas-container {
             flex: 1;
             position: relative;
-            background: #1a1a2e;
+            background: #1a1a1a;
         }
 
         #pixiCanvas {
-            width: 100%;
-            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            width: 1600px;
+            height: 900px;
             display: block;
+            object-fit: contain;
         }
 
         #controls-panel {
             width: 380px;
-            background: linear-gradient(180deg, #16213e 0%, #0f3460 100%);
+            background: linear-gradient(180deg, #0d0d0d 0%, #1a1a1a 100%);
             color: white;
             padding: 20px;
             overflow-y: auto;
-            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+            box-shadow: -5px 0 25px rgba(0, 0, 0, 0.8);
         }
 
         h1 {
             font-size: 22px;
             margin-bottom: 10px;
-            color: #00d4ff;
-            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
         }
 
         h2 {
             font-size: 16px;
             margin: 15px 0 8px;
-            color: #4ecdc4;
-            border-bottom: 2px solid #4ecdc4;
+            color: #dddddd;
+            border-bottom: 2px solid #555555;
             padding-bottom: 4px;
         }
 
         .control-group {
             margin-bottom: 18px;
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.07);
             padding: 12px;
             border-radius: 8px;
-            border-left: 3px solid #00d4ff;
+            border-left: 3px solid #bbbbbb;
         }
 
         label {
             display: block;
             margin-bottom: 6px;
-            color: #b3e0ff;
+            color: #eeeeee;
             font-weight: 600;
             font-size: 13px;
         }
@@ -91,8 +94,8 @@
         }
 
         button {
-            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
-            color: white;
+            background: linear-gradient(135deg, #888888 0%, #555555 100%);
+            color: #ffffff;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
@@ -102,7 +105,7 @@
 
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.4);
+            box-shadow: 0 4px 14px rgba(255, 255, 255, 0.2);
         }
 
         button:active {
@@ -111,8 +114,8 @@
 
         /* NEW: IoT Panel Styles */
         #iot-panel {
-            background: rgba(76, 175, 80, 0.1);
-            border-left: 3px solid #4caf50;
+            background: rgba(255, 255, 255, 0.07);
+            border-left: 3px solid #bbbbbb;
             padding: 12px;
             border-radius: 8px;
             margin-bottom: 18px;
@@ -120,8 +123,8 @@
         }
 
         #iot-panel h2 {
-            color: #4caf50;
-            border-color: #4caf50;
+            color: #dddddd;
+            border-color: #555555;
         }
 
         .iot-stat {
@@ -132,7 +135,7 @@
         }
 
         .iot-stat-label {
-            color: #b3e0ff;
+            color: #eeeeee;
         }
 
         .iot-stat-value {
@@ -204,7 +207,7 @@
         }
 
         input:checked + .toggle-slider {
-            background-color: #4caf50;
+            background-color: #aaaaaa;
         }
 
         input:checked + .toggle-slider:before {
@@ -212,8 +215,8 @@
         }
 
         #path-info {
-            background: rgba(76, 175, 80, 0.1);
-            border-left: 3px solid #4caf50;
+            background: rgba(255, 255, 255, 0.07);
+            border-left: 3px solid #bbbbbb;
             padding: 12px;
             border-radius: 8px;
             display: none;
@@ -238,10 +241,10 @@
         .distance-display {
             font-size: 26px;
             font-weight: bold;
-            color: #4caf50;
+            color: #ffffff;
             text-align: center;
             margin: 8px 0;
-            text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
         }
 
         .path-steps {
@@ -259,7 +262,7 @@
             margin: 4px 0;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 4px;
-            border-left: 2px solid #00d4ff;
+            border-left: 2px solid #bbbbbb;
         }
 
         .legend {
@@ -300,7 +303,7 @@
             height: 18px;
             border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
-            border-top-color: #00d4ff;
+            border-top-color: #ffffff;
             animation: spin 1s linear infinite;
             vertical-align: middle;
             margin-right: 8px;
@@ -332,7 +335,7 @@
         }
 
         .control-btn:hover {
-            background: rgba(0, 212, 255, 0.7);
+            background: rgba(220, 220, 220, 0.5);
             transform: scale(1.1);
         }
 
@@ -346,7 +349,7 @@
             z-index: 1000;
             min-width: 180px;
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 212, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.4);
             display: none;
             font-size: 12px;
         }
@@ -356,7 +359,7 @@
         }
 
         #event-tooltip h3 {
-            color: #00d4ff;
+            color: #ffffff;
             margin-bottom: 6px;
             font-size: 14px;
         }
@@ -364,7 +367,7 @@
         #event-tooltip p {
             margin: 4px 0;
             font-size: 12px;
-            color: #b3e0ff;
+            color: #eeeeee;
         }
 
         .stat-row {
@@ -419,13 +422,13 @@
                     <span class="iot-stat-value" id="max-occupancy">--</span>
                 </div>
                 <div style="margin-top: 10px;">
-                    <strong style="font-size: 12px; color: #4ecdc4;">Crowded Halls:</strong>
+                    <strong style="font-size: 12px; color: #ffffff;">Crowded Halls:</strong>
                     <ul id="crowded-halls"></ul>
 
                 <div class="toggle-container">
                     <span class="toggle-label">Show Heatmap</span>
                     <label class="toggle-switch">
-                        <input type="checkbox" id="heatmapToggle" checked>
+                        <input type="checkbox" id="heatmapToggle">
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -466,7 +469,7 @@
                 </select>
 
                 <button id="findPath">Find Optimal Path</button>
-                <button id="clearPath" style="background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%);">
+                <button id="clearPath" style="background: linear-gradient(135deg, #999999 0%, #555555 100%);">
                     Clear Path
                 </button>
             </div>
