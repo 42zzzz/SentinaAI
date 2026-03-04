@@ -3,7 +3,16 @@ import homeIcon from "../assets/icons/home.svg";
 import devicesIcon from "../assets/icons/devices.svg";
 // import alertsIcon from "../assets/icons/alerts.svg";
 
-const IconSize = 20
+
+const rolePrefixMap = {
+  operations_manager: "/operations",
+  sustainability_manager: "/sustainability",
+  soc_analyst: "/soc",
+  exhibitor: "/exhibitor",
+};
+
+
+const IconSize = 20;
 
 const navItemStyle = ({ isActive }) => ({
   display: "flex",
@@ -32,11 +41,19 @@ const iconStyle = {
 
 function PageTitle() {
   const { pathname } = useLocation();
+  const role = localStorage.getItem("role");
 
-  if (pathname === "/operations" || pathname === "/operations/") {
-    return "Dashboard";
+  if (role === "sustainability_manager") {
+    if (pathname === "/sustainability" || pathname === "/sustainability/") return "Dashboard";
+    if (pathname.startsWith("/sustainability/devices")) return "Devices";
+    if (pathname.startsWith("/sustainability/alerts")) return "Alerts";
+    if (pathname.startsWith("/sustainability/energy")) return "Energy";
+    if (pathname.startsWith("/sustainability/environment")) return "Environmental";
+    if (pathname.startsWith("/sustainability/map")) return "Map";
+    if (pathname.startsWith("/sustainability/reports")) return "Reports";
   }
 
+  if (pathname === "/operations" || pathname === "/operations/") return "Dashboard";
   if (pathname.startsWith("/operations/devices")) return "Devices";
   if (pathname.startsWith("/operations/events")) return "Events";
   if (pathname.startsWith("/operations/exhibitors")) return "Exhibitors";
@@ -53,6 +70,8 @@ function SvgIcon({ children }) {
 
 export default function AppLayout() {
   const navigate = useNavigate();
+  const role = localStorage.getItem("role") || "operations_manager";
+  const rolePrefix = rolePrefixMap[role] || "/operations";
 
   const handleLogout = () => {
     localStorage.clear();
@@ -67,28 +86,28 @@ export default function AppLayout() {
 
         <div style={styles.sectionLabel}>MAIN</div>
 
-        <NavLink to="/operations" end style={navItemStyle}>
+        <NavLink to={rolePrefix} end style={navItemStyle}>
           <SvgIcon>
             <svg
-            width="18"
-            height="18"
-            viewBox="0 0 20 21"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M7 19.3333V10.1667H13V19.3333M1 7.41667L10 1L19 7.41667V17.5C19 17.9862 18.7893 18.4525 18.4142 18.7964C18.0391 19.1402 17.5304 19.3333 17 19.3333H3C2.46957 19.3333 1.96086 19.1402 1.58579 18.7964C1.21071 18.4525 1 17.9862 1 17.5V7.41667Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          </SvgIcon> 
-        Dashboard
+              width="18"
+              height="18"
+              viewBox="0 0 20 21"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M7 19.3333V10.1667H13V19.3333M1 7.41667L10 1L19 7.41667V17.5C19 17.9862 18.7893 18.4525 18.4142 18.7964C18.0391 19.1402 17.5304 19.3333 17 19.3333H3C2.46957 19.3333 1.96086 19.1402 1.58579 18.7964C1.21071 18.4525 1 17.9862 1 17.5V7.41667Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </SvgIcon>
+          Dashboard
         </NavLink>
 
-        <NavLink to="/operations/devices" style={navItemStyle}>
+        <NavLink to={`${rolePrefix}/devices`} style={navItemStyle}>
           <SvgIcon>
             <svg
               width={IconSize}
@@ -118,7 +137,7 @@ export default function AppLayout() {
           Devices
         </NavLink>
 
-        <NavLink to="/operations/alerts" style={navItemStyle}>
+        <NavLink to={`${rolePrefix}/alerts`} style={navItemStyle}>
           <SvgIcon>
             <svg
               width={IconSize}
@@ -139,141 +158,169 @@ export default function AppLayout() {
           Alerts
         </NavLink>
 
-        <NavLink to="/operations/events" style={navItemStyle}>
-          <SvgIcon>
-            <svg
-              width="100%"
-              height="100%"
-              viewBox="0 0 25 19"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M0.5 0.5H2V17.375H24.5V18.5H0.5V0.5ZM22.7255 4.00212C22.8018 4.04893 22.865 4.10656 22.9116 4.17171C22.9581 4.23686 22.9871 4.30825 22.9969 4.3818C23.0066 4.45536 22.9969 4.52963 22.9684 4.60038C22.9398 4.67113 22.893 4.73697 22.8305 4.79413L16.0805 10.9816C16.0142 11.0424 15.9316 11.092 15.8381 11.1274C15.7447 11.1627 15.6424 11.183 15.5378 11.1869C15.4332 11.1909 15.3288 11.1783 15.231 11.1501C15.1333 11.1219 15.0446 11.0787 14.9705 11.0233L11.09 8.11287L5.606 13.7682C5.48603 13.8827 5.31161 13.9577 5.11938 13.9777C4.92714 13.9977 4.73207 13.961 4.57516 13.8753C4.41824 13.7897 4.3117 13.6618 4.27792 13.5184C4.24413 13.3751 4.28574 13.2276 4.394 13.1068L10.394 6.91925C10.4577 6.85345 10.5396 6.79879 10.6342 6.75904C10.7288 6.71928 10.8337 6.69537 10.9418 6.68895C11.0498 6.68254 11.1585 6.69377 11.2602 6.72187C11.3619 6.74998 11.4543 6.79429 11.531 6.85175L15.4445 9.788L21.6695 4.08087C21.7319 4.02367 21.8087 3.97625 21.8956 3.94133C21.9825 3.9064 22.0777 3.88467 22.1757 3.87735C22.2738 3.87004 22.3728 3.87729 22.4672 3.8987C22.5615 3.92011 22.6493 3.95526 22.7255 4.00212Z"
-                fill="currentColor"
-                stroke="currentColor"
-              />
-            </svg>
-          </SvgIcon>
-          Events
-        </NavLink>
+        {role === "operations_manager" && (
+          <>
+            <NavLink to={`${rolePrefix}/events`} style={navItemStyle}>
+              <SvgIcon>
+                <svg
+                  width="100%"
+                  height="100%"
+                  viewBox="0 0 25 19"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M0.5 0.5H2V17.375H24.5V18.5H0.5V0.5ZM22.7255 4.00212C22.8018 4.04893 22.865 4.10656 22.9116 4.17171C22.9581 4.23686 22.9871 4.30825 22.9969 4.3818C23.0066 4.45536 22.9969 4.52963 22.9684 4.60038C22.9398 4.67113 22.893 4.73697 22.8305 4.79413L16.0805 10.9816C16.0142 11.0424 15.9316 11.092 15.8381 11.1274C15.7447 11.1627 15.6424 11.183 15.5378 11.1869C15.4332 11.1909 15.3288 11.1783 15.231 11.1501C15.1333 11.1219 15.0446 11.0787 14.9705 11.0233L11.09 8.11287L5.606 13.7682C5.48603 13.8827 5.31161 13.9577 5.11938 13.9777C4.92714 13.9977 4.73207 13.961 4.57516 13.8753C4.41824 13.7897 4.3117 13.6618 4.27792 13.5184C4.24413 13.3751 4.28574 13.2276 4.394 13.1068L10.394 6.91925C10.4577 6.85345 10.5396 6.79879 10.6342 6.75904C10.7288 6.71928 10.8337 6.69537 10.9418 6.68895C11.0498 6.68254 11.1585 6.69377 11.2602 6.72187C11.3619 6.74998 11.4543 6.79429 11.531 6.85175L15.4445 9.788L21.6695 4.08087C21.7319 4.02367 21.8087 3.97625 21.8956 3.94133C21.9825 3.9064 22.0777 3.88467 22.1757 3.87735C22.2738 3.87004 22.3728 3.87729 22.4672 3.8987C22.5615 3.92011 22.6493 3.95526 22.7255 4.00212Z"
+                    fill="currentColor"
+                    stroke="currentColor"
+                  />
+                </svg>
+              </SvgIcon>
+              Events
+            </NavLink>
 
-        <NavLink to="/operations/exhibitors" style={navItemStyle}>
-          <SvgIcon>
-            <svg
-              width="100%"
-              height="100%"
-              viewBox="0 0 32 22"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M7.61909 8C8.88226 8 9.90481 6.6579 9.90481 5C9.90481 3.3421 8.88226 2 7.61909 2C6.35593 2 5.33338 3.3421 5.33338 5C5.33338 6.6579 6.35593 8 7.61909 8ZM7.61909 10C9.72386 10 11.4286 7.7625 11.4286 5C11.4286 2.2375 9.72386 0 7.61909 0C5.51433 0 3.80957 2.2375 3.80957 5C3.80957 7.7625 5.51433 10 7.61909 10Z"
-                fill="currentColor"
-              />
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M1.99734 15.7886C1.62706 16.2779 1.52381 16.6725 1.52381 17V20H15.2381V17C15.2381 16.6725 15.1349 16.2779 14.7646 15.7886C14.3803 15.2809 13.7821 14.7792 13.0101 14.3364C11.4581 13.4461 9.57067 13 8.38095 13C7.19124 13 5.30389 13.4461 3.75176 14.3364C2.97979 14.7792 2.38153 15.2809 1.99734 15.7886ZM8.38095 11C5.58377 11 0 13.01 0 17V22H16.7619V17C16.7619 13.01 11.1781 11 8.38095 11Z"
-                fill="currentColor"
-              />
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M24.3808 8C25.644 8 26.6665 6.6579 26.6665 5C26.6665 3.3421 25.644 2 24.3808 2C23.1177 2 22.0951 3.3421 22.0951 5C22.0951 6.6579 23.1177 8 24.3808 8ZM24.3808 10C26.4856 10 28.1903 7.7625 28.1903 5C28.1903 2.2375 26.4856 0 24.3808 0C22.2761 0 20.5713 2.2375 20.5713 5C20.5713 7.7625 22.2761 10 24.3808 10Z"
-                fill="currentColor"
-              />
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M15.9998 6C16.842 6 17.5236 5.1054 17.5236 4C17.5236 2.8946 16.842 2 15.9998 2C15.1576 2 14.476 2.8946 14.476 4C14.476 5.1054 15.1576 6 15.9998 6ZM15.9998 8C17.6836 8 19.0474 6.21 19.0474 4C19.0474 1.79 17.6836 0 15.9998 0C14.316 0 12.9521 1.79 12.9521 4C12.9521 6.21 14.316 8 15.9998 8Z"
-                fill="currentColor"
-              />
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M17.2356 15.7886C16.8653 16.2779 16.7621 16.6725 16.7621 17V20H30.4764V17C30.4764 16.6725 30.3731 16.2779 30.0029 15.7886C29.6186 15.2809 29.0204 14.7792 28.2484 14.3364C26.6963 13.4461 24.8089 13 23.6192 13C22.4295 13 20.5421 13.4461 18.9901 14.3364C18.2181 14.7792 17.6198 15.2809 17.2356 15.7886ZM23.6192 11C20.8221 11 15.2383 13.01 15.2383 17V22H32.0002V17C32.0002 13.01 26.4164 11 23.6192 11Z"
-                fill="currentColor"
-              />
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M16 11C13.4786 11 11.7119 12.5425 11.2054 13.2071L10.1279 11.7929C10.8914 10.7909 13.0357 9 16 9C18.9643 9 21.1087 10.7909 21.8721 11.7929L20.7946 13.2071C20.2882 12.5425 18.5214 11 16 11Z"
-                fill="currentColor"
-              />
-            </svg>
-          </SvgIcon>
-          Exhibitors
-        </NavLink>
+            <NavLink to={`${rolePrefix}/exhibitors`} style={navItemStyle}>
+              <SvgIcon>
+                <svg
+                  width="100%"
+                  height="100%"
+                  viewBox="0 0 32 22"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M7.61909 8C8.88226 8 9.90481 6.6579 9.90481 5C9.90481 3.3421 8.88226 2 7.61909 2C6.35593 2 5.33338 3.3421 5.33338 5C5.33338 6.6579 6.35593 8 7.61909 8ZM7.61909 10C9.72386 10 11.4286 7.7625 11.4286 5C11.4286 2.2375 9.72386 0 7.61909 0C5.51433 0 3.80957 2.2375 3.80957 5C3.80957 7.7625 5.51433 10 7.61909 10Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M1.99734 15.7886C1.62706 16.2779 1.52381 16.6725 1.52381 17V20H15.2381V17C15.2381 16.6725 15.1349 16.2779 14.7646 15.7886C14.3803 15.2809 13.7821 14.7792 13.0101 14.3364C11.4581 13.4461 9.57067 13 8.38095 13C7.19124 13 5.30389 13.4461 3.75176 14.3364C2.97979 14.7792 2.38153 15.2809 1.99734 15.7886ZM8.38095 11C5.58377 11 0 13.01 0 17V22H16.7619V17C16.7619 13.01 11.1781 11 8.38095 11Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M24.3808 8C25.644 8 26.6665 6.6579 26.6665 5C26.6665 3.3421 25.644 2 24.3808 2C23.1177 2 22.0951 3.3421 22.0951 5C22.0951 6.6579 23.1177 8 24.3808 8ZM24.3808 10C26.4856 10 28.1903 7.7625 28.1903 5C28.1903 2.2375 26.4856 0 24.3808 0C22.2761 0 20.5713 2.2375 20.5713 5C20.5713 7.7625 22.2761 10 24.3808 10Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M15.9998 6C16.842 6 17.5236 5.1054 17.5236 4C17.5236 2.8946 16.842 2 15.9998 2C15.1576 2 14.476 2.8946 14.476 4C14.476 5.1054 15.1576 6 15.9998 6ZM15.9998 8C17.6836 8 19.0474 6.21 19.0474 4C19.0474 1.79 17.6836 0 15.9998 0C14.316 0 12.9521 1.79 12.9521 4C12.9521 6.21 14.316 8 15.9998 8Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M17.2356 15.7886C16.8653 16.2779 16.7621 16.6725 16.7621 17V20H30.4764V17C30.4764 16.6725 30.3731 16.2779 30.0029 15.7886C29.6186 15.2809 29.0204 14.7792 28.2484 14.3364C26.6963 13.4461 24.8089 13 23.6192 13C22.4295 13 20.5421 13.4461 18.9901 14.3364C18.2181 14.7792 17.6198 15.2809 17.2356 15.7886ZM23.6192 11C20.8221 11 15.2383 13.01 15.2383 17V22H32.0002V17C32.0002 13.01 26.4164 11 23.6192 11Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M16 11C13.4786 11 11.7119 12.5425 11.2054 13.2071L10.1279 11.7929C10.8914 10.7909 13.0357 9 16 9C18.9643 9 21.1087 10.7909 21.8721 11.7929L20.7946 13.2071C20.2882 12.5425 18.5214 11 16 11Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </SvgIcon>
+              Exhibitors
+            </NavLink>
 
-        <NavLink to="/operations/booths" style={navItemStyle}>
-          <SvgIcon>
-            <svg
-              width="100%"
-              height="100%"
-              viewBox="0 0 35 33"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M17.0471 2.0552L17.1449 2.05482C19.4789 2.04581 21.2968 2.0388 22.7526 2.14867C24.2316 2.2603 25.432 2.49747 26.504 3.02884C28.0229 3.78167 29.2734 4.91893 30.1065 6.30515C30.6945 7.28358 30.9626 8.38186 31.0958 9.73651C31.227 11.07 31.2334 12.7361 31.2417 14.8754L31.2523 17.6286C31.2605 19.7679 31.267 21.434 31.1461 22.7685C31.0233 24.1241 30.7637 25.2244 30.1833 26.2074C29.3609 27.6 28.1192 28.7468 26.6062 29.5114C25.5383 30.051 24.3398 30.2974 22.8617 30.4205C21.4067 30.5416 19.5888 30.5486 17.2547 30.5576L17.1572 30.5579C14.8231 30.5669 13.0052 30.574 11.5493 30.4641C10.0703 30.3525 8.86996 30.1153 7.79791 29.5839C6.27904 28.8311 5.02857 27.6938 4.19544 26.3076C3.6074 25.3292 3.33934 24.2309 3.2061 22.8762C3.07494 21.5428 3.06852 19.8767 3.06028 17.7374L3.04966 14.9841C3.0414 12.8448 3.03497 11.1787 3.15583 9.84427C3.27862 8.48864 3.5382 7.38832 4.11868 6.40538C4.94109 5.01278 6.18275 3.86591 7.69577 3.10138C8.76369 2.56176 9.96217 2.31534 11.4403 2.19231C12.8952 2.0712 14.7131 2.06419 17.0471 2.0552ZM11.6229 4.04934C10.2789 4.16122 9.39617 4.37085 8.6771 4.7342C7.50573 5.32609 6.54444 6.21399 5.90774 7.29214C5.51688 7.95398 5.295 8.76462 5.18335 9.9973C5.07062 11.2419 5.07584 12.8275 5.0843 15.021L5.09458 17.6848C5.10304 19.8783 5.11004 21.4639 5.23237 22.7076C5.35352 23.9394 5.58166 24.7483 5.97761 25.4071C6.62261 26.4803 7.59072 27.3607 8.76662 27.9436C9.48847 28.3014 10.3728 28.5042 11.7176 28.6057C13.0755 28.7082 14.8055 28.7023 17.1987 28.6931C19.592 28.6839 21.322 28.6764 22.679 28.5634C24.0231 28.4515 24.9058 28.2419 25.6248 27.8786C26.7962 27.2867 27.7575 26.3988 28.3942 25.3206C28.7851 24.6588 29.0069 23.8481 29.1186 22.6155C29.2313 21.3709 29.2261 19.7852 29.2176 17.5918L29.2074 14.928C29.1989 12.7345 29.1919 11.1489 29.0696 9.90517C28.9484 8.67339 28.7203 7.86449 28.3243 7.20568C27.6793 6.13247 26.7112 5.25201 25.5353 4.66918C24.8135 4.31139 23.9292 4.10857 22.5843 4.00707C21.2264 3.90458 19.4964 3.91044 17.1032 3.91967C14.71 3.9289 12.98 3.93639 11.6229 4.04934Z"
-                fill="currentColor"
-              />
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M22.9881 22.5442C22.9901 23.0591 22.5363 23.4783 21.9745 23.4805L10.9302 23.5231C10.3684 23.5253 9.91132 23.1096 9.90934 22.5947C9.90735 22.0798 10.3612 21.6606 10.923 21.6584L21.9673 21.6158C22.5291 21.6137 22.9861 22.0293 22.9881 22.5442Z"
-                fill="currentColor"
-              />
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M22.9671 17.2161C22.9691 17.731 22.5153 18.1502 21.9535 18.1524L10.9092 18.195C10.3474 18.1971 9.89033 17.7815 9.88834 17.2666C9.88636 16.7516 10.3402 16.3325 10.902 16.3303L21.9463 16.2877C22.5081 16.2855 22.9651 16.7012 22.9671 17.2161Z"
-                fill="currentColor"
-              />
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M17.1341 11.9114C17.1361 12.4263 16.6823 12.8455 16.1205 12.8477L10.889 12.8679C10.3271 12.87 9.8701 12.4544 9.86812 11.9394C9.86613 11.4245 10.32 11.0054 10.8818 11.0032L16.1133 10.983C16.6751 10.9808 17.1321 11.3965 17.1341 11.9114Z"
-                fill="currentColor"
-              />
-            </svg>
-          </SvgIcon>
-          Booths
-        </NavLink>
+            <NavLink to={`${rolePrefix}/booths`} style={navItemStyle}>
+              <SvgIcon>
+                <svg
+                  width="100%"
+                  height="100%"
+                  viewBox="0 0 35 33"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M17.0471 2.0552L17.1449 2.05482C19.4789 2.04581 21.2968 2.0388 22.7526 2.14867C24.2316 2.2603 25.432 2.49747 26.504 3.02884C28.0229 3.78167 29.2734 4.91893 30.1065 6.30515C30.6945 7.28358 30.9626 8.38186 31.0958 9.73651C31.227 11.07 31.2334 12.7361 31.2417 14.8754L31.2523 17.6286C31.2605 19.7679 31.267 21.434 31.1461 22.7685C31.0233 24.1241 30.7637 25.2244 30.1833 26.2074C29.3609 27.6 28.1192 28.7468 26.6062 29.5114C25.5383 30.051 24.3398 30.2974 22.8617 30.4205C21.4067 30.5416 19.5888 30.5486 17.2547 30.5576L17.1572 30.5579C14.8231 30.5669 13.0052 30.574 11.5493 30.4641C10.0703 30.3525 8.86996 30.1153 7.79791 29.5839C6.27904 28.8311 5.02857 27.6938 4.19544 26.3076C3.6074 25.3292 3.33934 24.2309 3.2061 22.8762C3.07494 21.5428 3.06852 19.8767 3.06028 17.7374L3.04966 14.9841C3.0414 12.8448 3.03497 11.1787 3.15583 9.84427C3.27862 8.48864 3.5382 7.38832 4.11868 6.40538C4.94109 5.01278 6.18275 3.86591 7.69577 3.10138C8.76369 2.56176 9.96217 2.31534 11.4403 2.19231C12.8952 2.0712 14.7131 2.06419 17.0471 2.0552ZM11.6229 4.04934C10.2789 4.16122 9.39617 4.37085 8.6771 4.7342C7.50573 5.32609 6.54444 6.21399 5.90774 7.29214C5.51688 7.95398 5.295 8.76462 5.18335 9.9973C5.07062 11.2419 5.07584 12.8275 5.0843 15.021L5.09458 17.6848C5.10304 19.8783 5.11004 21.4639 5.23237 22.7076C5.35352 23.9394 5.58166 24.7483 5.97761 25.4071C6.62261 26.4803 7.59072 27.3607 8.76662 27.9436C9.48847 28.3014 10.3728 28.5042 11.7176 28.6057C13.0755 28.7082 14.8055 28.7023 17.1987 28.6931C19.592 28.6839 21.322 28.6764 22.679 28.5634C24.0231 28.4515 24.9058 28.2419 25.6248 27.8786C26.7962 27.2867 27.7575 26.3988 28.3942 25.3206C28.7851 24.6588 29.0069 23.8481 29.1186 22.6155C29.2313 21.3709 29.2261 19.7852 29.2176 17.5918L29.2074 14.928C29.1989 12.7345 29.1919 11.1489 29.0696 9.90517C28.9484 8.67339 28.7203 7.86449 28.3243 7.20568C27.6793 6.13247 26.7112 5.25201 25.5353 4.66918C24.8135 4.31139 23.9292 4.10857 22.5843 4.00707C21.2264 3.90458 19.4964 3.91044 17.1032 3.91967C14.71 3.9289 12.98 3.93639 11.6229 4.04934Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M22.9881 22.5442C22.9901 23.0591 22.5363 23.4783 21.9745 23.4805L10.9302 23.5231C10.3684 23.5253 9.91132 23.1096 9.90934 22.5947C9.90735 22.0798 10.3612 21.6606 10.923 21.6584L21.9673 21.6158C22.5291 21.6137 22.9861 22.0293 22.9881 22.5442Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M22.9671 17.2161C22.9691 17.731 22.5153 18.1502 21.9535 18.1524L10.9092 18.195C10.3474 18.1971 9.89033 17.7815 9.88834 17.2666C9.88636 16.7516 10.3402 16.3325 10.902 16.3303L21.9463 16.2877C22.5081 16.2855 22.9651 16.7012 22.9671 17.2161Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M17.1341 11.9114C17.1361 12.4263 16.6823 12.8455 16.1205 12.8477L10.889 12.8679C10.3271 12.87 9.8701 12.4544 9.86812 11.9394C9.86613 11.4245 10.32 11.0054 10.8818 11.0032L16.1133 10.983C16.6751 10.9808 17.1321 11.3965 17.1341 11.9114Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </SvgIcon>
+              Booths
+            </NavLink>
 
-        <NavLink to="/operations/navigation" style={navItemStyle}>
-          <SvgIcon>
-            <svg
-              width="100%"
-              height="100%"
-              viewBox="0 0 34 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M11.3332 18L1.4165 22V6L11.3332 2M11.3332 18L22.6665 22M11.3332 18V2M22.6665 22L32.5832 18V2L22.6665 6M22.6665 22V6M22.6665 6L11.3332 2"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </SvgIcon>
-          Navigation
-        </NavLink>
+            <NavLink to={`${rolePrefix}/navigation`} style={navItemStyle}>
+              <SvgIcon>
+                <svg
+                  width="100%"
+                  height="100%"
+                  viewBox="0 0 34 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M11.3332 18L1.4165 22V6L11.3332 2M11.3332 18L22.6665 22M11.3332 18V2M22.6665 22L32.5832 18V2L22.6665 6M22.6665 22V6M22.6665 6L11.3332 2"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </SvgIcon>
+              Navigation
+            </NavLink>
+          </>
+        )}
+
+        {role === "sustainability_manager" && (
+          <>
+            <NavLink to={`${rolePrefix}/energy`} style={navItemStyle}>
+              <SvgIcon>⚡</SvgIcon>
+              Energy
+            </NavLink>
+
+            <NavLink to={`${rolePrefix}/environment`} style={navItemStyle}>
+              <SvgIcon>🌱</SvgIcon>
+              Environmental
+            </NavLink>
+
+            <NavLink to={`${rolePrefix}/map`} style={navItemStyle}>
+              <SvgIcon>🗺️</SvgIcon>
+              Map
+            </NavLink>
+
+            <NavLink to={`${rolePrefix}/reports`} style={navItemStyle}>
+              <SvgIcon>📊</SvgIcon>
+              Reports
+            </NavLink>
+          </>
+        )}
 
         <div style={{ flex: 1 }} />
 
         <div style={styles.sectionLabel}>SETTINGS</div>
 
-        <NavLink to="/operations/settings" style={navItemStyle}>
+        <NavLink to={`${rolePrefix}/settings`} style={navItemStyle}>
           <SvgIcon>
             <svg
               width="100%"
@@ -308,7 +355,7 @@ export default function AppLayout() {
           Settings
         </NavLink>
 
-        <NavLink to="/operations/help" style={navItemStyle}>
+        <NavLink to={`${rolePrefix}/help`} style={navItemStyle}>
           <SvgIcon>
             <svg
               width="100%"
@@ -357,7 +404,15 @@ export default function AppLayout() {
           <div>
             <div style={styles.pageTitle}>{PageTitle()}</div>
             <div style={styles.subTitle}>
-              Operations Dashboard • {new Date().toLocaleString()}
+              {
+                role === "sustainability_manager"
+                  ? "Sustainability Dashboard"
+                  : role === "soc_analyst"
+                    ? "SOC Dashboard"
+                    : role === "exhibitor"
+                      ? "Exhibitor Portal"
+                      : "Operations Dashboard"
+              }
             </div>
           </div>
 

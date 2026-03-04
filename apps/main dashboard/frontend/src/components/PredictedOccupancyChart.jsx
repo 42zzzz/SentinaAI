@@ -55,7 +55,7 @@ function LineChart({ points }) {
   );
 }
 
-export default function PredictedOccupancyChart() {
+export default function PredictedOccupancyChart({ refreshSignal }) {
   const [rows, setRows] = useState([]);
   const [hallId, setHallId] = useState("");
   const [forecast, setForecast] = useState(null);
@@ -81,7 +81,7 @@ export default function PredictedOccupancyChart() {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshSignal]);
 
   // Load forecast for selected hall
   useEffect(() => {
@@ -92,6 +92,7 @@ export default function PredictedOccupancyChart() {
         const r = await axios.get(`${API_BASE}/ai/occupancy-forecast`, { params: { hall_id: hallId } });
         if (!alive) return;
         if (r.data?.ok === false) throw new Error(r.data.error || "Forecast error");
+        console.log("Forecast response in frontend:", r.data);
         setForecast(r.data);
         setErr("");
       } catch (e) {
@@ -105,7 +106,7 @@ export default function PredictedOccupancyChart() {
       alive = false;
       clearInterval(t);
     };
-  }, [hallId]);
+  }, [hallId, refreshSignal]);
 
   const selected = useMemo(() => rows.find((x) => x.hall_id === hallId), [rows, hallId]);
 

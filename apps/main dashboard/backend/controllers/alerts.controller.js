@@ -1,8 +1,7 @@
 // backend/controllers/alerts.controller.js
+
 const coreDb = require("../dbs/core.db");
 const { runOnce } = require("../utils/alertEngine");
-
-const ENFORCED_DOMAIN = "OPERATIONS";
 
 function toInt(v, def) {
   const n = parseInt(v, 10);
@@ -22,30 +21,56 @@ function severityOrderSql(dir = "DESC") {
 
 exports.getAlertFilters = async (req, res) => {
   try {
-    // Only OPERATIONS filters
+
+    const domain = (req.query.domain || "OPERATIONS").toUpperCase();
+
     const [severities, statuses, zones, halls, rules] = await Promise.all([
+
       coreDb
         .query(
-          `SELECT DISTINCT severity FROM alerts WHERE domain = $1 AND severity IS NOT NULL ORDER BY severity;`,
-          [ENFORCED_DOMAIN]
+          `SELECT DISTINCT severity
+           FROM alerts
+           WHERE domain = $1 AND severity IS NOT NULL
+           ORDER BY severity`,
+          [domain]
         )
         .catch(() => ({ rows: [] })),
+
       coreDb
         .query(
-          `SELECT DISTINCT status FROM alerts WHERE domain = $1 AND status IS NOT NULL ORDER BY status;`,
-          [ENFORCED_DOMAIN]
+          `SELECT DISTINCT status
+           FROM alerts
+           WHERE domain = $1 AND status IS NOT NULL
+           ORDER BY status`,
+          [domain]
         )
         .catch(() => ({ rows: [] })),
-      coreDb
-        .query(`SELECT DISTINCT zone_id FROM zones WHERE zone_id IS NOT NULL ORDER BY zone_id;`)
-        .catch(() => ({ rows: [] })),
-      coreDb
-        .query(`SELECT DISTINCT hall_id FROM halls WHERE hall_id IS NOT NULL ORDER BY hall_id;`)
-        .catch(() => ({ rows: [] })),
+
       coreDb
         .query(
-          `SELECT rule_key, rule_name FROM rules WHERE domain = $1 ORDER BY rule_key;`,
-          [ENFORCED_DOMAIN]
+          `SELECT DISTINCT zone_id
+           FROM zones
+           WHERE zone_id IS NOT NULL
+           ORDER BY zone_id`
+        )
+        .catch(() => ({ rows: [] })),
+
+      coreDb
+        .query(
+          `SELECT DISTINCT hall_id
+           FROM halls
+           WHERE hall_id IS NOT NULL
+           ORDER BY hall_id`
+        )
+        .catch(() => ({ rows: [] })),
+
+      coreDb
+        .query(
+          `SELECT rule_key, rule_name
+           FROM rules
+           WHERE domain = $1
+           ORDER BY rule_key`,
+          [domain]
         )
         .catch(() => ({ rows: [] })),
     ]);
@@ -55,21 +80,40 @@ exports.getAlertFilters = async (req, res) => {
 
     res.json({
       ok: true,
-      domain: ENFORCED_DOMAIN,
-      severities: severities.rows.length ? severities.rows.map((r) => r.severity) : defaultSev,
-      statuses: statuses.rows.length ? statuses.rows.map((r) => r.status) : defaultStatus,
+      domain,
+      severities: severities.rows.length
+        ? severities.rows.map((r) => r.severity)
+        : defaultSev,
+
+      statuses: statuses.rows.length
+        ? statuses.rows.map((r) => r.status)
+        : defaultStatus,
+
       zones: zones.rows.map((r) => r.zone_id),
       halls: halls.rows.map((r) => r.hall_id),
       rules: rules.rows,
-      sortOptions: ["detected_desc", "detected_asc", "severity_desc", "severity_asc", "status_asc", "status_desc"],
+
+      sortOptions: [
+        "detected_desc",
+        "detected_asc",
+        "severity_desc",
+        "severity_asc",
+        "status_asc",
+        "status_desc",
+      ],
     });
+
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
 };
 
 exports.listAlerts = async (req, res) => {
+
+  const domain = (req.query.domain || "OPERATIONS").toUpperCase();
+
   try {
+
     const q = (req.query.q || "").trim();
     const severity = req.query.severity || null;
     const status = req.query.status || null;
@@ -86,6 +130,7 @@ exports.listAlerts = async (req, res) => {
     const offset = (page - 1) * pageSize;
 
     const sort = (req.query.sort || "detected_desc").toLowerCase();
+
     const sortSql =
       {
         detected_desc: `a.detected_at DESC NULLS LAST, a.alert_id DESC`,
@@ -96,7 +141,6 @@ exports.listAlerts = async (req, res) => {
         status_desc: `a.status DESC NULLS LAST, a.detected_at DESC NULLS LAST`,
       }[sort] || `a.detected_at DESC NULLS LAST, a.alert_id DESC`;
 
-    // ✅ Enforced OPERATIONS domain + ✅ mask ack/res timestamps unless actually applicable
     const base = `
       FROM alerts a
       LEFT JOIN rules r ON r.rule_key = a.rule_key
@@ -143,23 +187,31 @@ exports.listAlerts = async (req, res) => {
         a.action_status,
         a.auto_response_executed,
         a.acknowledged_by,
+
         CASE
-          WHEN a.status IN ('ACKNOWLEDGED','RESOLVED','CLOSED') THEN a.acknowledged_at
+          WHEN a.status IN ('ACKNOWLEDGED','RESOLVED','CLOSED')
+          THEN a.acknowledged_at
           ELSE NULL
         END AS acknowledged_at,
+
         CASE
-          WHEN a.status IN ('RESOLVED','CLOSED') THEN a.resolved_at
+          WHEN a.status IN ('RESOLVED','CLOSED')
+          THEN a.resolved_at
           ELSE NULL
         END AS resolved_at,
+
         a.response_type,
         a.response_action
+
       ${base}
+
       ORDER BY ${sortSql}
-      LIMIT $11 OFFSET $12;
+
+      LIMIT $11 OFFSET $12
     `;
 
     const params = [
-      ENFORCED_DOMAIN,
+      domain,
       severity,
       status,
       ruleKey,
@@ -180,27 +232,29 @@ exports.listAlerts = async (req, res) => {
 
     res.json({
       ok: true,
-      domain: ENFORCED_DOMAIN,
+      domain,
       page,
       pageSize,
       total: countRes.rows[0]?.total || 0,
       rows: dataRes.rows || [],
     });
+
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
 };
 
 exports.acknowledgeAlert = async (req, res) => {
+
+  const domain = (req.query.domain || "OPERATIONS").toUpperCase();
+
   try {
+
     const id = toInt(req.params.id, null);
     if (!id) return res.status(400).json({ ok: false, error: "Invalid alert id" });
 
     const userId = req.body?.user_id ? String(req.body.user_id) : null;
 
-    // ✅ Only OPERATIONS
-    // ✅ Only NEW can be acknowledged
-    // ✅ acknowledged_at is ALWAYS set to NOW() on the click (overwrites any wrong pre-filled value)
     const upd = await coreDb.query(
       `
       UPDATE alerts
@@ -211,59 +265,76 @@ exports.acknowledgeAlert = async (req, res) => {
       WHERE alert_id = $1
         AND domain = $3
         AND status = 'NEW'
-      RETURNING alert_id, status, acknowledged_by, acknowledged_at;
+      RETURNING alert_id, status, acknowledged_by, acknowledged_at
       `,
-      [id, userId, ENFORCED_DOMAIN]
+      [id, userId, domain]
     );
 
-    // If it wasn't NEW, return the current row (no change) instead of pretending it updated
     if (!upd.rows.length) {
+
       const cur = await coreDb.query(
         `
         SELECT alert_id, status, acknowledged_by, acknowledged_at
         FROM alerts
         WHERE alert_id = $1 AND domain = $2
-        LIMIT 1;
+        LIMIT 1
         `,
-        [id, ENFORCED_DOMAIN]
+        [id, domain]
       );
 
-      if (!cur.rows.length) return res.status(404).json({ ok: false, error: "Alert not found" });
+      if (!cur.rows.length)
+        return res.status(404).json({ ok: false, error: "Alert not found" });
 
       return res.status(409).json({
         ok: false,
-        error: "Alert is not NEW (already acknowledged/resolved).",
+        error: "Alert already acknowledged/resolved",
         alert: cur.rows[0],
       });
     }
 
     res.json({ ok: true, alert: upd.rows[0] });
+
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
 };
 
 exports.resolveAlert = async (req, res) => {
+
+  const domain = (req.query.domain || "OPERATIONS").toUpperCase();
+
   try {
+
     const id = toInt(req.params.id, null);
     if (!id) return res.status(400).json({ ok: false, error: "Invalid alert id" });
 
-    // ✅ resolved_at set ONLY on click, and only once
     const r = await coreDb.query(
       `
       UPDATE alerts
       SET
-        status = CASE WHEN status IN ('RESOLVED','CLOSED') THEN status ELSE 'RESOLVED' END,
-        resolved_at = CASE WHEN status IN ('RESOLVED','CLOSED') THEN resolved_at ELSE NOW() END
+        status = CASE
+          WHEN status IN ('RESOLVED','CLOSED') THEN status
+          ELSE 'RESOLVED'
+        END,
+
+        resolved_at = CASE
+          WHEN status IN ('RESOLVED','CLOSED') THEN resolved_at
+          ELSE NOW()
+        END
+
       WHERE alert_id = $1
         AND domain = $2
-      RETURNING alert_id, status, resolved_at;
+
+      RETURNING alert_id, status, resolved_at
       `,
-      [id, ENFORCED_DOMAIN]
+      [id, domain]
     );
 
-    if (!r.rows.length) return res.status(404).json({ ok: false, error: "Alert not found" });
+    if (!r.rows.length)
+      return res.status(404).json({ ok: false, error: "Alert not found" });
+
     res.json({ ok: true, alert: r.rows[0] });
+
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }

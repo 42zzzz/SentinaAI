@@ -2,6 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const role = localStorage.getItem("role");
+
+const roleDomainMap = {
+  operations_manager: "OPERATIONS",
+  sustainability_manager: "SUSTAINABILITY",
+  soc_analyst: "SOC",
+  exhibitor: "EXHIBITOR",
+};
+
+const domain = roleDomainMap[role] || "OPERATIONS";
 
 function fmtTs(iso) {
   if (!iso) return "-";
@@ -59,6 +69,7 @@ export default function AlertsPage() {
       try {
         const res = await axios.get(`${API_BASE}/alerts`, {
           params: {
+            domain,
             q: qLive || undefined,
             severity: severity || undefined,
             status: status || undefined,
@@ -108,53 +119,53 @@ export default function AlertsPage() {
     setPageSize(10);
   };
 
-const ack = async (alertId) => {
-  try {
-    const res = await axios.patch(`${API_BASE}/alerts/${alertId}/ack`, {
-      user_id: localStorage.getItem("user_id") || null,
-    });
+  const ack = async (alertId) => {
+    try {
+      const res = await axios.patch(`${API_BASE}/alerts/${alertId}/ack`, {
+        user_id: localStorage.getItem("user_id") || null,
+      });
 
-    const updated = res.data?.alert;
-    if (updated) {
-      setRows((prev) =>
-        prev.map((r) =>
-          r.alert_id === alertId
-            ? { ...r, status: updated.status, acknowledged_by: updated.acknowledged_by, acknowledged_at: updated.acknowledged_at }
-            : r
-        )
-      );
+      const updated = res.data?.alert;
+      if (updated) {
+        setRows((prev) =>
+          prev.map((r) =>
+            r.alert_id === alertId
+              ? { ...r, status: updated.status, acknowledged_by: updated.acknowledged_by, acknowledged_at: updated.acknowledged_at }
+              : r
+          )
+        );
+      }
+    } catch (e) {
+      setError(e?.response?.data?.error || e.message || "Failed to acknowledge alert");
     }
-  } catch (e) {
-    setError(e?.response?.data?.error || e.message || "Failed to acknowledge alert");
-  }
-};
+  };
 
-const resolve = async (alertId) => {
-  try {
-    const res = await axios.patch(`${API_BASE}/alerts/${alertId}/resolve`);
-    const updated = res.data?.alert;
+  const resolve = async (alertId) => {
+    try {
+      const res = await axios.patch(`${API_BASE}/alerts/${alertId}/resolve`);
+      const updated = res.data?.alert;
 
-    if (updated) {
-      setRows((prev) =>
-        prev.map((r) =>
-          r.alert_id === alertId
-            ? { ...r, status: updated.status, resolved_at: updated.resolved_at }
-            : r
-        )
-      );
+      if (updated) {
+        setRows((prev) =>
+          prev.map((r) =>
+            r.alert_id === alertId
+              ? { ...r, status: updated.status, resolved_at: updated.resolved_at }
+              : r
+          )
+        );
+      }
+    } catch (e) {
+      setError(e?.response?.data?.error || e.message || "Failed to resolve alert");
     }
-  } catch (e) {
-    setError(e?.response?.data?.error || e.message || "Failed to resolve alert");
-  }
-};
+  };
 
   return (
     <div style={{ padding: 20, maxWidth: 1400 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
         <div>
-          <h1 style={{ margin: 0 }}>Operations Alerts</h1>
+          <h1 style={{ margin: 0 }}>{domain} Alerts</h1>
           <div style={{ fontSize: 13, opacity: 0.7, marginTop: 4 }}>
-            Domain locked to <b>OPERATIONS</b>
+            Domain locked to <b>{domain}</b>
           </div>
         </div>
         <div style={{ fontSize: 13, opacity: 0.75 }}>{loading ? "Loading…" : `${total} alerts`}</div>
@@ -307,7 +318,7 @@ const resolve = async (alertId) => {
                           <div>
                             <div style={{ fontWeight: 800, marginBottom: 6 }}>Metadata</div>
                             <pre style={{ margin: 0, padding: 12, borderRadius: 12, border: "1px solid #e5e7eb", background: "white", overflowX: "auto", fontSize: 12 }}>
-{JSON.stringify(meta || {}, null, 2)}
+                              {JSON.stringify(meta || {}, null, 2)}
                             </pre>
                           </div>
                         </div>
@@ -364,10 +375,10 @@ function pillSeverity(sev) {
   const s = String(sev || "").toUpperCase();
   const bg =
     s === "CRITICAL" ? "#fee2e2" :
-    s === "HIGH" ? "#ffedd5" :
-    s === "MEDIUM" ? "#fef9c3" :
-    s === "LOW" ? "#dcfce7" :
-    "#e5e7eb";
+      s === "HIGH" ? "#ffedd5" :
+        s === "MEDIUM" ? "#fef9c3" :
+          s === "LOW" ? "#dcfce7" :
+            "#e5e7eb";
   return { padding: "4px 10px", borderRadius: 999, background: bg, fontSize: 12, fontWeight: 900 };
 }
 
@@ -375,10 +386,10 @@ function pillStatus(st) {
   const s = String(st || "").toUpperCase();
   const bg =
     s === "NEW" ? "#e0e7ff" :
-    s === "ACKNOWLEDGED" ? "#fef9c3" :
-    s === "RESOLVED" ? "#dcfce7" :
-    s === "CLOSED" ? "#f3f4f6" :
-    "#e5e7eb";
+      s === "ACKNOWLEDGED" ? "#fef9c3" :
+        s === "RESOLVED" ? "#dcfce7" :
+          s === "CLOSED" ? "#f3f4f6" :
+            "#e5e7eb";
   return { padding: "4px 10px", borderRadius: 999, background: bg, fontSize: 12, fontWeight: 800 };
 }
 

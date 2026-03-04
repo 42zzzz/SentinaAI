@@ -15,6 +15,7 @@ import AlertsPage from "./pages/AlertsPage";
 import NavigationPage from "./pages/NavigationPage";
 import EventDetails from "./pages/EventDetails";
 import ExhibitorDashboard from "./pages/ExhibitorDashboard";
+import SustainabilityDashboard from "./pages/SustainabilityDashboard";
 
 export default function App() {
   const role = localStorage.getItem("role");
@@ -89,15 +90,25 @@ export default function App() {
           }
         />
 
-        {/* FUTURE SUSTAINABILITY */}
+        {/* SUSTAINABILITY */}
         <Route
           path="/sustainability/*"
           element={
             <ProtectedRoute allowedRoles={["sustainability_manager"]}>
-              <div>Sustainability Dashboard Coming Soon</div>
+              <AppLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<SustainabilityDashboard />} />
+          <Route path="devices" element={<DevicesPage />} />
+          <Route path="alerts" element={<AlertsPage />} />
+
+          {/* temporary placeholders */}
+          <Route path="energy" element={<div>Energy Page</div>} />
+          <Route path="environment" element={<div>Environmental Page</div>} />
+          <Route path="map" element={<div>Map Page</div>} />
+          <Route path="reports" element={<div>Reports Page</div>} />
+        </Route>
 
         {/* EXHIBITOR */}
         <Route
