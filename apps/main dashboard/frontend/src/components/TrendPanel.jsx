@@ -22,6 +22,9 @@ export default function TrendPanel({
   zoneId,
   hallId,
   refreshMs = 15000,
+
+  // ✅ NEW: when true, parent card provides header/border/padding
+  embedded = false,
 }) {
   const [points, setPoints] = useState([]);
   const [err, setErr] = useState("");
@@ -63,9 +66,50 @@ export default function TrendPanel({
     return b - a;
   }, [points]);
 
-  // Occupancy should not show "people" in headline
   const showUnitOnHeadline = !(metric === "occupancy" || unit === "people");
 
+  const content = (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16, alignItems: "center" }}>
+      <div>
+        <div style={{ fontSize: 40, fontWeight: 950, lineHeight: 1.02 }}>
+          {latest === null
+            ? "—"
+            : `${formatValue(metric, unit, latest)}${showUnitOnHeadline && unit ? ` ${unit}` : ""}`}
+        </div>
+
+        <div style={{ marginTop: 10, fontSize: 13, opacity: 0.75 }}>
+          {delta === null
+            ? ""
+            : `Change: ${delta >= 0 ? "+" : ""}${formatValue(metric, unit, delta)}${unit ? ` ${unit}` : ""}`}
+        </div>
+
+        {err ? (
+          <div
+            style={{
+              marginTop: 8,
+              padding: 10,
+              borderRadius: 10,
+              background: "#fff1f2",
+              border: "1px solid #fecdd3",
+              fontSize: 12,
+            }}
+          >
+            {err}
+          </div>
+        ) : null}
+      </div>
+
+      <div style={{ justifySelf: "end" }}>
+        {/* ✅ we'll make Sparkline pink in Sparkline.jsx */}
+        <Sparkline points={points} height={110} />
+      </div>
+    </div>
+  );
+
+  // ✅ Embedded mode: just return content (no outer card/header)
+  if (embedded) return content;
+
+  // Default mode (existing behaviour preserved)
   return (
     <div
       style={{
@@ -73,55 +117,17 @@ export default function TrendPanel({
         borderRadius: 16,
         background: "white",
         padding: 16,
-        height: 170,               // ✅ SAME HEIGHT FOR ALL CARDS
+        height: 170,
         display: "grid",
         gridTemplateRows: "auto 1fr",
         gap: 10,
       }}
     >
-      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <div style={{ fontWeight: 900, fontSize: 16 }}>{title}</div>
         <div style={{ fontSize: 12, opacity: 0.65 }}>{hours}h</div>
       </div>
-
-      {/* Content */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16, alignItems: "center" }}>
-        <div>
-          {/* ✅ unified number size (slightly smaller) */}
-          <div style={{ fontSize: 40, fontWeight: 950, lineHeight: 1.02 }}>
-            {latest === null
-              ? "—"
-              : `${formatValue(metric, unit, latest)}${showUnitOnHeadline && unit ? ` ${unit}` : ""}`}
-          </div>
-
-          <div style={{ marginTop: 10, fontSize: 13, opacity: 0.75 }}>
-            {delta === null
-              ? ""
-              : `Change: ${delta >= 0 ? "+" : ""}${formatValue(metric, unit, delta)}${unit ? ` ${unit}` : ""}`}
-          </div>
-
-          {err ? (
-            <div
-              style={{
-                marginTop: 8,
-                padding: 10,
-                borderRadius: 10,
-                background: "#fff1f2",
-                border: "1px solid #fecdd3",
-                fontSize: 12,
-              }}
-            >
-              {err}
-            </div>
-          ) : null}
-        </div>
-
-        {/* ✅ big chart, consistent size */}
-        <div style={{ justifySelf: "end" }}>
-          <Sparkline points={points} height={110} />
-        </div>
-      </div>
+      {content}
     </div>
   );
 }

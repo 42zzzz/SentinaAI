@@ -18,6 +18,8 @@ function fmtTime(ts) {
 }
 
 export default function Sparkline({ points = [], height = 110 }) {
+  const ACCENT = "#E8486F";
+
   // ✅ Bigger chart width/height
   const w = 320;
   const h = height;
@@ -49,6 +51,12 @@ export default function Sparkline({ points = [], height = 110 }) {
     .map((p, i) => `${i === 0 ? "M" : "L"} ${xScale(i).toFixed(2)} ${yScale(p.value).toFixed(2)}`)
     .join(" ");
 
+  // ✅ Area fill path (line + down to baseline + back)
+  const baselineY = h - padBottom;
+  const areaD = `${d} L ${xScale(points.length - 1).toFixed(2)} ${baselineY.toFixed(
+    2
+  )} L ${xScale(0).toFixed(2)} ${baselineY.toFixed(2)} Z`;
+
   const firstTs = points[0]?.ts;
   const lastTs = points[points.length - 1]?.ts;
 
@@ -56,6 +64,10 @@ export default function Sparkline({ points = [], height = 110 }) {
     const mid = (yMin + yMax) / 2;
     return [yMax, mid, yMin];
   }, [yMin, yMax]);
+
+  // ✅ last point marker (optional)
+  const lastX = xScale(points.length - 1);
+  const lastY = yScale(points[points.length - 1]?.value);
 
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block" }}>
@@ -74,10 +86,23 @@ export default function Sparkline({ points = [], height = 110 }) {
 
       {/* Axes */}
       <line x1={padLeft} x2={padLeft} y1={padTop} y2={h - padBottom} stroke="#9ca3af" strokeWidth="1" />
-      <line x1={padLeft} x2={w - padRight} y1={h - padBottom} y2={h - padBottom} stroke="#9ca3af" strokeWidth="1" />
+      <line
+        x1={padLeft}
+        x2={w - padRight}
+        y1={h - padBottom}
+        y2={h - padBottom}
+        stroke="#9ca3af"
+        strokeWidth="1"
+      />
 
-      {/* Line */}
-      <path d={d} fill="none" stroke="#111827" strokeWidth="2.5" />
+      {/* ✅ Soft area fill */}
+      <path d={areaD} fill={ACCENT} opacity="0.12" />
+
+      {/* ✅ Pink line */}
+      <path d={d} fill="none" stroke={ACCENT} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+
+      {/* ✅ Optional last-point dot */}
+      <circle cx={lastX} cy={lastY} r="3.5" fill={ACCENT} stroke="#ffffff" strokeWidth="2" />
 
       {/* X labels: start/end time */}
       <text x={padLeft} y={h - 6} fontSize="10" textAnchor="start" fill="#6b7280">
