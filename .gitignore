@@ -2,6 +2,8 @@ __pycache__/
 __pycache__ /
 node_modules/
 *.pyc
+.venv/
+venv/
 /apps/navigation_web/backend/__pycache__
 apps/navigation_web/.claude/settings.local.json
 
