@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 
 const hallIdMap = {
-  'northhall1': 'HZA01', 'northhall2': 'HZA02', 'northhall3': 'HZA03', 
+  'northhall1': 'HZA01', 'northhall2': 'HZA02', 'northhall3': 'HZA03',
   'northhall4': 'HZA04', 'northhall5': 'HZA05', 'northhall6': 'HZA06',
-  'hall1': 'HZB01', 'hall2': 'HZB02', 'hall3': 'HZB03', 'hall4': 'HZB04',
-  'hall5': 'HZB05', 'hall6': 'HZB06', 'hall7': 'HZB07', 'hall8': 'HZB08',
-  'southhall1': 'HZC01', 'southhall2': 'HZC02', 'southhall3': 'HZC03', 
+  'easthall1': 'HZB01', 'easthall2': 'HZB02', 'easthall3': 'HZB03', 'easthall4': 'HZB04',
+  'hall7': 'HZB05', 'hall8': 'HZB06', 'hall9': 'HZB07', 'hall10': 'HZB08',
+  'southhall1': 'HZC01', 'southhall2': 'HZC02', 'southhall3': 'HZC03',
   'southhall4': 'HZC04', 'southhall5': 'HZC05', 'southhall6': 'HZC06',
-  'easthall1': 'HZD01', 'easthall2': 'HZD02', 'easthall3': 'HZD03', 'easthall4': 'HZD04',
-  'hall9': 'HZD05', 'hall10': 'HZD06'
+  'hall1': 'HZD01', 'hall2': 'HZD02', 'hall3': 'HZD03', 'hall4': 'HZD04',
+  'hall5': 'HZD05', 'hall6': 'HZD06'
 };
 
 const generateSimulationHistory = () => {
@@ -72,6 +72,25 @@ export function useTelemetry(simMode = 'live', timeIndex = 24) {
   }, [simMode]);
 
   // 2. DATA INJECTION ENGINE
+  const applyLocalInjection = (targetHall, occupancy, co2) => {
+    const occupancyRatio = Math.min(parseInt(occupancy) / 100, 1.1);
+    const co2Val = parseInt(co2);
+    const isAnomaly = occupancyRatio > 0.92;
+    const aiAction = isAnomaly ? 'dispatchSecurityAndOpenRoutes' : 'monitor';
+    const reactId = hallIdMap[targetHall] || targetHall;
+    setSandboxData(prev => ({
+      ...prev,
+      [reactId]: {
+        ...prev[reactId],
+        occupancyRatio,
+        co2: co2Val,
+        aiAction,
+        isAnomaly,
+        hallName: targetHall
+      }
+    }));
+  };
+
   const injectData = async (targetHall, occupancy, co2) => {
     try {
       const response = await fetch('/api/simulate-prediction', {
@@ -79,6 +98,10 @@ export function useTelemetry(simMode = 'live', timeIndex = 24) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hall_id: targetHall, occupancy: parseInt(occupancy), co2: parseInt(co2) })
       });
+      if (!response.ok) {
+        applyLocalInjection(targetHall, occupancy, co2);
+        return;
+      }
       const result = await response.json();
       if (result.status === "success") {
         setSandboxData(prev => {
@@ -96,8 +119,12 @@ export function useTelemetry(simMode = 'live', timeIndex = 24) {
           });
           return newState;
         });
+      } else {
+        applyLocalInjection(targetHall, occupancy, co2);
       }
-    } catch (err) { console.error("Injection failed"); }
+    } catch (err) {
+      applyLocalInjection(targetHall, occupancy, co2);
+    }
   };
 
   // 3. AUTOMATIC RETRAINING TRIGGER (No Button Required)

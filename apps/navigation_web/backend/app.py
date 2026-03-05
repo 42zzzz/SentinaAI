@@ -42,6 +42,7 @@ from navmesh_generator import NavMeshGenerator
 from pathfinder import DijkstraPathfinder
 from telemetry_processor import TelemetryProcessor
 from event_store import EventStore
+from iot_validator import validate_iot_payload  # NFR-24/25
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="/static")
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
@@ -726,12 +727,23 @@ def calculate_path():
 
 @app.route("/api/iot/update", methods=["POST"])
 def update_iot_sensors():
-    """Manually update sensor data (for testing or real-time streams)."""
+    """Manually update sensor data (for testing or real-time streams).
+
+    NFR-24: Rejects payloads containing images, face IDs, or PII keys.
+    NFR-25: Accepts only whitelisted numeric crowd-density values; drops extras.
+    """
     if not navmesh_data or not pathfinder:
         return jsonify({"error": "System not initialized"}), 500
 
-    data = request.json or {}
-    sensor_data = data.get("sensor_data", {})
+    payload = request.json or {}
+
+    # NFR-24 / NFR-25: validate and sanitize before touching any state
+    ok, error, sensor_data = validate_iot_payload(payload)
+    if not ok:
+        return jsonify({"error": error, "rejected": True}), 400
+
+    if not sensor_data:
+        return jsonify({"error": "No valid numeric sensor values found in payload"}), 400
 
     iot_sensor_data.update(sensor_data)
     navmesh_data["generator"].update_edge_weights_from_iot(iot_sensor_data)
