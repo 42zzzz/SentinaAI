@@ -1,5 +1,7 @@
+// frontend/src/pages/AlertsPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import "./AlertsPage.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const role = localStorage.getItem("role");
@@ -23,8 +25,80 @@ function fmtTs(iso) {
 function safeJson(v) {
   if (!v) return null;
   if (typeof v === "object") return v;
-  try { return JSON.parse(v); } catch { return null; }
+  try {
+    return JSON.parse(v);
+  } catch {
+    return null;
+  }
 }
+
+/* ---- Inline SVG Icons (reuse Devices look) ---- */
+function IconSearch() {
+  return (
+    <svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M6 11C8.76142 11 11 8.76142 11 6C11 3.23858 8.76142 1 6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11Z"
+        stroke="#E8486F"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M14 15L9 10" stroke="#E8486F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconZone() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g clipPath="url(#clip0_9_8863)">
+        <path
+          d="M13.75 7.5C13.75 10.9518 10.9518 13.75 7.5 13.75M13.75 7.5C13.75 4.04822 10.9518 1.25 7.5 1.25M13.75 7.5H1.25M7.5 13.75C9.0633 12.0385 9.95172 9.81748 10 7.5C9.95172 5.18252 9.0633 2.96147 7.5 1.25M7.5 13.75C5.9367 12.0385 5.04828 9.81748 5 7.5C5.04828 5.18252 5.9367 2.96147 7.5 1.25M1.25 7.5C1.25 4.04822 4.04822 1.25 7.5 1.25"
+          stroke="#E8486F"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_9_8863">
+          <rect width="15" height="15" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  );
+}
+
+function IconStatus() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M9.91675 13.2702H4.08341C1.51091 13.2702 0.729248 12.4885 0.729248 9.91602V4.08268C0.729248 1.51018 1.51091 0.728516 4.08341 0.728516H4.95841C5.97925 0.728516 6.30008 1.06102 6.70841 1.60352L7.58341 2.77018C7.77591 3.02685 7.80508 3.06185 8.16675 3.06185H9.91675C12.4892 3.06185 13.2709 3.84352 13.2709 6.41602V9.91602C13.2709 12.4885 12.4892 13.2702 9.91675 13.2702ZM4.08341 1.60352C1.99508 1.60352 1.60425 2.00018 1.60425 4.08268V9.91602C1.60425 11.9985 1.99508 12.3952 4.08341 12.3952H9.91675C12.0051 12.3952 12.3959 11.9985 12.3959 9.91602V6.41602C12.3959 4.33352 12.0051 3.93685 9.91675 3.93685H8.16675C7.42008 3.93685 7.17508 3.68018 6.88341 3.29518L6.00841 2.12852C5.70508 1.72602 5.61175 1.60352 4.95841 1.60352H4.08341Z"
+        fill="#E8486F"
+      />
+      <path
+        d="M11.6667 4.15852C11.4276 4.15852 11.2292 3.96018 11.2292 3.72102V2.91602C11.2292 1.99435 10.8384 1.60352 9.91675 1.60352H4.66675C4.42758 1.60352 4.22925 1.40518 4.22925 1.16602C4.22925 0.926849 4.42758 0.728516 4.66675 0.728516H9.91675C11.3284 0.728516 12.1042 1.50435 12.1042 2.91602V3.72102C12.1042 3.96018 11.9059 4.15852 11.6667 4.15852Z"
+        fill="#E8486F"
+      />
+    </svg>
+  );
+}
+
+function IconSort() {
+  return (
+    <svg width="10" height="12" viewBox="0 0 10 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M9.16659 1.5H0.833252L4.16659 6.23V9.5L5.83325 10.5V6.23L9.16659 1.5Z"
+        stroke="#E8486F"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+// reuse to keep consistent
+const IconSeverity = IconStatus;
+const IconRule = IconStatus;
 
 export default function AlertsPage() {
   const [filters, setFilters] = useState(null);
@@ -46,6 +120,7 @@ export default function AlertsPage() {
   const [error, setError] = useState("");
 
   const [expandedId, setExpandedId] = useState(null);
+  const [openSelect, setOpenSelect] = useState(null); // "sev" | "status" | "zone" | "hall" | "rule" | "sort" | "rows"
 
   const [qLive, setQLive] = useState("");
   useEffect(() => {
@@ -130,7 +205,12 @@ export default function AlertsPage() {
         setRows((prev) =>
           prev.map((r) =>
             r.alert_id === alertId
-              ? { ...r, status: updated.status, acknowledged_by: updated.acknowledged_by, acknowledged_at: updated.acknowledged_at }
+              ? {
+                  ...r,
+                  status: updated.status,
+                  acknowledged_by: updated.acknowledged_by,
+                  acknowledged_at: updated.acknowledged_at,
+                }
               : r
           )
         );
@@ -147,11 +227,7 @@ export default function AlertsPage() {
 
       if (updated) {
         setRows((prev) =>
-          prev.map((r) =>
-            r.alert_id === alertId
-              ? { ...r, status: updated.status, resolved_at: updated.resolved_at }
-              : r
-          )
+          prev.map((r) => (r.alert_id === alertId ? { ...r, status: updated.status, resolved_at: updated.resolved_at } : r))
         );
       }
     } catch (e) {
@@ -160,225 +236,405 @@ export default function AlertsPage() {
   };
 
   return (
-    <div style={{ padding: 20, maxWidth: 1400 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
-        <div>
-          <h1 style={{ margin: 0 }}>{domain} Alerts</h1>
-          <div style={{ fontSize: 13, opacity: 0.7, marginTop: 4 }}>
-            Domain locked to <b>{domain}</b>
+    <div className="alertsPage">
+      <div className="pageInner">
+        <div className="alertsHeaderRow">
+          <div className="alertsTitleWrap">{/* keep empty for consistency */}</div>
+
+          <div className="alertsHeaderRight">
+            <div className="alertsCountTop">{loading ? "Loading…" : `${total} alerts`}</div>
           </div>
         </div>
-        <div style={{ fontSize: 13, opacity: 0.75 }}>{loading ? "Loading…" : `${total} alerts`}</div>
-      </div>
 
-      <div
-        style={{
-          marginTop: 14,
-          padding: 14,
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          display: "grid",
-          gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr",
-          gap: 10,
-        }}
-      >
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search (message, rule, zone/hall/device)…" style={inputStyle} />
+        {/* Controls */}
+        <div className="alertsControlsCard">
+          <div className="alertsFiltersRow">
+            {/* Search */}
+            <div className="filterPill pillSearch" role="search">
+              <span className="pillLeftIcon" aria-hidden>
+                <IconSearch />
+              </span>
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search (message, rule, zone/hall/device)…"
+                className="pillInput"
+              />
+            </div>
 
-        <select value={severity} onChange={(e) => setSeverity(e.target.value)} style={selectStyle}>
-          <option value="">All Severities</option>
-          {filters?.severities?.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
+            {/* Severity */}
+            <div className={`filterPill pillSelectWrap pillSeverity ${openSelect === "sev" ? "isOpen" : ""}`}>
+              <span className="pillLeftIcon" aria-hidden>
+                <IconSeverity />
+              </span>
+              <select
+                value={severity}
+                className="pillSelect"
+                onFocus={() => setOpenSelect("sev")}
+                onBlur={() => setOpenSelect(null)}
+                onChange={(e) => {
+                  setSeverity(e.target.value);
+                  setOpenSelect(null);
+                  e.currentTarget.blur();
+                }}
+              >
+                <option value="">All Severities</option>
+                {filters?.severities?.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <span className="pillRightCaret" aria-hidden />
+            </div>
 
-        <select value={status} onChange={(e) => setStatus(e.target.value)} style={selectStyle}>
-          <option value="">All Statuses</option>
-          {filters?.statuses?.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
+            {/* Status */}
+            <div className={`filterPill pillSelectWrap pillAlertStatus ${openSelect === "status" ? "isOpen" : ""}`}>
+              <span className="pillLeftIcon" aria-hidden>
+                <IconStatus />
+              </span>
+              <select
+                value={status}
+                className="pillSelect"
+                onFocus={() => setOpenSelect("status")}
+                onBlur={() => setOpenSelect(null)}
+                onChange={(e) => {
+                  setStatus(e.target.value);
+                  setOpenSelect(null);
+                  e.currentTarget.blur();
+                }}
+              >
+                <option value="">All Statuses</option>
+                {filters?.statuses?.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <span className="pillRightCaret" aria-hidden />
+            </div>
 
-        <select value={zoneId} onChange={(e) => setZoneId(e.target.value)} style={selectStyle}>
-          <option value="">All Zones</option>
-          {filters?.zones?.map((z) => <option key={z} value={z}>{z}</option>)}
-        </select>
+            {/* Zone */}
+            <div className={`filterPill pillSelectWrap pillZone ${openSelect === "zone" ? "isOpen" : ""}`}>
+              <span className="pillLeftIcon" aria-hidden>
+                <IconZone />
+              </span>
+              <select
+                value={zoneId}
+                className="pillSelect"
+                onFocus={() => setOpenSelect("zone")}
+                onBlur={() => setOpenSelect(null)}
+                onChange={(e) => {
+                  setZoneId(e.target.value);
+                  setOpenSelect(null);
+                  e.currentTarget.blur();
+                }}
+              >
+                <option value="">All Zones</option>
+                {filters?.zones?.map((z) => (
+                  <option key={z} value={z}>
+                    {z}
+                  </option>
+                ))}
+              </select>
+              <span className="pillRightCaret" aria-hidden />
+            </div>
 
-        <select value={hallId} onChange={(e) => setHallId(e.target.value)} style={selectStyle}>
-          <option value="">All Halls</option>
-          {filters?.halls?.map((h) => <option key={h} value={h}>{h}</option>)}
-        </select>
+            {/* Hall */}
+            <div className={`filterPill pillSelectWrap pillHall ${openSelect === "hall" ? "isOpen" : ""}`}>
+              <span className="pillLeftIcon" aria-hidden>
+                <IconZone />
+              </span>
+              <select
+                value={hallId}
+                className="pillSelect"
+                onFocus={() => setOpenSelect("hall")}
+                onBlur={() => setOpenSelect(null)}
+                onChange={(e) => {
+                  setHallId(e.target.value);
+                  setOpenSelect(null);
+                  e.currentTarget.blur();
+                }}
+              >
+                <option value="">All Halls</option>
+                {filters?.halls?.map((h) => (
+                  <option key={h} value={h}>
+                    {h}
+                  </option>
+                ))}
+              </select>
+              <span className="pillRightCaret" aria-hidden />
+            </div>
 
-        <input value={deviceId} onChange={(e) => setDeviceId(e.target.value)} placeholder="Device ID (optional)" style={inputStyle} />
+            {/* Rules */}
+            <div className={`filterPill pillSelectWrap pillRule ${openSelect === "rule" ? "isOpen" : ""}`}>
+              <span className="pillLeftIcon" aria-hidden>
+                <IconRule />
+              </span>
+              <select
+                value={ruleKey}
+                className="pillSelect"
+                onFocus={() => setOpenSelect("rule")}
+                onBlur={() => setOpenSelect(null)}
+                onChange={(e) => {
+                  setRuleKey(e.target.value);
+                  setOpenSelect(null);
+                  e.currentTarget.blur();
+                }}
+              >
+                <option value="">All Rules</option>
+                {filters?.rules?.map((r) => (
+                  <option key={r.rule_key} value={r.rule_key}>
+                    {r.rule_key} — {r.rule_name}
+                  </option>
+                ))}
+              </select>
+              <span className="pillRightCaret" aria-hidden />
+            </div>
+          </div>
 
-        <select value={ruleKey} onChange={(e) => setRuleKey(e.target.value)} style={selectStyle}>
-          <option value="">All Rules</option>
-          {filters?.rules?.map((r) => (
-            <option key={r.rule_key} value={r.rule_key}>
-              {r.rule_key} — {r.rule_name}
-            </option>
-          ))}
-        </select>
+          <div className="alertsControlsBottomRow">
+            <div className="alertsBottomLeft">
+              {/* Sort */}
+              <div className={`filterPill pillSelectWrap pillSort ${openSelect === "sort" ? "isOpen" : ""}`}>
+                <span className="pillLeftIcon" aria-hidden>
+                  <IconSort />
+                </span>
+                <select
+                  value={sort}
+                  className="pillSelect"
+                  onFocus={() => setOpenSelect("sort")}
+                  onBlur={() => setOpenSelect(null)}
+                  onChange={(e) => {
+                    setSort(e.target.value);
+                    setOpenSelect(null);
+                    e.currentTarget.blur();
+                  }}
+                >
+                  {filters?.sortOptions?.map((s) => (
+                    <option key={s} value={s}>
+                      Sort: {s}
+                    </option>
+                  ))}
+                </select>
+                <span className="pillRightCaret" aria-hidden />
+              </div>
 
-        <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "space-between", gap: 10 }}>
-          <button onClick={clearFilters} style={btnSecondary}>Clear filters</button>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <select value={sort} onChange={(e) => setSort(e.target.value)} style={selectStyle}>
-              {filters?.sortOptions?.map((s) => <option key={s} value={s}>Sort: {s}</option>)}
-            </select>
+              <button onClick={clearFilters} className="clearFiltersBtn">
+                Clear filters
+              </button>
+            </div>
 
-            <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} style={selectStyle}>
-              {[10, 20, 50].map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
+            <div className="alertsBottomRight">
+              <div className="rowsControl">
+                <span className="rowsLabel">Rows:</span>
+                <div className={`filterPill pillSelectWrap pillRows ${openSelect === "rows" ? "isOpen" : ""}`}>
+                  <select
+                    value={pageSize}
+                    className="pillSelect"
+                    onFocus={() => setOpenSelect("rows")}
+                    onBlur={() => setOpenSelect(null)}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setOpenSelect(null);
+                      e.currentTarget.blur();
+                    }}
+                  >
+                    {[10, 20, 50].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="pillRightCaret" aria-hidden />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {error ? (
-        <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: "#fff1f2" }}>
-          <div style={{ fontWeight: 700 }}>Error</div>
-          <div style={{ fontFamily: "monospace", fontSize: 12 }}>{error}</div>
+        {/* Error */}
+        {error ? (
+          <div className="alertsError">
+            <div className="alertsErrorTitle">Error</div>
+            <div className="alertsErrorBody">{error}</div>
+          </div>
+        ) : null}
+
+        {/* Table */}
+        <div className="alertsTableCard">
+          <div className="alertsTableScroll">
+            <table className="alertsTable">
+              <thead>
+                <tr>
+                  <th>Detected</th>
+                  <th>Severity</th>
+                  <th>Status</th>
+                  <th>Rule</th>
+                  <th>Zone</th>
+                  <th>Hall</th>
+                  <th>Device</th>
+                  <th>Trigger</th>
+                  <th>Recommended Action</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={10} className="alertsTableEmpty">
+                      Loading…
+                    </td>
+                  </tr>
+                ) : rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="alertsTableEmpty">
+                      No alerts found.
+                    </td>
+                  </tr>
+                ) : (
+                  rows.flatMap((r) => {
+                    const isOpen = expandedId === r.alert_id;
+                    const meta = safeJson(r.metadata);
+
+                    const triggerStr =
+                      r.trigger_value === null || r.trigger_value === undefined
+                        ? "-"
+                        : `${Number(r.trigger_value).toFixed(3)} / ${Number(r.threshold_value ?? 0).toFixed(3)}`;
+
+                    return [
+                      (
+                        <tr
+                          key={r.alert_id}
+                          className="alertsRow"
+                          onClick={() => setExpandedId((cur) => (cur === r.alert_id ? null : r.alert_id))}
+                        >
+                          <td>{fmtTs(r.detected_at)}</td>
+                          <td>
+                            <span style={pillSeverity(r.severity)}>{r.severity}</span>
+                          </td>
+                          <td>
+                            <span style={pillStatus(r.status)}>{r.status}</span>
+                          </td>
+                          <td className="tdStrong">{r.rule_name || r.rule_key}</td>
+
+                          {/* NEW: split location */}
+                          <td className="tdMono">{r.zone_id || "-"}</td>
+                          <td className="tdMono">{r.hall_id || "-"}</td>
+                          <td className="tdMono">{r.device_id || "-"}</td>
+
+                          <td className="tdMono">{triggerStr}</td>
+                          <td>{r.recommended_action || r.response_action || "-"}</td>
+
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <div className="alertsActionBtns">
+                              <button
+                                disabled={r.status !== "NEW"}
+                                onClick={() => ack(r.alert_id)}
+                                className={`alertsTinyBtn ${r.status !== "NEW" ? "isDisabled" : ""}`}
+                              >
+                                Ack
+                              </button>
+                              <button
+                                disabled={r.status === "RESOLVED" || r.status === "CLOSED"}
+                                onClick={() => resolve(r.alert_id)}
+                                className={`alertsTinyBtn ${
+                                  r.status === "RESOLVED" || r.status === "CLOSED" ? "isDisabled" : ""
+                                }`}
+                              >
+                                Resolve
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ),
+                      isOpen ? (
+                        <tr key={`${r.alert_id}-details`} className="alertsDetailsRow">
+                          <td colSpan={10} className="alertsDetailsCell">
+                            <div className="alertsDetailsGrid">
+                              <div>
+                                <div className="alertsDetailsTitle">Details</div>
+                                <div className="alertsKv">
+                                  <span className="alertsK">Alert ID</span>
+                                  <span className="alertsV">{r.alert_id}</span>
+                                </div>
+                                <div className="alertsKv">
+                                  <span className="alertsK">Rule Key</span>
+                                  <span className="alertsV">{r.rule_key}</span>
+                                </div>
+                                <div className="alertsKv">
+                                  <span className="alertsK">Event Timestamp</span>
+                                  <span className="alertsV">{fmtTs(r.event_timestamp)}</span>
+                                </div>
+                                <div className="alertsKv">
+                                  <span className="alertsK">Action Status</span>
+                                  <span className="alertsV">{r.action_status || "-"}</span>
+                                </div>
+                                <div className="alertsKv">
+                                  <span className="alertsK">Acknowledged At</span>
+                                  <span className="alertsV">{fmtTs(r.acknowledged_at)}</span>
+                                </div>
+                                <div className="alertsKv">
+                                  <span className="alertsK">Resolved At</span>
+                                  <span className="alertsV">{fmtTs(r.resolved_at)}</span>
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="alertsDetailsTitle">Metadata</div>
+                                <pre className="alertsMetaPre">{JSON.stringify(meta || {}, null, 2)}</pre>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null,
+                    ].filter(Boolean);
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      ) : null}
 
-      <div style={{ marginTop: 14, border: "1px solid #e5e7eb", borderRadius: 12, overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb" }}>
-              <th style={th}>Detected</th>
-              <th style={th}>Severity</th>
-              <th style={th}>Status</th>
-              <th style={th}>Rule</th>
-              <th style={th}>Location</th>
-              <th style={th}>Trigger</th>
-              <th style={th}>Message</th>
-              <th style={th}>Recommended Action</th>
-              <th style={th}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={9} style={{ padding: 14, opacity: 0.75 }}>Loading…</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={9} style={{ padding: 14, opacity: 0.75 }}>No alerts found.</td></tr>
-            ) : (
-              rows.flatMap((r) => {
-                const isOpen = expandedId === r.alert_id;
-                const meta = safeJson(r.metadata);
-                const triggerStr =
-                  r.trigger_value === null || r.trigger_value === undefined
-                    ? "-"
-                    : `${Number(r.trigger_value).toFixed(3)} / ${Number(r.threshold_value ?? 0).toFixed(3)}`;
-
-                return [
-                  (
-                    <tr
-                      key={r.alert_id}
-                      style={{ borderBottom: "1px solid #f1f5f9", cursor: "pointer" }}
-                      onClick={() => setExpandedId((cur) => (cur === r.alert_id ? null : r.alert_id))}
-                    >
-                      <td style={td}>{fmtTs(r.detected_at)}</td>
-                      <td style={td}><span style={pillSeverity(r.severity)}>{r.severity}</span></td>
-                      <td style={td}><span style={pillStatus(r.status)}>{r.status}</span></td>
-                      <td style={tdStrong}>{r.rule_name || r.rule_key}</td>
-                      <td style={tdMono}>{[r.zone_id, r.hall_id, r.device_id].filter(Boolean).join(" · ") || "-"}</td>
-                      <td style={tdMono}>{triggerStr}</td>
-                      <td style={td}>{r.message || "-"}</td>
-                      <td style={td}>{r.recommended_action || r.response_action || "-"}</td>
-                      <td style={td}>
-                        <div style={{ display: "flex", gap: 8 }} onClick={(e) => e.stopPropagation()}>
-                          <button
-                            disabled={r.status !== "NEW"}
-                            onClick={() => ack(r.alert_id)}
-                            style={{ ...btnTiny, opacity: r.status !== "NEW" ? 0.5 : 1 }}
-                          >
-                            Ack
-                          </button>
-                          <button
-                            disabled={r.status === "RESOLVED" || r.status === "CLOSED"}
-                            onClick={() => resolve(r.alert_id)}
-                            style={{ ...btnTiny, opacity: r.status === "RESOLVED" || r.status === "CLOSED" ? 0.5 : 1 }}
-                          >
-                            Resolve
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ),
-                  isOpen ? (
-                    <tr key={`${r.alert_id}-details`} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td colSpan={9} style={{ padding: 14, background: "#fafafa" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                          <div>
-                            <div style={{ fontWeight: 800, marginBottom: 6 }}>Details</div>
-                            <div style={kv}><span style={k}>Alert ID</span><span style={v}>{r.alert_id}</span></div>
-                            <div style={kv}><span style={k}>Rule Key</span><span style={v}>{r.rule_key}</span></div>
-                            <div style={kv}><span style={k}>Event Timestamp</span><span style={v}>{fmtTs(r.event_timestamp)}</span></div>
-                            <div style={kv}><span style={k}>Action Status</span><span style={v}>{r.action_status || "-"}</span></div>
-
-                            {/* ✅ These now stay "-" for NEW alerts */}
-                            <div style={kv}><span style={k}>Acknowledged At</span><span style={v}>{fmtTs(r.acknowledged_at)}</span></div>
-                            <div style={kv}><span style={k}>Resolved At</span><span style={v}>{fmtTs(r.resolved_at)}</span></div>
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 800, marginBottom: 6 }}>Metadata</div>
-                            <pre style={{ margin: 0, padding: 12, borderRadius: 12, border: "1px solid #e5e7eb", background: "white", overflowX: "auto", fontSize: 12 }}>
-                              {JSON.stringify(meta || {}, null, 2)}
-                            </pre>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : null,
-                ].filter(Boolean);
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontSize: 13, opacity: 0.75 }}>Page {page} of {Math.max(1, Math.ceil(total / pageSize))}</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button disabled={page <= 1} onClick={() => setPage(1)} style={btnSecondary}>{"<<"}</button>
-          <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} style={btnSecondary}>Prev</button>
-          <button disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} style={btnSecondary}>Next</button>
-          <button disabled={page >= totalPages} onClick={() => setPage(totalPages)} style={btnSecondary}>{">>"}</button>
+        {/* Pagination */}
+        <div className="alertsPager">
+          <div className="alertsPagerLeft">
+            Page {page} of {totalPages}
+          </div>
+          <div className="alertsPagerRight">
+            <button disabled={page <= 1} onClick={() => setPage(1)} className="pagerBtn">
+              {"<<"}
+            </button>
+            <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="pagerBtn">
+              Prev
+            </button>
+            <button
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="pagerBtn"
+            >
+              Next
+            </button>
+            <button disabled={page >= totalPages} onClick={() => setPage(totalPages)} className="pagerBtn">
+              {">>"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-const inputStyle = { padding: 10, borderRadius: 10, border: "1px solid #e5e7eb", background: "white" };
-const selectStyle = { padding: 10, borderRadius: 10, border: "1px solid #e5e7eb", background: "white" };
-
-const th = { padding: "10px 10px", fontSize: 13, opacity: 0.85, whiteSpace: "nowrap" };
-const td = { padding: "10px 10px", fontSize: 13, whiteSpace: "nowrap", verticalAlign: "top" };
-const tdStrong = { ...td, fontWeight: 700 };
-const tdMono = { ...td, fontFamily: "monospace", fontSize: 12 };
-
-const btnSecondary = {
-  padding: "8px 10px",
-  borderRadius: 10,
-  border: "1px solid #e5e7eb",
-  background: "white",
-  cursor: "pointer",
-};
-
-const btnTiny = {
-  padding: "6px 8px",
-  borderRadius: 10,
-  border: "1px solid #e5e7eb",
-  background: "white",
-  cursor: "pointer",
-  fontSize: 12,
-  fontWeight: 700,
-};
-
+/* keep your existing severity/status pill colors exactly */
 function pillSeverity(sev) {
   const s = String(sev || "").toUpperCase();
   const bg =
     s === "CRITICAL" ? "#fee2e2" :
-      s === "HIGH" ? "#ffedd5" :
-        s === "MEDIUM" ? "#fef9c3" :
-          s === "LOW" ? "#dcfce7" :
-            "#e5e7eb";
+    s === "HIGH" ? "#ffedd5" :
+    s === "MEDIUM" ? "#fef9c3" :
+    s === "LOW" ? "#dcfce7" :
+    "#e5e7eb";
   return { padding: "4px 10px", borderRadius: 999, background: bg, fontSize: 12, fontWeight: 900 };
 }
 
@@ -386,13 +642,9 @@ function pillStatus(st) {
   const s = String(st || "").toUpperCase();
   const bg =
     s === "NEW" ? "#e0e7ff" :
-      s === "ACKNOWLEDGED" ? "#fef9c3" :
-        s === "RESOLVED" ? "#dcfce7" :
-          s === "CLOSED" ? "#f3f4f6" :
-            "#e5e7eb";
+    s === "ACKNOWLEDGED" ? "#fef9c3" :
+    s === "RESOLVED" ? "#dcfce7" :
+    s === "CLOSED" ? "#f3f4f6" :
+    "#e5e7eb";
   return { padding: "4px 10px", borderRadius: 999, background: bg, fontSize: 12, fontWeight: 800 };
 }
-
-const kv = { display: "flex", justifyContent: "space-between", gap: 12, marginTop: 6 };
-const k = { fontSize: 12, opacity: 0.7 };
-const v = { fontFamily: "monospace", fontSize: 12 };

@@ -1,0 +1,622 @@
+/* frontend/src/pages/AlertsPage.css */
+
+/* ===== page base ===== */
+.opsTheme .alertsPage,
+.alertsPage{
+  background: #f5f6f8;
+  min-height: 100%;
+}
+
+.opsTheme .alertsPage .pageInner,
+.alertsPage .pageInner{
+  padding: 22px 26px;
+  max-width: 1400px; /* alerts table needs more width */
+}
+
+/* ===== header row (match Devices) ===== */
+.opsTheme .alertsHeaderRow,
+.alertsHeaderRow{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.opsTheme .alertsHeaderRight,
+.alertsHeaderRight{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.opsTheme .alertsCountTop,
+.alertsCountTop{
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* ===== controls card ===== */
+.opsTheme .alertsControlsCard,
+.alertsControlsCard{
+  margin-top: 14px;
+  background: #ffffff;
+  border: 1px solid #eef0f2;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+/* filters rows */
+.opsTheme .alertsFiltersRow,
+.alertsFiltersRow{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap; /* alerts has more filters */
+}
+
+.opsTheme .alertsFiltersRow2,
+.alertsFiltersRow2{
+  margin-top: 10px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* =========================
+   DEVICES-STYLE PILLS (scoped)
+   ========================= */
+
+.opsTheme .alertsPage .filterPill,
+.alertsPage .filterPill{
+  height: 30px;
+  border-radius: 10px;
+  background: #d9d9d9;
+  border: 1px solid #d2d7dc;
+  padding: 0 12px 1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    0 1px 0 rgba(15,23,42,0.04);
+}
+
+.opsTheme .alertsPage .pillSearch,
+.alertsPage .pillSearch{
+  flex: 1 1 520px;
+  min-width: 360px;
+  justify-content: space-between;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+/* widths similar to Devices */
+.opsTheme .alertsPage .pillSeverity, .alertsPage .pillSeverity{ width: 170px; }
+.opsTheme .alertsPage .pillAlertStatus, .alertsPage .pillAlertStatus{ width: 170px; }
+.opsTheme .alertsPage .pillZone, .alertsPage .pillZone{ width: 150px; }
+.opsTheme .alertsPage .pillHall, .alertsPage .pillHall{ width: 150px; }
+.opsTheme .alertsPage .pillSort, .alertsPage .pillSort{ width: 185px; }
+.opsTheme .alertsPage .pillRows, .alertsPage .pillRows{ width: 60px; }
+
+/* device id input pill */
+.opsTheme .alertsPage .pillDeviceId,
+.alertsPage .pillDeviceId{
+  width: 260px;
+}
+
+/* rules pill row 2 */
+.opsTheme .alertsPage .pillRule,
+.alertsPage .pillRule{
+  flex: 1 1 760px;
+  min-width: 420px;
+}
+
+/* left icon slot */
+.opsTheme .alertsPage .pillLeftIcon,
+.alertsPage .pillLeftIcon{
+  width: 18px;
+  height: 12px;
+  flex: 0 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #E8486F;
+  opacity: 0.85;
+  pointer-events: none; /* don’t block clicks */
+}
+
+/* select reset */
+.opsTheme .alertsPage .pillSelect,
+.alertsPage .pillSelect{
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #0f172a;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* input reset */
+.opsTheme .alertsPage .pillInput,
+.alertsPage .pillInput{
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 500;
+  color: #0f172a;
+}
+
+.opsTheme .alertsPage .pillInput::placeholder,
+.alertsPage .pillInput::placeholder{
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.opsTheme .alertsPage .filterPill:hover,
+.alertsPage .filterPill:hover{
+  background: #d4d8db;
+}
+
+/* ===== bottom row (devices-like) ===== */
+.opsTheme .alertsControlsBottomRow,
+.alertsControlsBottomRow{
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.opsTheme .alertsBottomRight,
+.alertsBottomRight{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* rows control (same as Devices) */
+.opsTheme .rowsControl,
+.rowsControl{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.opsTheme .rowsLabel,
+.rowsLabel{
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* ===== Final select + caret behaviour (same as Devices) ===== */
+.opsTheme .alertsPage .pillSelectWrap,
+.alertsPage .pillSelectWrap{
+  position: relative;
+}
+
+/* select stretches under caret */
+.opsTheme .alertsPage .pillSelectWrap .pillSelect,
+.alertsPage .pillSelectWrap .pillSelect{
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  cursor: pointer;
+  border: 0;
+  outline: none;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 26px;
+  line-height: 30px;
+}
+
+/* caret: thin + absolute (click passes to select) */
+.opsTheme .alertsPage .pillSelectWrap .pillRightCaret,
+.alertsPage .pillSelectWrap .pillRightCaret{
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-35%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #133250;
+  opacity: 0.85;
+  pointer-events: none;
+  transition: transform 160ms ease;
+  transform-origin: center;
+}
+
+/* rotate only when wrapper has isOpen */
+.opsTheme .alertsPage .pillSelectWrap.isOpen .pillRightCaret,
+.alertsPage .pillSelectWrap.isOpen .pillRightCaret{
+  transform: translateY(-35%) rotate(180deg);
+}
+
+/* ===== Clear filters button (pink) ===== */
+.opsTheme .alertsControlsCard .clearFiltersBtn,
+.alertsControlsCard .clearFiltersBtn{
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #E8486F;
+  background: #E8486F;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.opsTheme .alertsControlsCard .clearFiltersBtn:hover,
+.alertsControlsCard .clearFiltersBtn:hover{
+  background: #d93f65;
+  border-color: #d93f65;
+}
+
+/* ===== Error ===== */
+.opsTheme .alertsError,
+.alertsError{
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+}
+
+.opsTheme .alertsErrorTitle,
+.alertsErrorTitle{
+  font-weight: 800;
+  color: #7f1d1d;
+  margin-bottom: 6px;
+}
+
+.opsTheme .alertsErrorBody,
+.alertsErrorBody{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  color: #7f1d1d;
+}
+
+/* ===== Table (match Devices) ===== */
+.opsTheme .alertsTableCard,
+.alertsTableCard{
+  margin-top: 14px;
+  background: #ffffff;
+  border: 1px solid #eef0f2;
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.opsTheme .alertsTableScroll,
+.alertsTableScroll{
+  overflow-x: auto;
+}
+
+.opsTheme .alertsTable,
+.alertsTable{
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.opsTheme .alertsTable thead th,
+.alertsTable thead th{
+  background: #fbfbfc;
+  color: #E8486F; /* pink headers */
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  padding: 14px 16px;
+  border-bottom: 1px solid #eef0f2;
+  white-space: nowrap;
+}
+
+.opsTheme .alertsTable tbody td,
+.alertsTable tbody td{
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f3f5;
+  font-size: 13px;
+  color: #0f172a;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.opsTheme .alertsRow:hover td,
+.alertsRow:hover td{
+  background: #fafafa;
+}
+
+.opsTheme .alertsTableEmpty,
+.alertsTableEmpty{
+  padding: 14px;
+  opacity: 0.75;
+}
+
+.opsTheme .tdStrong, .tdStrong{ font-weight: 800; }
+
+.opsTheme .tdMono,
+.tdMono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  color: #334155;
+}
+
+/* message can be long; allow wrap but keep row height sane */
+.opsTheme .alertsMsg,
+.alertsMsg{
+  white-space: normal;
+  max-width: 520px;
+}
+
+/* details row */
+.opsTheme .alertsDetailsRow td,
+.alertsDetailsRow td{
+  background: #fafafa;
+}
+
+.opsTheme .alertsDetailsCell,
+.alertsDetailsCell{
+  padding: 14px;
+}
+
+.opsTheme .alertsDetailsGrid,
+.alertsDetailsGrid{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.opsTheme .alertsDetailsTitle,
+.alertsDetailsTitle{
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.opsTheme .alertsKv,
+.alertsKv{
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.opsTheme .alertsK,
+.alertsK{
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.opsTheme .alertsV,
+.alertsV{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+}
+
+.opsTheme .alertsMetaPre,
+.alertsMetaPre{
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  overflow-x: auto;
+  font-size: 12px;
+}
+
+/* action buttons */
+.opsTheme .alertsActionBtns,
+.alertsActionBtns{
+  display: flex;
+  gap: 8px;
+}
+
+.opsTheme .alertsTinyBtn,
+.alertsTinyBtn{
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.opsTheme .alertsTinyBtn:hover,
+.alertsTinyBtn:hover{
+  background: #f8fafc;
+}
+
+.opsTheme .alertsTinyBtn.isDisabled,
+.alertsTinyBtn.isDisabled{
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== Pagination (match Devices) ===== */
+.opsTheme .alertsPager,
+.alertsPager{
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.opsTheme .alertsPagerLeft,
+.alertsPagerLeft{
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.opsTheme .alertsPagerRight,
+.alertsPagerRight{
+  display: flex;
+  gap: 8px;
+}
+
+.opsTheme .pagerBtn,
+.pagerBtn{
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  cursor: pointer;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.opsTheme .pagerBtn:hover,
+.pagerBtn:hover{
+  background: #f8fafc;
+}
+
+.opsTheme .pagerBtn:disabled,
+.pagerBtn:disabled{
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ===== Pink top-right count ===== */
+.opsTheme .alertsHeaderRight .alertsCountTop,
+.alertsHeaderRight .alertsCountTop{
+  color: #E8486F !important;
+  font-weight: 700;
+}
+
+/* Make page header pink across ops dashboard (same trick as Devices) */
+.opsTheme main h1:first-of-type{
+  color: #E8486F !important;
+}
+
+/* =========================
+   Alerts layout polish (match Devices spacing)
+   ========================= */
+
+/* Make row 1 behave like Devices: prefer one line, wrap only when needed */
+.opsTheme .alertsFiltersRow,
+.alertsFiltersRow{
+  flex-wrap: wrap;       /* keep wrap for small screens */
+  align-items: center;
+}
+
+/* Search back to Devices size */
+.opsTheme .alertsPage .pillSearch,
+.alertsPage .pillSearch{
+  flex: 0 0 300px;       /* fixed like Devices */
+  width: 300px;
+  min-width: 300px;
+}
+
+/* Device ID input pill: compact */
+.opsTheme .alertsPage .pillDeviceId,
+.alertsPage .pillDeviceId{
+  width: 220px;
+}
+
+/* Make Rules NOT huge — same “normal pill” width */
+.opsTheme .alertsPage .pillRule,
+.alertsPage .pillRule{
+  flex: 0 0 240px;       /* normal dropdown size */
+  width: 240px;
+  min-width: 240px;
+}
+
+/* Make the “row 2” not force full width */
+.opsTheme .alertsFiltersRow2,
+.alertsFiltersRow2{
+  margin-top: 10px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+/* Optional: keep the rules dropdown text from stretching the pill visually */
+.opsTheme .alertsPage .pillRule .pillSelect,
+.alertsPage .pillRule .pillSelect{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Keep the whole controls card spacing looking like Devices */
+.opsTheme .alertsControlsCard,
+.alertsControlsCard{
+  padding: 14px;
+}
+
+/* =========================
+   Alerts: force filters into one line
+   ========================= */
+
+.opsTheme .alertsFiltersRow,
+.alertsFiltersRow{
+  flex-wrap: nowrap;          /* keep everything on first line */
+  align-items: center;
+}
+
+/* Search back to Devices size */
+.opsTheme .alertsPage .pillSearch,
+.alertsPage .pillSearch{
+  flex: 0 0 240px;
+  width: 240px;
+  min-width: 240px;
+}
+
+/* Make Rules a normal pill and keep it on the first row */
+.opsTheme .alertsFiltersRow2,
+.alertsFiltersRow2{
+  display: none;              /* hide the second row completely */
+}
+
+.opsTheme .alertsPage .pillRule,
+.alertsPage .pillRule{
+  width: 190px;               /* same feel as Sort */
+  min-width: 190px;
+  flex: 0 0 190px;
+}
+
+/* If any pill text is long, prevent it from expanding */
+.opsTheme .alertsPage .pillSelect,
+.alertsPage .pillSelect{
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Only Clear + Sort/Rows stay on row 2 (already your structure) */
+.opsTheme .alertsControlsBottomRow,
+.alertsControlsBottomRow{
+  margin-top: 12px;
+}
+
+/* Bottom row: left group + right group (no huge gap) */
+.opsTheme .alertsControlsBottomRow,
+.alertsControlsBottomRow{
+  justify-content: space-between; /* keep left+right separation */
+}
+
+/* Sort + Clear together, tight spacing */
+.opsTheme .alertsBottomLeft,
+.alertsBottomLeft{
+  display: flex;
+  align-items: center;
+  gap: 12px;          /* controls spacing between sort and clear */
+}
+
+/* Right side padding so Rows aligns with top pills */
+.opsTheme .alertsBottomRight,
+.alertsBottomRight{
+  padding-right: 6px; /* tweak to match your top row alignment */
+}
