@@ -182,24 +182,31 @@ export default function NavigationPage() {
 }
 
 const card = {
-  padding: 14,
-  borderRadius: 12,
+  padding: 16,
+  borderRadius: 14,
   border: "1px solid #e5e7eb",
   background: "white",
+  boxShadow: "0 6px 18px rgba(15, 23, 42, 0.05)",
 };
 
 const sel = {
-  padding: 10,
+  padding: "10px 14px",
   borderRadius: 10,
   border: "1px solid #e5e7eb",
   background: "white",
+  fontWeight: 600,
+  cursor: "pointer",
+  boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
 };
 
 const btn = {
-  padding: "10px 12px",
+  padding: "10px 18px",
   borderRadius: 10,
-  border: "1px solid #e5e7eb",
-  background: "white",
+  border: "none",
+  background: "#E8486F",
+  color: "white",
   fontWeight: 800,
   cursor: "pointer",
+  boxShadow: "0 4px 10px rgba(232, 72, 111, 0.35)",
+  transition: "transform 0.05s ease",
 };
