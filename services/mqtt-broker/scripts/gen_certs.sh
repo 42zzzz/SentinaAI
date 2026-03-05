@@ -25,11 +25,6 @@
 
 set -euo pipefail
 
-# Git Bash on Windows translates arguments that start with "/" into Windows
-# paths (e.g. "/CN=..." becomes "C:/Program Files/Git/CN=..."), which breaks
-# the openssl -subj flag. This variable disables that translation.
-export MSYS_NO_PATHCONV=1
-
 CERTS_DIR="$(cd "$(dirname "$0")/.." && pwd)/certs"
 mkdir -p "$CERTS_DIR"
 
@@ -39,12 +34,26 @@ CA_CRT="$CERTS_DIR/ca.crt"
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
+# Write a minimal OpenSSL config file containing the given CN and return its
+# path. Using -config instead of -subj avoids the Git Bash / MSYS path
+# translator mangling "/CN=..." into "C:/Program Files/Git/CN=..." on Windows,
+# while keeping normal path conversion active so file arguments still work.
+_req_conf() {
+    local cn="$1"
+    local tmpf
+    tmpf=$(mktemp)
+    printf '[req]\ndistinguished_name=dn\nprompt=no\n[dn]\nCN=%s\nO=SentinaAI\nC=AE\n' "$cn" > "$tmpf"
+    echo "$tmpf"
+}
+
 gen_ca() {
     echo "==> Generating Certificate Authority (CA)..."
     openssl genrsa -out "$CA_KEY" 4096
+    local cfg; cfg=$(_req_conf "SentinaAI-MQTT-CA")
     openssl req -x509 -new -nodes -key "$CA_KEY" -sha256 -days $DAYS \
-        -subj "/CN=SentinaAI-MQTT-CA/O=SentinaAI/C=AE" \
+        -config "$cfg" \
         -out "$CA_CRT"
+    rm -f "$cfg"
     chmod 600 "$CA_KEY"
     echo "    CA written to: $CERTS_DIR/ca.{key,crt}"
 }
@@ -52,9 +61,11 @@ gen_ca() {
 gen_server_cert() {
     echo "==> Generating EMQX broker server certificate..."
     openssl genrsa -out "$CERTS_DIR/server.key" 2048
+    local cfg; cfg=$(_req_conf "mqtt.sentinai.local")
     openssl req -new -key "$CERTS_DIR/server.key" \
-        -subj "/CN=mqtt.sentinai.local/O=SentinaAI/C=AE" \
+        -config "$cfg" \
         -out "$CERTS_DIR/server.csr"
+    rm -f "$cfg"
     openssl x509 -req \
         -in "$CERTS_DIR/server.csr" \
         -CA "$CA_CRT" -CAkey "$CA_KEY" -CAcreateserial \
@@ -70,9 +81,11 @@ gen_client_cert() {
     echo "==> Issuing client certificate for: '$ID'"
     echo "    (MQTT username in EMQX will be: $ID)"
     openssl genrsa -out "$CERTS_DIR/${ID}.key" 2048
+    local cfg; cfg=$(_req_conf "$ID")
     openssl req -new -key "$CERTS_DIR/${ID}.key" \
-        -subj "/CN=${ID}/O=SentinaAI/C=AE" \
+        -config "$cfg" \
         -out "$CERTS_DIR/${ID}.csr"
+    rm -f "$cfg"
     openssl x509 -req \
         -in "$CERTS_DIR/${ID}.csr" \
         -CA "$CA_CRT" -CAkey "$CA_KEY" -CAcreateserial \
