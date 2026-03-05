@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-const ACCENT = "#E8486F";
+const ACCENT = "var(--sust-accent, #E8486F)";
 
 function clamp01(x) {
   return Math.max(0, Math.min(1, x));
@@ -122,7 +122,7 @@ export default function TopHallsEnergyBar({
                     style={{
                       width: `${width}%`,
                       height: "100%",
-                      background: `linear-gradient(90deg, ${ACCENT} 0%, rgba(232,72,111,0.75) 100%)`,
+                      background: ACCENT,
                     }}
                   />
                 </div>

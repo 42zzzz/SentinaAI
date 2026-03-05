@@ -110,7 +110,9 @@
 }
 
 /* left icon slot */
+/* left icon slot */
 .opsTheme .devicesFiltersRow .pillLeftIcon,
+.sustTheme .devicesFiltersRow .pillLeftIcon,
 .devicesFiltersRow .pillLeftIcon{
   width: 18px;
   height: 12px;
@@ -118,10 +120,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #E8486F;
   opacity: 0.85;
 }
 
+.opsTheme .devicesFiltersRow .pillLeftIcon{ color: #E8486F; }
+.sustTheme .devicesFiltersRow .pillLeftIcon{ color: #00802B; }
+.devicesFiltersRow .pillLeftIcon{ color: #64748b; } /* fallback */
 /* select reset */
 .opsTheme .devicesFiltersRow .pillSelect,
 .devicesFiltersRow .pillSelect{
@@ -383,33 +387,47 @@
    PINK ACCENTS (force win)
    ========================= */
 
-.opsTheme .devicesControlsCard .clearFiltersBtn,
-.devicesControlsCard .clearFiltersBtn{
+/* =========================
+   ACCENTS (Ops = pink, Sust = green)
+   ========================= */
+
+/* Clear filters button */
+.opsTheme .devicesControlsCard .clearFiltersBtn{
   background: #E8486F !important;
   border-color: #E8486F !important;
   color: #ffffff !important;
 }
-
-.opsTheme .devicesControlsCard .clearFiltersBtn:hover,
-.devicesControlsCard .clearFiltersBtn:hover{
+.opsTheme .devicesControlsCard .clearFiltersBtn:hover{
   background: #d93f65 !important;
   border-color: #d93f65 !important;
 }
 
-.opsTheme .devicesHeaderRight .devicesCountTop,
-.devicesHeaderRight .devicesCountTop{
+.sustTheme .devicesControlsCard .clearFiltersBtn{
+  background: #00802B !important;
+  border-color: #00802B !important;
+  color: #ffffff !important;
+}
+.sustTheme .devicesControlsCard .clearFiltersBtn:hover{
+  background: #006b24 !important;   /* slightly darker hover */
+  border-color: #006b24 !important;
+}
+
+/* devices count top */
+.opsTheme .devicesHeaderRight .devicesCountTop{
   color: #E8486F !important;
   font-weight: 700;
 }
-
-.opsTheme .devicesTable thead th,
-.devicesTable thead th{
-  color: #E8486F !important;
+.sustTheme .devicesHeaderRight .devicesCountTop{
+  color: #00802B !important;
+  font-weight: 700;
 }
 
-.opsTheme main h1:first-of-type{
-  color: #E8486F !important;
-}
+/* table header */
+.opsTheme .devicesTable thead th{ color: #E8486F !important; }
+.sustTheme .devicesTable thead th{ color: #00802B !important; }
+
+/* remove this old global override (it was forcing pink everywhere) */
+/* .opsTheme main h1:first-of-type{ color: #E8486F !important; } */
 
 /* =========================
    FINAL SELECT + CARET BEHAVIOUR

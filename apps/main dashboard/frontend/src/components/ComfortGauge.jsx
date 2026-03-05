@@ -11,8 +11,9 @@ export default function ComfortGauge({
 
   // ✅ NEW: parent can provide the outer card/header
   embedded = false,
+  accent
 }) {
-  const ACCENT = "#E8486F";
+  const ACCENT = accent || "var(--sust-accent, #E8486F)";
 
   const v = Number(value);
   const has = Number.isFinite(v);

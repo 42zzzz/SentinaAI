@@ -7,5 +7,7 @@ router.get("/occupancy-forecast", ai.getOccupancyForecast);
 // Keep these if you're still using simulator/proxy
 router.get("/venue-status", ai.getVenueStatusProxy);
 router.post("/simulate-prediction", ai.simulatePredictionProxy);
+router.get("/sust-kpis", ai.getSustKpis);
+router.get("/sust-live", ai.getSustLive);
 
 module.exports = router;

@@ -1,7 +1,9 @@
 .sustTheme{
-  --green:#16a34a;
-  --green-soft:#22c55e;
-  --green-bg:#ecfdf5;
+  --sust-accent:#00802B;
+
+  /* optional helpers */
+  --sust-accent-soft: rgba(0,128,43,.15);
+  --sust-accent-border: rgba(0,128,43,.25);
 
   --ink:#0f172a;
   --muted:#6b7280;
@@ -51,7 +53,7 @@
 
 .sustTheme .cardTitle{
   font-weight:800;
-  color:var(--green);
+  color:var(--sust-accent);
   font-size:18px;
   letter-spacing:.2px;
   margin:0;
@@ -79,7 +81,7 @@
   align-items:center;
   justify-content:center;
 
-  background:var(--green);
+  background:var(--sust-accent);
   color:#ffffff;
 
   position:absolute;
@@ -116,9 +118,9 @@
 }
 
 .sustTheme .badgeGreen{
-  background:rgba(34,197,94,.15);
-  border-color:rgba(34,197,94,.25);
-  color:#166534;
+  background:var(--sust-accent-soft);
+  border-color:var(--sust-accent-border);
+  color:#065f1f;
 }
 
 .sustTheme .badgeYellow{
@@ -166,7 +168,7 @@
   margin:0;
   font-size:22px;
   font-weight:900;
-  color:var(--green);
+  color:var(--sust-accent);
 }
 
 .sustTheme .cardHeaderRow .hint{
@@ -192,7 +194,7 @@
   height:42px;
 
   border-radius:999px;
-  background:var(--green);
+  background:var(--sust-accent);
   color:#fff;
 
   display:flex;
