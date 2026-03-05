@@ -1,6 +1,7 @@
 // backend/controllers/alerts.controller.js
 
 const coreDb = require("../dbs/core.db");
+const pool = require("../db");
 const { runOnce } = require("../utils/alertEngine");
 
 function toInt(v, def) {
@@ -347,4 +348,68 @@ exports.runEngineOnce = async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+};
+
+exports.getAlertDetails = async (req, res) => {
+
+  try {
+
+    const { id } = req.params;
+
+    const alertQuery = `
+      SELECT 
+        a.alert_id,
+        a.rule_key,
+        r.rule_name,
+        a.severity,
+        a.status,
+        a.zone_id,
+        a.hall_id,
+        a.device_id,
+        a.trigger_value,
+        a.threshold_value,
+        a.detected_at,
+        r.default_response_action,
+        r.default_response_type,
+        r.auto_mitigation_enabled
+      FROM alerts a
+      JOIN rules r
+        ON a.rule_key = r.rule_key
+      WHERE a.alert_id = $1
+    `;
+
+    const alertResult = await coreDb.query(alertQuery, [id]);
+
+    if (alertResult.rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        error: "Alert not found"
+      });
+    }
+
+    const alert = alertResult.rows[0];
+
+    const action = {
+      text: alert.default_response_action || null,
+      type: alert.default_response_type || "MANUAL",
+      automated: alert.auto_mitigation_enabled || false
+    };
+
+    res.json({
+      ok: true,
+      alert,
+      action
+    });
+
+  } catch (err) {
+
+    console.error("getAlertDetails error:", err);
+
+    res.status(500).json({
+      ok: false,
+      error: "Failed to fetch alert details"
+    });
+
+  }
+
 };

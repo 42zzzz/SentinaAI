@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./AlertsPage.css";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const role = localStorage.getItem("role");
@@ -101,6 +102,7 @@ const IconSeverity = IconStatus;
 const IconRule = IconStatus;
 
 export default function AlertsPage() {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState(null);
 
   const [q, setQ] = useState("");
@@ -206,11 +208,11 @@ export default function AlertsPage() {
           prev.map((r) =>
             r.alert_id === alertId
               ? {
-                  ...r,
-                  status: updated.status,
-                  acknowledged_by: updated.acknowledged_by,
-                  acknowledged_at: updated.acknowledged_at,
-                }
+                ...r,
+                status: updated.status,
+                acknowledged_by: updated.acknowledged_by,
+                acknowledged_at: updated.acknowledged_at,
+              }
               : r
           )
         );
@@ -508,7 +510,19 @@ export default function AlertsPage() {
                         <tr
                           key={r.alert_id}
                           className="alertsRow"
-                          onClick={() => setExpandedId((cur) => (cur === r.alert_id ? null : r.alert_id))}
+                          onClick={() => {
+
+                            const rolePathMap = {
+                              operations_manager: "operations",
+                              sustainability_manager: "sustainability",
+                              soc_analyst: "soc",
+                              exhibitor: "exhibitor",
+                            };
+
+                            const basePath = rolePathMap[role] || "operations";
+
+                            navigate(`/${basePath}/alerts/${r.alert_id}`);
+                          }}
                         >
                           <td>{fmtTs(r.detected_at)}</td>
                           <td>
@@ -539,9 +553,8 @@ export default function AlertsPage() {
                               <button
                                 disabled={r.status === "RESOLVED" || r.status === "CLOSED"}
                                 onClick={() => resolve(r.alert_id)}
-                                className={`alertsTinyBtn ${
-                                  r.status === "RESOLVED" || r.status === "CLOSED" ? "isDisabled" : ""
-                                }`}
+                                className={`alertsTinyBtn ${r.status === "RESOLVED" || r.status === "CLOSED" ? "isDisabled" : ""
+                                  }`}
                               >
                                 Resolve
                               </button>
@@ -631,10 +644,10 @@ function pillSeverity(sev) {
   const s = String(sev || "").toUpperCase();
   const bg =
     s === "CRITICAL" ? "#fee2e2" :
-    s === "HIGH" ? "#ffedd5" :
-    s === "MEDIUM" ? "#fef9c3" :
-    s === "LOW" ? "#dcfce7" :
-    "#e5e7eb";
+      s === "HIGH" ? "#ffedd5" :
+        s === "MEDIUM" ? "#fef9c3" :
+          s === "LOW" ? "#dcfce7" :
+            "#e5e7eb";
   return { padding: "4px 10px", borderRadius: 999, background: bg, fontSize: 12, fontWeight: 900 };
 }
 
@@ -642,9 +655,9 @@ function pillStatus(st) {
   const s = String(st || "").toUpperCase();
   const bg =
     s === "NEW" ? "#e0e7ff" :
-    s === "ACKNOWLEDGED" ? "#fef9c3" :
-    s === "RESOLVED" ? "#dcfce7" :
-    s === "CLOSED" ? "#f3f4f6" :
-    "#e5e7eb";
+      s === "ACKNOWLEDGED" ? "#fef9c3" :
+        s === "RESOLVED" ? "#dcfce7" :
+          s === "CLOSED" ? "#f3f4f6" :
+            "#e5e7eb";
   return { padding: "4px 10px", borderRadius: 999, background: bg, fontSize: 12, fontWeight: 800 };
 }

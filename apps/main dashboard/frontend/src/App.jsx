@@ -16,6 +16,7 @@ import NavigationPage from "./pages/NavigationPage";
 import EventDetails from "./pages/EventDetails";
 import ExhibitorDashboard from "./pages/ExhibitorDashboard";
 import SustainabilityDashboard from "./pages/SustainabilityDashboard";
+import AlertDetailsPage from "./pages/AlertDetailsPage";
 
 export default function App() {
   const role = localStorage.getItem("role");
@@ -78,6 +79,7 @@ export default function App() {
           <Route path="booths" element={<BoothsPage />} />
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="navigation" element={<NavigationPage />} />
+          <Route path="alerts/:id" element={<AlertDetailsPage />} />
         </Route>
 
         {/* FUTURE SOC */}
@@ -102,6 +104,7 @@ export default function App() {
           <Route index element={<SustainabilityDashboard />} />
           <Route path="devices" element={<DevicesPage />} />
           <Route path="alerts" element={<AlertsPage />} />
+          <Route path="alerts/:id" element={<AlertDetailsPage />} />
 
           {/* temporary placeholders */}
           <Route path="energy" element={<div>Energy Page</div>} />

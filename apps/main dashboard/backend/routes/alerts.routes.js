@@ -5,6 +5,7 @@ const router = express.Router();
 
 router.get("/filters", ctrl.getAlertFilters);
 router.get("/", ctrl.listAlerts);
+router.get("/:id", ctrl.getAlertDetails);
 
 router.patch("/:id/ack", ctrl.acknowledgeAlert);
 router.patch("/:id/resolve", ctrl.resolveAlert);

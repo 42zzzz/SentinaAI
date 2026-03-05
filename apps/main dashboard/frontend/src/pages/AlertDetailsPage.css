@@ -1,0 +1,540 @@
+/* frontend/src/pages/AlertDetailsPage.css
+   Goal: match your ops dashboard look, fix spacing, full width, readable actions,
+   and make AUTOMATED toggles look "ON but grey + disabled".
+*/
+
+.opsTheme.alertDetailsPage,
+.alertDetailsPage {
+    width: 100%;
+    max-width: none;
+    padding: 22px 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ---------- Header ---------- */
+.opsTheme .alertHeaderTitleWrap{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.opsTheme .statusPill{
+  margin-left: 6px; /* remove auto push */
+}
+
+.opsTheme .alertHeader,
+.alertHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 2px;
+}
+
+.opsTheme .alertBack,
+.alertBack {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.10);
+    background: #ffffff;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.opsTheme .alertBack:hover,
+.alertBack:hover {
+    background: #fbfbfc;
+}
+
+.opsTheme .alertHeaderTitle,
+.alertHeaderTitle {
+    font-size: 22px;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+/* ---------- KPI Row (match your screenshot vibes) ---------- */
+.opsTheme .alertMetricsRow,
+.alertMetricsRow {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 4px;
+}
+
+@media (max-width: 980px) {
+
+    .opsTheme .alertMetricsRow,
+    .alertMetricsRow {
+        grid-template-columns: 1fr;
+    }
+}
+
+.opsTheme .metricCard,
+.metricCard {
+    border-radius: 16px;
+    border: 1px solid #eef0f2;
+    background: #ffffff;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    padding: 18px 18px 16px;
+    min-height: 92px;
+}
+
+.opsTheme .metricTitle,
+.metricTitle {
+    font-size: 13px;
+    font-weight: 800;
+    color: #6b7280;
+    margin-bottom: 10px;
+}
+
+.opsTheme .metricValue,
+.metricValue {
+    font-size: 34px;
+    font-weight: 950;
+    color: #0f172a;
+    line-height: 1;
+}
+
+.opsTheme .metricCard.aiMetric,
+.metricCard.aiMetric {
+    background: #16324f;
+    /* deep navy */
+    border-color: rgba(255, 255, 255, 0.10);
+}
+
+.opsTheme .metricCard.aiMetric .metricTitle,
+.metricCard.aiMetric .metricTitle {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.opsTheme .metricCard.aiMetric .metricValue,
+.metricCard.aiMetric .metricValue {
+    color: #ffffff;
+}
+
+.opsTheme .metricCard.red,
+.metricCard.red {
+    background: #b3261e;
+    /* readable red */
+    border-color: rgba(255, 255, 255, 0.10);
+}
+
+.opsTheme .metricCard.red .metricTitle,
+.metricCard.red .metricTitle {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.opsTheme .metricCard.red .metricValue,
+.metricCard.red .metricValue {
+    color: #ffffff;
+}
+
+/* ---------- Main Body ---------- */
+.opsTheme .alertBody,
+.alertBody {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 1100px) {
+
+    .opsTheme .alertBody,
+    .alertBody {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Cards */
+.opsTheme .alertInfoCard,
+.opsTheme .alertActionsCard,
+.alertInfoCard,
+.alertActionsCard {
+    border-radius: 16px;
+    border: 1px solid #eef0f2;
+    background: #ffffff;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+}
+
+/* Left card */
+.opsTheme .alertInfoCard,
+.alertInfoCard {
+    padding: 22px 22px 18px;
+}
+
+.opsTheme .alertInfoCard h2,
+.alertInfoCard h2 {
+    margin: 0 0 16px 0;
+    font-size: 28px;
+    font-weight: 950;
+    color: #E8486F;
+    letter-spacing: -0.2px;
+}
+
+.opsTheme .alertGrid,
+.alertGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 26px;
+}
+
+@media (max-width: 680px) {
+
+    .opsTheme .alertGrid,
+    .alertGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.opsTheme .alertGrid label,
+.alertGrid label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+
+.opsTheme .alertGrid>div>div,
+.alertGrid>div>div {
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* Priority badge */
+.opsTheme .priorityBadge,
+.priorityBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 14px;
+    border: 1px solid transparent;
+}
+
+/* severity color mapping (uses lowercased impact/severity like "medium") */
+.opsTheme .priorityBadge.low,
+.priorityBadge.low {
+    background: rgba(34, 197, 94, .12);
+    border-color: rgba(34, 197, 94, .25);
+    color: #166534;
+}
+
+.opsTheme .priorityBadge.medium,
+.priorityBadge.medium {
+    background: rgba(245, 158, 11, .16);
+    border-color: rgba(245, 158, 11, .30);
+    color: #92400e;
+}
+
+.opsTheme .priorityBadge.high,
+.priorityBadge.high {
+    background: rgba(239, 68, 68, .12);
+    border-color: rgba(239, 68, 68, .25);
+    color: #991b1b;
+}
+
+.opsTheme .priorityBadge.critical,
+.priorityBadge.critical {
+    background: rgba(239, 68, 68, .18);
+    border-color: rgba(239, 68, 68, .35);
+    color: #7f1d1d;
+}
+
+/* Right card */
+.opsTheme .alertActionsCard,
+.alertActionsCard {
+    padding: 18px 18px 10px;
+}
+
+.opsTheme .alertActionsCard h3,
+.alertActionsCard h3 {
+    margin: 0 0 10px 0;
+    font-size: 22px;
+    font-weight: 950;
+    color: #0f172a;
+}
+
+/* ---------- Actions Table ---------- */
+.opsTheme .actionsTable,
+.actionsTable {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    /* makes columns behave */
+}
+
+.opsTheme .actionsTable thead th,
+.actionsTable thead th {
+    text-align: left;
+    font-size: 13px;
+    font-weight: 900;
+    color: #6b7280;
+    padding: 12px 10px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.opsTheme .actionsTable thead th:nth-child(1),
+.actionsTable thead th:nth-child(1) {
+    width: 64%;
+}
+
+.opsTheme .actionsTable thead th:nth-child(2),
+.actionsTable thead th:nth-child(2) {
+    width: 18%;
+    text-align: center;
+}
+
+.opsTheme .actionsTable thead th:nth-child(3),
+.actionsTable thead th:nth-child(3) {
+    width: 18%;
+    text-align: center;
+}
+
+.opsTheme .actionsTable td,
+.actionsTable td {
+    padding: 16px 10px;
+    border-bottom: 1px solid #f1f3f5;
+    vertical-align: middle;
+}
+
+.opsTheme .actionsTable td:nth-child(2),
+.opsTheme .actionsTable td:nth-child(3),
+.actionsTable td:nth-child(2),
+.actionsTable td:nth-child(3) {
+    text-align: center;
+}
+
+/* Action text readable, wraps nicely */
+.opsTheme .actionsTable td:first-child,
+.actionsTable td:first-child {
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f172a;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.45;
+}
+
+/* Impact pill */
+.opsTheme .impact,
+.impact {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    border: 1px solid transparent;
+    text-transform: lowercase;
+}
+
+.opsTheme .impact.low,
+.impact.low {
+    background: rgba(34, 197, 94, .12);
+    border-color: rgba(34, 197, 94, .25);
+    color: #166534;
+}
+
+.opsTheme .impact.medium,
+.impact.medium {
+    background: rgba(245, 158, 11, .16);
+    border-color: rgba(245, 158, 11, .30);
+    color: #92400e;
+}
+
+.opsTheme .impact.high,
+.impact.high {
+    background: rgba(239, 68, 68, .12);
+    border-color: rgba(239, 68, 68, .25);
+    color: #991b1b;
+}
+
+.opsTheme .impact.critical,
+.impact.critical {
+    background: rgba(239, 68, 68, .18);
+    border-color: rgba(239, 68, 68, .35);
+    color: #7f1d1d;
+}
+
+/* ---------- Switch ---------- */
+.opsTheme .switch,
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+}
+
+.opsTheme .switch input,
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.opsTheme .slider,
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #cbd5e1;
+    border-radius: 999px;
+    transition: 160ms ease;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.opsTheme .slider:before,
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    top: 3px;
+    background: #ffffff;
+    border-radius: 999px;
+    transition: 160ms ease;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+}
+
+/* ON (normal) */
+.opsTheme .switch input:checked+.slider,
+.switch input:checked+.slider {
+    background: #84cc16;
+}
+
+.opsTheme .switch input:checked+.slider:before,
+.switch input:checked+.slider:before {
+    transform: translateX(22px);
+}
+
+/* Disabled look */
+.opsTheme .switch input:disabled+.slider,
+.switch input:disabled+.slider {
+    cursor: not-allowed;
+    opacity: 0.9;
+}
+
+/* AUTOMATED: ON but greyed */
+.opsTheme .switch input:checked:disabled+.slider,
+.switch input:checked:disabled+.slider {
+    background: #cbd5e1;
+    /* grey but still visibly ON */
+}
+
+.opsTheme .switch input:checked:disabled+.slider:before,
+.switch input:checked:disabled+.slider:before {
+    background: #ffffff;
+}
+
+/* ---------- Footer ---------- */
+.opsTheme .alertFooter,
+.alertFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: 14px;
+    margin-top: 2px;
+}
+
+.opsTheme .cancelBtn,
+.cancelBtn {
+    height: 44px;
+    padding: 0 22px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: #f3f4f6;
+    font-weight: 900;
+    cursor: pointer;
+    color: #0f172a;
+}
+
+.opsTheme .cancelBtn:hover,
+.cancelBtn:hover {
+    background: #eef2f7;
+}
+
+.opsTheme .triggerBtn,
+.triggerBtn {
+    height: 44px;
+    padding: 0 22px;
+    border-radius: 12px;
+    border: 1px solid rgba(232, 72, 111, .25);
+    background: #E8486F;
+    color: #ffffff;
+    font-weight: 950;
+    cursor: pointer;
+    box-shadow: 0 12px 24px rgba(232, 72, 111, .18);
+}
+
+.opsTheme .triggerBtn:hover,
+.triggerBtn:hover {
+    background: #d93f65;
+    border-color: #d93f65;
+}
+
+.opsTheme .triggerBtn:disabled,
+.triggerBtn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+/* Loading */
+.opsTheme .alertDetailsLoading,
+.alertDetailsLoading {
+    padding: 22px 26px;
+    color: #6b7280;
+    font-weight: 800;
+}
+
+.opsTheme .statusPill,
+.statusPill {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-weight: 950;
+    font-size: 13px;
+    border: 1px solid transparent;
+}
+
+.opsTheme .statusPill.new,
+.statusPill.new {
+    background: rgba(59, 130, 246, .12);
+    border-color: rgba(59, 130, 246, .25);
+    color: #1d4ed8;
+}
+
+.opsTheme .statusPill.acknowledged,
+.statusPill.acknowledged {
+    background: rgba(245, 158, 11, .16);
+    border-color: rgba(245, 158, 11, .30);
+    color: #92400e;
+}
+
+.opsTheme .statusPill.resolved,
+.statusPill.resolved,
+.opsTheme .statusPill.closed,
+.statusPill.closed {
+    background: rgba(34, 197, 94, .12);
+    border-color: rgba(34, 197, 94, .25);
+    color: #166534;
+}
