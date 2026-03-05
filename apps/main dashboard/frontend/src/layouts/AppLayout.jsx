@@ -1,8 +1,9 @@
+// frontend/src/layout/AppLayout.jsx
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import homeIcon from "../assets/icons/home.svg";
-import devicesIcon from "../assets/icons/devices.svg";
-// import alertsIcon from "../assets/icons/alerts.svg";
 
+/* (optional) remove these if unused to avoid lint warnings */
+// import homeIcon from "../assets/icons/home.svg";
+// import devicesIcon from "../assets/icons/devices.svg";
 
 const rolePrefixMap = {
   operations_manager: "/operations",
@@ -11,33 +12,7 @@ const rolePrefixMap = {
   exhibitor: "/exhibitor",
 };
 
-
 const IconSize = 20;
-
-const navItemStyle = ({ isActive }) => ({
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  padding: "10px 12px",
-  borderRadius: 10,
-  textDecoration: "none",
-  color: isActive ? "#E8486F" : "#111827",
-  background: isActive ? "rgba(232,72,111,0.08)" : "transparent",
-  fontWeight: isActive ? 700 : 600,
-  marginBottom: 6,
-});
-
-const iconStyle = {
-  width: 18,
-  height: 18,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: 6,
-  background: "#f3f4f6",
-  fontSize: 12,
-};
-
 
 function PageTitle() {
   const { pathname } = useLocation();
@@ -64,23 +39,138 @@ function PageTitle() {
   return "SentinaAI";
 }
 
+const iconStyle = {
+  width: 18,
+  height: 18,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 6,
+  background: "#f3f4f6",
+  fontSize: 12,
+};
+
 function SvgIcon({ children }) {
   return <span style={iconStyle}>{children}</span>;
 }
 
+/* ===== Sustainability nav icons (from your SVG list) ===== */
+function EnergyNavIcon() {
+  return (
+    <svg width={IconSize} height={IconSize} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M18.4164 31H29.5837C30.0096 30.0175 30.5783 29.0337 31.1077 28.1972C31.9501 26.8663 32.8498 25.6684 33.3793 25.0221C34.7882 23.2987 35.668 21.225 35.9229 19.0407C36.1778 16.8563 35.798 14.6443 34.8245 12.6584C33.8509 10.6721 32.3213 8.98968 30.4066 7.80939C28.4915 6.62888 26.2713 6.00036 24.0019 6C21.7326 5.99964 19.5121 6.62747 17.5967 7.80738C15.6816 8.98707 14.1514 10.6691 13.1771 12.6551C12.203 14.6407 11.8225 16.8525 12.0767 19.037C12.3308 21.2216 13.2102 23.2957 14.6187 25.0197C15.1472 25.6656 16.0473 26.8635 16.8906 28.1951C17.4206 29.032 17.9901 30.0165 18.4164 31ZM34.9273 26.2885C36.5762 24.2717 37.6099 21.8396 37.9094 19.2725C38.209 16.7053 37.7621 14.1074 36.6204 11.7782C35.4787 9.44891 33.6885 7.48298 31.4561 6.10687C29.2237 4.73075 26.6398 4.00041 24.0022 4C21.3646 3.99959 18.7806 4.72911 16.5477 6.10453C14.3149 7.47995 12.524 9.44531 11.3816 11.7742C10.2391 14.1031 9.79137 16.7008 10.0901 19.2681C10.3888 21.8354 11.4217 24.2678 13.0699 26.2851C14.0324 27.4611 16.4803 30.8176 17 33H31C31.5197 30.8193 33.9648 27.4628 34.9273 26.2885Z"
+        fill="currentColor"
+      />
+      <path d="M19 21L25 12V18H29L23 27L23 21H19Z" fill="currentColor" />
+      <path d="M17 35H31V37H17V35Z" fill="currentColor" />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M29 41H19L19 42H29V41ZM17 39V42C17 43.1046 17.8954 44 19 44H29C30.1046 44 31 43.1046 31 42V39H17Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function EnvironmentalNavIcon() {
+  return (
+    <svg width={IconSize} height={IconSize} viewBox="-63 65 128 128" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M47.7,172.8c-0.5-2.2-0.1-4.7,1.2-6.8l10.5-16.7c2.5-4,3.1-9.1,2-13.5l-8.2-36.1c-0.6-2.9-3.5-4.8-6.5-4.1 c-2.9,0.6-4.7,3.5-4,6.5l5.1,22.2c1.1,0.2,2.2,0.6,3.1,1.3c2,1.3,3.5,3.3,4,5.6c0.5,2.3,0.1,4.8-1.2,6.8l-12.1,19.2 c-0.5,0.8-1.6,1.2-2.5,0.5c-0.8-0.5-1.2-1.6-0.5-2.4L50.8,136c1.6-2.5,0.8-5.8-1.7-7.4c-2.5-1.6-5.8-0.8-7.4,1.7l-15.2,24.1 c-2.5,3.9-4.4,8.5-2.2,12.9l15.1,24.4l24.6-0.1L47.7,172.8z M-39.4,130.3c-1.6-2.5-4.9-3.3-7.4-1.7c-2.5,1.6-3.3,4.9-1.7,7.4 l12.2,19.3c0.5,0.7,0.3,1.9-0.5,2.4c-0.8,0.5-1.9,0.3-2.5-0.5l-12.2-19.2c-1.4-2-1.7-4.5-1.2-6.8s2-4.4,4-5.6c1-0.6,2-1.1,3.1-1.3 l5.1-22.2c0.6-3-1.2-5.8-4-6.5c-3-0.6-5.8,1.3-6.5,4.1l-8.3,36.1c-1.1,4.2-0.5,9.3,2,13.5l10.5,16.7c1.3,2.1,1.7,4.6,1.2,6.8 l-16.3,18.6l24.6,0.1l15.1-24.4c2.2-4.4,0.3-8.8-2.2-12.9L-39.4,130.3z M33.1,114.8C32,97,16.6,83.5-1.1,84.7 c-17.8,1.1-31.3,16.5-30.2,34.2c1.1,17.8,16.5,31.3,34.2,30.2C20.7,148,34.1,132.7,33.1,114.8z" />
+    </svg>
+  );
+}
+
+function MapNavIcon() {
+  return (
+    <svg width={IconSize} height={IconSize} viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path
+        d="M658.461676 324.594173V95.397443h-270.868862v41.672133h229.19673V512.118771h-83.344266v41.672132h208.360664v-41.672132h-83.344266v-145.852465h229.19673v520.901659h-229.19673v-187.524597h-41.672132v187.524597h-479.229527v-333.377062h145.852465v-41.672132h-145.852465v-375.049195h145.852465v-41.672133h-187.524597v833.442655h833.442654v-604.245925z"
+        fill="currentColor"
+      />
+      <path
+        d="M825.150207 407.938439v416.721327h-166.688531v62.508199H887.658406v-479.229526zM554.281344 824.659766h-416.721327v62.508199h479.229527v-145.852464h-62.5082zM554.281344 178.741709h62.5082v333.377062h-62.5082z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function ReportsNavIcon() {
+  return (
+    <svg width={IconSize} height={IconSize} viewBox="0 0 302.444 302.444" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M100.455,59.658c-6.128-1.312-13.782-2.242-22.546-2.242C34.722,57.416,0,84.514,0,133.21 c0,40.648,25.405,71.351,74.735,71.351c9.354,0,17.539-0.925,24.03-2.237c7.111-1.442,11.735-8.341,10.361-15.468 c-1.349-6.971-8.025-11.555-14.997-10.314c-4.661,0.827-9.72,1.345-14.526,1.345c-28.794,0-45.728-18-45.728-46.582 c0-31.756,19.901-47.213,45.517-47.213c5.446,0,10.361,0.579,14.723,1.479c7.095,1.462,14.097-2.898,15.895-9.917l0.104-0.413 c0.862-3.354,0.315-6.91-1.509-9.85C106.781,62.449,103.839,60.381,100.455,59.658z" />
+      <path d="M189.034,57.416c-42.132,0-69.443,31.973-69.443,74.735c0,40.649,24.768,72.62,67.113,72.62 c41.708,0,70.08-28.369,70.08-75.157C256.783,90.235,232.855,57.416,189.034,57.416z M188.399,179.15 c-21.597,0-34.722-19.688-34.722-47.636c0-27.73,12.702-48.478,34.509-48.478c22.232,0,34.511,22.015,34.511,47.636 C222.697,158.403,210.206,179.15,188.399,179.15z" />
+      <path d="M295.83,231.804h-19.301v-0.212l6.346-5.286c9.943-8.884,18.299-18.087,18.299-29.617c0-12.484-8.567-21.579-24.118-21.579 c-6.744,0-12.821,1.663-17.626,4.071c-2.879,1.442-4.186,4.843-3.003,7.835l0.15,0.377c0.583,1.479,1.757,2.641,3.24,3.214 c1.483,0.568,3.137,0.485,4.559-0.222c2.775-1.374,5.963-2.372,9.404-2.372c7.933,0,11.318,4.444,11.318,10.051 c-0.212,8.041-7.509,15.762-22.531,29.192l-6.708,6.073c-1.385,1.255-2.176,3.033-2.176,4.902c0,3.753,3.044,6.796,6.796,6.796 h35.352c3.654,0,6.614-2.961,6.614-6.609C302.444,234.765,299.484,231.804,295.83,231.804z" />
+    </svg>
+  );
+}
+
 export default function AppLayout() {
   const navigate = useNavigate();
+
   const role = localStorage.getItem("role") || "operations_manager";
   const rolePrefix = rolePrefixMap[role] || "/operations";
+
+  const isSust = role === "sustainability_manager";
+
+  const ACCENT = isSust ? "#00802B" : "#E8486F";
+  const ACCENT_BG = isSust ? "rgba(0,128,43,0.08)" : "rgba(232,72,111,0.08)";
+
+  const navItemStyle = ({ isActive }) => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "10px 12px",
+    borderRadius: 10,
+    textDecoration: "none",
+    color: isActive ? ACCENT : "#111827",
+    background: isActive ? ACCENT_BG : "transparent",
+    fontWeight: isActive ? 700 : 600,
+    marginBottom: 6,
+  });
 
   const handleLogout = () => {
     localStorage.clear();
     navigate("/", { replace: true });
   };
 
+  const styles = {
+    shell: { display: "grid", gridTemplateColumns: "260px 1fr", height: "100vh", background: "#f6f7fb", color: "#111827" },
+    sidebar: { padding: 18, background: "#ffffff", borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: 6 },
+    brand: { fontSize: 28, fontWeight: 900, letterSpacing: "-0.5px", marginBottom: 18 },
+    sectionLabel: { fontSize: 12, fontWeight: 800, opacity: 0.55, marginTop: 6, marginBottom: 8 },
+    logoutBtn: {
+      marginTop: 10,
+      padding: "10px 12px",
+      borderRadius: 10,
+      border: "1px solid #fee2e2",
+      background: "#fff1f2",
+      color: "#D55F5A",
+      fontWeight: 800,
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+    },
+    main: { display: "flex", flexDirection: "column", overflow: "hidden" },
+    header: { padding: "18px 22px", display: "flex", justifyContent: "space-between", alignItems: "center" },
+    pageTitle: { fontSize: 20, fontWeight: 900, color: ACCENT },
+    subTitle: { marginTop: 4, fontSize: 12, opacity: 0.65 },
+    headerRight: { display: "flex", alignItems: "center", gap: 14 },
+    searchWrap: { position: "relative", width: 320 },
+    searchInput: { width: "100%", padding: "10px 36px 10px 12px", borderRadius: 12, border: "1px solid #e5e7eb", outline: "none", background: "#ffffff" },
+    searchIcon: { position: "absolute", right: 10, top: 8, opacity: 0.6 },
+    userCard: { display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", borderRadius: 14, background: "#ffffff", border: "1px solid #e5e7eb" },
+    avatar: { width: 40, height: 40, borderRadius: 999, background: "#111827", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 },
+    content: { padding: "0 22px 22px 22px", overflow: "auto" },
+  };
+
   return (
     <div style={styles.shell}>
-      {/* Sidebar */}
       <aside style={styles.sidebar}>
         <div style={styles.brand}>SentinaAI</div>
 
@@ -88,13 +178,7 @@ export default function AppLayout() {
 
         <NavLink to={rolePrefix} end style={navItemStyle}>
           <SvgIcon>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 20 21"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
+            <svg width="18" height="18" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M7 19.3333V10.1667H13V19.3333M1 7.41667L10 1L19 7.41667V17.5C19 17.9862 18.7893 18.4525 18.4142 18.7964C18.0391 19.1402 17.5304 19.3333 17 19.3333H3C2.46957 19.3333 1.96086 19.1402 1.58579 18.7964C1.21071 18.4525 1 17.9862 1 17.5V7.41667Z"
                 stroke="currentColor"
@@ -109,21 +193,12 @@ export default function AppLayout() {
 
         <NavLink to={`${rolePrefix}/devices`} style={navItemStyle}>
           <SvgIcon>
-            <svg
-              width={IconSize}
-              height={IconSize}
-              viewBox="0 0 28 28"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
+            <svg width={IconSize} height={IconSize} viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M27.0347 17.3792H23.1726V13.5171H21.2415V22.2068H5.79314V6.75845L14.4829 6.75758V4.82741H10.6208V0.965332H8.68971V4.82741H5.79314C5.28115 4.82792 4.79028 5.03153 4.42825 5.39356C4.06622 5.75559 3.8626 6.24646 3.86209 6.75845V9.655H0V11.586H3.86209V17.3792H0V19.3102H3.86209V22.2068C3.86268 22.7187 4.06632 23.2095 4.42833 23.5716C4.79035 23.9336 5.28118 24.1372 5.79314 24.1378H8.68971V27.9999H10.6208V24.1378H16.4139V27.9999H18.3449V24.1378H21.2415C21.7534 24.1371 22.2442 23.9334 22.6062 23.5714C22.9682 23.2094 23.1719 22.7187 23.1726 22.2068V19.3102H27.0347V17.3792Z"
                 fill="currentColor"
               />
-              <path
-                d="M18.3447 19.3105H8.68945V9.65527H18.3447V19.3105ZM10.6205 17.3794H16.4136V11.5863H10.6205V17.3794Z"
-                fill="currentColor"
-              />
+              <path d="M18.3447 19.3105H8.68945V9.65527H18.3447V19.3105ZM10.6205 17.3794H16.4136V11.5863H10.6205V17.3794Z" fill="currentColor" />
               <path
                 d="M28.0003 11.5862H26.0693C26.0663 9.02643 25.0481 6.57233 23.238 4.76228C21.428 2.95223 18.9739 1.93403 16.4141 1.93104V0C19.4859 0.00334794 22.431 1.22511 24.6031 3.39723C26.7752 5.56934 27.997 8.5144 28.0003 11.5862Z"
                 fill="currentColor"
@@ -139,13 +214,7 @@ export default function AppLayout() {
 
         <NavLink to={`${rolePrefix}/alerts`} style={navItemStyle}>
           <SvgIcon>
-            <svg
-              width={IconSize}
-              height={IconSize}
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
+            <svg width={IconSize} height={IconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M11.9998 8.99999V13M11.9998 17H12.0098M10.6151 3.89171L2.39019 18.0983C1.93398 18.8863 1.70588 19.2803 1.73959 19.6037C1.769 19.8857 1.91677 20.142 2.14613 20.3088C2.40908 20.5 2.86435 20.5 3.77487 20.5H20.2246C21.1352 20.5 21.5904 20.5 21.8534 20.3088C22.0827 20.142 22.2305 19.8857 22.2599 19.6037C22.2936 19.2803 22.0655 18.8863 21.6093 18.0983L13.3844 3.89171C12.9299 3.10654 12.7026 2.71396 12.4061 2.58211C12.1474 2.4671 11.8521 2.4671 11.5935 2.58211C11.2969 2.71396 11.0696 3.10655 10.6151 3.89171Z"
                 stroke="currentColor"
@@ -158,17 +227,12 @@ export default function AppLayout() {
           Alerts
         </NavLink>
 
+        {/* ✅ FIX: restore missing Operations links */}
         {role === "operations_manager" && (
           <>
             <NavLink to={`${rolePrefix}/events`} style={navItemStyle}>
               <SvgIcon>
-                <svg
-                  width="100%"
-                  height="100%"
-                  viewBox="0 0 25 19"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
+                <svg width="100%" height="100%" viewBox="0 0 25 19" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path
                     fillRule="evenodd"
                     clipRule="evenodd"
@@ -183,13 +247,7 @@ export default function AppLayout() {
 
             <NavLink to={`${rolePrefix}/exhibitors`} style={navItemStyle}>
               <SvgIcon>
-                <svg
-                  width="100%"
-                  height="100%"
-                  viewBox="0 0 32 22"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
+                <svg width="100%" height="100%" viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path
                     fillRule="evenodd"
                     clipRule="evenodd"
@@ -233,17 +291,11 @@ export default function AppLayout() {
 
             <NavLink to={`${rolePrefix}/booths`} style={navItemStyle}>
               <SvgIcon>
-                <svg
-                  width="100%"
-                  height="100%"
-                  viewBox="0 0 35 33"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
+                <svg width="100%" height="100%" viewBox="0 0 35 33" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path
                     fillRule="evenodd"
                     clipRule="evenodd"
-                    d="M17.0471 2.0552L17.1449 2.05482C19.4789 2.04581 21.2968 2.0388 22.7526 2.14867C24.2316 2.2603 25.432 2.49747 26.504 3.02884C28.0229 3.78167 29.2734 4.91893 30.1065 6.30515C30.6945 7.28358 30.9626 8.38186 31.0958 9.73651C31.227 11.07 31.2334 12.7361 31.2417 14.8754L31.2523 17.6286C31.2605 19.7679 31.267 21.434 31.1461 22.7685C31.0233 24.1241 30.7637 25.2244 30.1833 26.2074C29.3609 27.6 28.1192 28.7468 26.6062 29.5114C25.5383 30.051 24.3398 30.2974 22.8617 30.4205C21.4067 30.5416 19.5888 30.5486 17.2547 30.5576L17.1572 30.5579C14.8231 30.5669 13.0052 30.574 11.5493 30.4641C10.0703 30.3525 8.86996 30.1153 7.79791 29.5839C6.27904 28.8311 5.02857 27.6938 4.19544 26.3076C3.6074 25.3292 3.33934 24.2309 3.2061 22.8762C3.07494 21.5428 3.06852 19.8767 3.06028 17.7374L3.04966 14.9841C3.0414 12.8448 3.03497 11.1787 3.15583 9.84427C3.27862 8.48864 3.5382 7.38832 4.11868 6.40538C4.94109 5.01278 6.18275 3.86591 7.69577 3.10138C8.76369 2.56176 9.96217 2.31534 11.4403 2.19231C12.8952 2.0712 14.7131 2.06419 17.0471 2.0552ZM11.6229 4.04934C10.2789 4.16122 9.39617 4.37085 8.6771 4.7342C7.50573 5.32609 6.54444 6.21399 5.90774 7.29214C5.51688 7.95398 5.295 8.76462 5.18335 9.9973C5.07062 11.2419 5.07584 12.8275 5.0843 15.021L5.09458 17.6848C5.10304 19.8783 5.11004 21.4639 5.23237 22.7076C5.35352 23.9394 5.58166 24.7483 5.97761 25.4071C6.62261 26.4803 7.59072 27.3607 8.76662 27.9436C9.48847 28.3014 10.3728 28.5042 11.7176 28.6057C13.0755 28.7082 14.8055 28.7023 17.1987 28.6931C19.592 28.6839 21.322 28.6764 22.679 28.5634C24.0231 28.4515 24.9058 28.2419 25.6248 27.8786C26.7962 27.2867 27.7575 26.3988 28.3942 25.3206C28.7851 24.6588 29.0069 23.8481 29.1186 22.6155C29.2313 21.3709 29.2261 19.7852 29.2176 17.5918L29.2074 14.928C29.1989 12.7345 29.1919 11.1489 29.0696 9.90517C28.9484 8.67339 28.7203 7.86449 28.3243 7.20568C27.6793 6.13247 26.7112 5.25201 25.5353 4.66918C24.8135 4.31139 23.9292 4.10857 22.5843 4.00707C21.2264 3.90458 19.4964 3.91044 17.1032 3.91967C14.71 3.9289 12.98 3.93639 11.6229 4.04934Z"
+                    d="M17.0471 2.0552L17.1449 2.05482C19.4789 2.04581 21.2968 2.0388 22.7526 2.14867C24.2316 2.2603 25.432 2.49747 26.504 3.02884C28.0229 3.78167 29.2734 4.91893 30.1065 6.30515C30.6945 7.28358 30.9626 8.38186 31.0958 9.73651C31.227 11.07 31.2334 12.7361 31.2417 14.8754L31.2523 17.6286C31.2605 19.7679 31.267 21.434 31.1461 22.7685C31.0233 24.1241 30.7637 25.2244 30.1833 26.2074C29.3609 27.6 28.1192 28.7468 26.6062 29.5114C25.5383 30.051 24.3398 30.2974 22.8617 30.4205C21.4067 30.5416 19.5888 30.5486 17.2547 30.5576L17.1572 30.5579C14.8231 30.5669 13.0052 30.574 11.5493 30.4641C10.0703 30.3525 8.86996 30.1153 7.79791 29.5839C6.27904 28.8311 5.02857 27.6938 4.19544 26.3076C3.6074 25.3292 3.33934 24.2309 3.2061 22.8762C3.07494 21.5428 3.06852 19.8767 3.06028 17.7374L3.04966 14.9841C3.0414 12.8448 3.03497 11.1787 3.15583 9.84427C3.27862 8.48864 3.5382 7.38832 4.11868 6.40538C4.94109 5.01278 6.18275 3.86591 7.69577 3.10138C8.76369 2.56176 9.96217 2.31534 11.4403 2.19231C12.8952 2.0712 14.7131 2.06419 17.0471 2.0552Z"
                     fill="currentColor"
                   />
                   <path
@@ -271,13 +323,7 @@ export default function AppLayout() {
 
             <NavLink to={`${rolePrefix}/navigation`} style={navItemStyle}>
               <SvgIcon>
-                <svg
-                  width="100%"
-                  height="100%"
-                  viewBox="0 0 34 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
+                <svg width="100%" height="100%" viewBox="0 0 34 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path
                     d="M11.3332 18L1.4165 22V6L11.3332 2M11.3332 18L22.6665 22M11.3332 18V2M22.6665 22L32.5832 18V2L22.6665 6M22.6665 22V6M22.6665 6L11.3332 2"
                     stroke="currentColor"
@@ -295,22 +341,22 @@ export default function AppLayout() {
         {role === "sustainability_manager" && (
           <>
             <NavLink to={`${rolePrefix}/energy`} style={navItemStyle}>
-              <SvgIcon>⚡</SvgIcon>
+              <SvgIcon><EnergyNavIcon /></SvgIcon>
               Energy
             </NavLink>
 
             <NavLink to={`${rolePrefix}/environment`} style={navItemStyle}>
-              <SvgIcon>🌱</SvgIcon>
+              <SvgIcon><EnvironmentalNavIcon /></SvgIcon>
               Environmental
             </NavLink>
 
             <NavLink to={`${rolePrefix}/map`} style={navItemStyle}>
-              <SvgIcon>🗺️</SvgIcon>
+              <SvgIcon><MapNavIcon /></SvgIcon>
               Map
             </NavLink>
 
             <NavLink to={`${rolePrefix}/reports`} style={navItemStyle}>
-              <SvgIcon>📊</SvgIcon>
+              <SvgIcon><ReportsNavIcon /></SvgIcon>
               Reports
             </NavLink>
           </>
@@ -322,13 +368,8 @@ export default function AppLayout() {
 
         <NavLink to={`${rolePrefix}/settings`} style={navItemStyle}>
           <SvgIcon>
-            <svg
-              width="100%"
-              height="100%"
-              viewBox="0 0 28 28"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
+            {/* (settings icon unchanged) */}
+            <svg width="100%" height="100%" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
               <g clipPath="url(#clip0)">
                 <path
                   d="M13.9998 17.5003C15.9328 17.5003 17.4998 15.9333 17.4998 14.0003C17.4998 12.0673 15.9328 10.5003 13.9998 10.5003C12.0668 10.5003 10.4998 12.0673 10.4998 14.0003C10.4998 15.9333 12.0668 17.5003 13.9998 17.5003Z"
@@ -357,13 +398,7 @@ export default function AppLayout() {
 
         <NavLink to={`${rolePrefix}/help`} style={navItemStyle}>
           <SvgIcon>
-            <svg
-              width="100%"
-              height="100%"
-              viewBox="0 0 28 26"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
+            <svg width="100%" height="100%" viewBox="0 0 28 26" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M10.6052 9.75033C10.8795 9.0263 11.4208 8.41577 12.1334 8.02689C12.846 7.638 13.6839 7.49584 14.4985 7.6256C15.3132 7.75535 16.0521 8.14864 16.5844 8.73581C17.1167 9.32299 17.4081 10.0661 17.4068 10.8337C17.4068 13.0003 13.9068 14.0837 13.9068 14.0837M14.0002 18.417H14.0118M25.6668 13.0003C25.6668 18.9834 20.4435 23.8337 14.0002 23.8337C7.55684 23.8337 2.3335 18.9834 2.3335 13.0003C2.3335 7.01724 7.55684 2.16699 14.0002 2.16699C20.4435 2.16699 25.6668 7.01724 25.6668 13.0003Z"
                 stroke="currentColor"
@@ -378,13 +413,7 @@ export default function AppLayout() {
 
         <button style={styles.logoutBtn} onClick={handleLogout}>
           <span style={iconStyle}>
-            <svg
-              width="100%"
-              height="100%"
-              viewBox="0 0 27 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
+            <svg width="100%" height="100%" viewBox="0 0 27 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M10.125 21H5.625C5.02826 21 4.45597 20.7893 4.03401 20.4142C3.61205 20.0391 3.375 19.5304 3.375 19V5C3.375 4.46957 3.61205 3.96086 4.03401 3.58579C4.45597 3.21071 5.02826 3 5.625 3H10.125M18 17L23.625 12M23.625 12L18 7M23.625 12H10.125"
                 stroke="currentColor"
@@ -398,21 +427,18 @@ export default function AppLayout() {
         </button>
       </aside>
 
-      {/* Main */}
       <main style={styles.main}>
         <header style={styles.header}>
           <div>
             <div style={styles.pageTitle}>{PageTitle()}</div>
             <div style={styles.subTitle}>
-              {
-                role === "sustainability_manager"
-                  ? "Sustainability Dashboard"
-                  : role === "soc_analyst"
-                    ? "SOC Dashboard"
-                    : role === "exhibitor"
-                      ? "Exhibitor Portal"
-                      : "Operations Dashboard"
-              }
+              {role === "sustainability_manager"
+                ? "Sustainability Dashboard"
+                : role === "soc_analyst"
+                ? "SOC Dashboard"
+                : role === "exhibitor"
+                ? "Exhibitor Portal"
+                : "Operations Dashboard"}
             </div>
           </div>
 
@@ -420,13 +446,7 @@ export default function AppLayout() {
             <div style={styles.searchWrap}>
               <input placeholder="Search here" style={styles.searchInput} />
               <span style={styles.searchIcon}>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 15 16"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
+                <svg width="16" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path
                     d="M6 11C8.76142 11 11 8.76142 11 6C11 3.23858 8.76142 1 6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11Z"
                     stroke="currentColor"
@@ -434,34 +454,18 @@ export default function AppLayout() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
-                  <path
-                    d="M14 15L9 10"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+                  <path d="M14 15L9 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </span>
             </div>
 
             <div style={styles.userCard}>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 13 }}>
-                  {localStorage.getItem("full_name") || "User"}
-                </div>
-                <div style={{ fontSize: 12, opacity: 0.75 }}>
-                  Role: {localStorage.getItem("role")}
-                </div>
-                <div style={{ fontSize: 12, opacity: 0.75 }}>
-                  Employee ID: {localStorage.getItem("employee_id")}
-                </div>
+                <div style={{ fontWeight: 800, fontSize: 13 }}>{localStorage.getItem("full_name") || "User"}</div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>Role: {localStorage.getItem("role")}</div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>Employee ID: {localStorage.getItem("employee_id")}</div>
               </div>
-              <div style={styles.avatar}>
-                {(localStorage.getItem("full_name") || "U")
-                  .charAt(0)
-                  .toUpperCase()}
-              </div>
+              <div style={styles.avatar}>{(localStorage.getItem("full_name") || "U").charAt(0).toUpperCase()}</div>
             </div>
           </div>
         </header>
@@ -473,115 +477,3 @@ export default function AppLayout() {
     </div>
   );
 }
-
-const styles = {
-  shell: {
-    display: "grid",
-    gridTemplateColumns: "260px 1fr",
-    height: "100vh",
-    background: "#f6f7fb",
-    color: "#111827",
-  },
-  sidebar: {
-    padding: 18,
-    background: "#ffffff",
-    borderRight: "1px solid #e5e7eb",
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-  },
-  brand: {
-    fontSize: 28,
-    fontWeight: 900,
-    letterSpacing: "-0.5px",
-    marginBottom: 18,
-  },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: 800,
-    opacity: 0.55,
-    marginTop: 6,
-    marginBottom: 8,
-  },
-  logoutBtn: {
-    marginTop: 10,
-    padding: "10px 12px",
-    borderRadius: 10,
-    border: "1px solid #fee2e2",
-    background: "#fff1f2",
-    color: "#D55F5A",
-    fontWeight: 800,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  },
-  main: {
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-  },
-  header: {
-    padding: "18px 22px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  pageTitle: {
-    fontSize: 20,
-    fontWeight: 900,
-    color: "#E8486F"
-  },
-  subTitle: {
-    marginTop: 4,
-    fontSize: 12,
-    opacity: 0.65,
-  },
-  headerRight: {
-    display: "flex",
-    alignItems: "center",
-    gap: 14,
-  },
-  searchWrap: {
-    position: "relative",
-    width: 320,
-  },
-  searchInput: {
-    width: "100%",
-    padding: "10px 36px 10px 12px",
-    borderRadius: 12,
-    border: "1px solid #e5e7eb",
-    outline: "none",
-    background: "#ffffff",
-  },
-  searchIcon: {
-    position: "absolute",
-    right: 10,
-    top: 8,
-    opacity: 0.6,
-  },
-  userCard: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    padding: "8px 10px",
-    borderRadius: 14,
-    background: "#ffffff",
-    border: "1px solid #e5e7eb",
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    background: "#111827",
-    color: "white",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontWeight: 900,
-  },
-  content: {
-    padding: "0 22px 22px 22px",
-    overflow: "auto",
-  },
-};

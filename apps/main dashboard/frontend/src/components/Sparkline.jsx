@@ -19,8 +19,8 @@ function fmtX(ts, xMode) {
   }
 }
 
-export default function Sparkline({ points = [], height = 110, xMode = "time" }) {
-  const ACCENT = "#E8486F";
+export default function Sparkline({ points = [], height = 110, xMode = "time", accent }) {
+  const ACCENT = accent || "var(--sust-accent, #E8486F)";
 
   const w = 320;
   const h = height;

@@ -303,3 +303,171 @@ exports.getOccupancyForecast = async (req, res) => {
     return res.status(500).json({ ok: false, error: e.message });
   }
 };
+
+exports.getSustKpis = async (req, res) => {
+  try {
+    const eventId = req.query.event_id || null;
+    const zoneId = req.query.zone_id || null;
+
+    const ts = await getLatestTs({ eventId, zoneId });
+    if (!ts) return res.json({ ok: true, ts: null, kpis: {} });
+
+    const r = await analyticsDb.query(
+      `
+      SELECT
+        COALESCE(SUM(hvac_energy_kwh),0)::float8 AS total_energy_kwh,
+        COALESCE(SUM(carbon_kg_co2),0)::float8 AS total_carbon_kg,
+        COALESCE(AVG(energy_efficiency_score),0)::float8 AS avg_eff_score,
+        COALESCE(SUM(CASE WHEN sustainability_status='green' THEN 1 ELSE 0 END),0)::int AS green_count,
+        COALESCE(SUM(CASE WHEN sustainability_status='amber' THEN 1 ELSE 0 END),0)::int AS amber_count,
+        COALESCE(SUM(CASE WHEN sustainability_status='red' THEN 1 ELSE 0 END),0)::int AS red_count
+      FROM interval_metrics
+      WHERE ts = $1
+        AND ($2::text IS NULL OR event_id = $2)
+        AND ($3::text IS NULL OR zone_id = $3)
+      `,
+      [ts, eventId, zoneId]
+    );
+
+    const k = r.rows[0] || {};
+    const red = Number(k.red_count || 0);
+    const amber = Number(k.amber_count || 0);
+
+    const automationStatus =
+      red > 0 ? "Optimization Required" :
+      amber > 0 ? "Monitor & Optimize" :
+      "Optimal";
+
+    return res.json({
+      ok: true,
+      ts,
+      kpis: {
+        totalEnergyKWh: Number(k.total_energy_kwh || 0),
+        totalCarbonKg: Number(k.total_carbon_kg || 0),
+        avgEfficiencyScore: Number(k.avg_eff_score || 0),
+        statusCounts: { green: Number(k.green_count||0), amber: amber, red: red },
+        automationStatus,
+      },
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+};
+
+exports.getSustLive = async (req, res) => {
+  try {
+    const eventId = req.query.event_id || null;
+    const zoneId = req.query.zone_id || null;
+
+    const ts = await getLatestTs({ eventId, zoneId });
+    if (!ts) return res.json({ ok: true, ts: null, rows: [] });
+
+    const r = await analyticsDb.query(
+      `
+      SELECT
+        zone_id,
+        hall_id,
+        hall_name,
+        day_of_week,
+        hour_of_day,
+        venue_role,
+        occupancy_ratio,
+        comfort_index,
+        indoor_temp_c,
+        outdoor_temp_c,
+        humidity_pct,
+        hvac_energy_kwh,
+        carbon_kg_co2,
+        energy_efficiency_score,
+        sustainability_status
+      FROM interval_metrics
+      WHERE ts = $1
+        AND ($2::text IS NULL OR event_id = $2)
+        AND ($3::text IS NULL OR zone_id = $3)
+        AND hall_id IS NOT NULL
+      `,
+      [ts, eventId, zoneId]
+    );
+
+    const base = (r.rows || []).map((x) => ({
+      zone_id: x.zone_id,
+      hall_id: x.hall_id,
+      hall_name: x.hall_name,
+      dayOfWeek: x.day_of_week || "Monday",
+      hourOfDay: Number(x.hour_of_day || 0),
+      venueRole: x.venue_role || "default",
+      occupancyRatio: Number(x.occupancy_ratio || 0),
+      comfortIndex: Number(x.comfort_index || 0),
+      indoorTempC: Number(x.indoor_temp_c || 0),
+      outdoorTempC: Number(x.outdoor_temp_c || 0),
+      humidityPct: Number(x.humidity_pct || 0),
+      hvacEnergyKWh: Number(x.hvac_energy_kwh || 0),
+      carbonKgCO2: Number(x.carbon_kg_co2 || 0),
+      energyEfficiencyScore: Number(x.energy_efficiency_score || 0),
+      sustainabilityStatusRaw: x.sustainability_status || null,
+    }));
+
+    // ✅ Prefer batch inference (one AI call)
+    let aiRowsByHall = new Map();
+    try {
+      const resp = await fetch(`${AI_BASE}/api/infer-sustainability-batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ halls: base.map((h) => ({
+          hall_id: String(h.hall_id),
+          hvacEnergyKWh: h.hvacEnergyKWh,
+          carbonKgCO2: h.carbonKgCO2,
+          energyEfficiencyScore: h.energyEfficiencyScore,
+          comfortIndex: h.comfortIndex,
+          occupancyRatio: h.occupancyRatio,
+          indoorTempC: h.indoorTempC,
+          outdoorTempC: h.outdoorTempC,
+          humidityPct: h.humidityPct,
+          hourOfDay: h.hourOfDay,
+          dayOfWeek: h.dayOfWeek,
+          venueRole: h.venueRole,
+        })) }),
+      });
+
+      const data = await readJsonSafe(resp);
+      if (resp.ok && data?.status === "success") {
+        for (const row of (data.rows || [])) {
+          if (row?.hall_id) aiRowsByHall.set(String(row.hall_id), row);
+        }
+      }
+    } catch {
+      // swallow — we fallback below
+    }
+
+    const rows = base.map((h) => {
+      const ai = aiRowsByHall.get(String(h.hall_id));
+
+      // fallback if AI unreachable: use raw DB status
+      const sustStatus = ai?.sustainabilityStatus || h.sustainabilityStatusRaw || "unknown";
+      const aiAction =
+        ai?.aiAction ||
+        (String(sustStatus).toLowerCase() === "red" ? "reduceHVACLoad" :
+         String(sustStatus).toLowerCase() === "amber" ? "optimizeHVAC" : "none");
+
+      const isAnomaly = typeof ai?.isAnomaly === "boolean"
+        ? ai.isAnomaly
+        : String(sustStatus).toLowerCase() !== "green";
+
+      return {
+        zone_id: h.zone_id,
+        hall_id: h.hall_id,
+        hall_name: h.hall_name,
+        hvac_energy_kwh: h.hvacEnergyKWh,
+        carbon_kg_co2: h.carbonKgCO2,
+        energy_efficiency_score: h.energyEfficiencyScore,
+        sustainability_status: sustStatus,
+        aiAction,
+        isAnomaly,
+      };
+    });
+
+    return res.json({ ok: true, ts, rows });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+};
