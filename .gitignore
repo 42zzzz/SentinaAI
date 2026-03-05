@@ -4,3 +4,7 @@ node_modules/
 *.pyc
 /apps/navigation_web/backend/__pycache__
 apps/navigation_web/.claude/settings.local.json
+
+# TLS certificates — generated locally, never committed
+# Private keys must never enter version control
+services/mqtt-broker/certs/
