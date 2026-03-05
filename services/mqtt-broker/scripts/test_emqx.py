@@ -116,6 +116,7 @@ def _make_ssl_context(client_cert: Optional[Path] = None,
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     if verify_server:
+        ctx.check_hostname = False   # CN is mqtt.sentinai.local; tests connect to localhost
         ctx.verify_mode = ssl.CERT_REQUIRED
         ctx.load_verify_locations(cafile=str(CA_CERT))
     else:
@@ -150,11 +151,23 @@ def _try_connect_tls(
     """
     outcome = _ConnectOutcome()
 
-    client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv5)
+    # paho-mqtt 2.x requires callback_api_version; fall back gracefully for 1.x
+    try:
+        client = mqtt.Client(
+            client_id=client_id,
+            protocol=mqtt.MQTTv5,
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION1,
+        )
+    except (TypeError, AttributeError):
+        client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv5)
 
     if cert_identity:
         crt, key = _cert_path(cert_identity)
         ssl_ctx = _make_ssl_context(client_cert=crt, client_key=key)
+        # Explicitly set MQTT username = cert CN so ACL ${username} rules work.
+        # This is the MQTT-level identity; peer_cert_as_username = cn would do
+        # the same automatically, but we set it here as well for reliability.
+        client.username_pw_set(cert_identity)
     else:
         # Anonymous — no client cert
         ssl_ctx = _make_ssl_context()
@@ -219,6 +232,10 @@ def _publish_and_check(
     client.publish(topic, payload, qos=1)
     # Wait for either ack or disconnect
     got_ack = ack_received.wait(timeout=timeout)
+    # EMQX sends PUBACK(0x87 Not Authorized) then immediately DISCONNECT.
+    # Give the DISCONNECT packet time to arrive before stopping the loop.
+    if got_ack:
+        disconnected.wait(timeout=1.0)
     client.loop_stop()
 
     # Restore original handler
@@ -256,7 +273,10 @@ def _subscribe_and_check(
 
     client.loop_start()
     client.subscribe(topic, qos=1)
-    sub_event.wait(timeout=timeout)
+    sub_received = sub_event.wait(timeout=timeout)
+    # EMQX may send SUBACK(0x87) then DISCONNECT — give the DISCONNECT time to arrive.
+    if sub_received:
+        disconnected.wait(timeout=1.0)
     client.loop_stop()
 
     client.on_disconnect = original_on_disconnect
@@ -265,8 +285,11 @@ def _subscribe_and_check(
         return False   # broker disconnected us (deny_action=disconnect)
     if not sub_result:
         return False   # no SUBACK received
-    # MQTT SUBACK rc=128 means "denied" in MQTT v3.1.1; in MQTTv5 it's a reason code
-    return sub_result[0] != 128
+    # In MQTTv5 paho-mqtt passes ReasonCode objects, not plain ints.
+    # Success codes are 0x00-0x02 (QoS 0/1/2 granted); anything >= 0x80 is an error.
+    rc = sub_result[0]
+    rc_int = rc.value if hasattr(rc, "value") else int(rc)
+    return rc_int < 0x80
 
 
 # ── Individual tests ──────────────────────────────────────────────────────────
@@ -423,7 +446,7 @@ def preflight() -> bool:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    global verbose
+    global verbose, BROKER_HOST, BROKER_PORT_TLS, BROKER_PORT_PLAIN
     parser = argparse.ArgumentParser(description="EMQX mTLS integration tests")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Show all test results, not just failures")
@@ -431,8 +454,6 @@ def main():
     parser.add_argument("--tls-port", type=int, default=BROKER_PORT_TLS)
     parser.add_argument("--plain-port", type=int, default=BROKER_PORT_PLAIN)
     args = parser.parse_args()
-
-    global BROKER_HOST, BROKER_PORT_TLS, BROKER_PORT_PLAIN
     BROKER_HOST      = args.host
     BROKER_PORT_TLS  = args.tls_port
     BROKER_PORT_PLAIN= args.plain_port
