@@ -3,9 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./AlertsPage.css";
 import { useNavigate } from "react-router-dom";
-
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-const role = localStorage.getItem("role");
 
 const roleDomainMap = {
   operations_manager: "OPERATIONS",
@@ -13,8 +11,6 @@ const roleDomainMap = {
   soc_analyst: "SOC",
   exhibitor: "EXHIBITOR",
 };
-
-const domain = roleDomainMap[role] || "OPERATIONS";
 
 function fmtTs(iso) {
   if (!iso) return "-";
@@ -103,6 +99,10 @@ const IconRule = IconStatus;
 
 export default function AlertsPage() {
   const navigate = useNavigate();
+
+  const role = localStorage.getItem("role");
+  const domain = roleDomainMap[role] || "OPERATIONS";
+
   const [filters, setFilters] = useState(null);
 
   const [q, setQ] = useState("");
@@ -122,7 +122,7 @@ export default function AlertsPage() {
   const [error, setError] = useState("");
 
   const [expandedId, setExpandedId] = useState(null);
-  const [openSelect, setOpenSelect] = useState(null); // "sev" | "status" | "zone" | "hall" | "rule" | "sort" | "rows"
+  const [openSelect, setOpenSelect] = useState(null);
 
   const [qLive, setQLive] = useState("");
   useEffect(() => {
@@ -130,13 +130,15 @@ export default function AlertsPage() {
     return () => clearTimeout(t);
   }, [q]);
 
+  // ✅ IMPORTANT: filters must be fetched per-domain
   useEffect(() => {
     axios
-      .get(`${API_BASE}/alerts/filters`)
+      .get(`${API_BASE}/alerts/filters`, { params: { domain } })
       .then((res) => setFilters(res.data))
       .catch((e) => setError(e?.response?.data?.error || e.message || "Failed to load alert filters"));
-  }, []);
+  }, [domain]);
 
+  // ✅ IMPORTANT: alerts list must include domain in params
   useEffect(() => {
     let alive = true;
 
@@ -146,7 +148,7 @@ export default function AlertsPage() {
       try {
         const res = await axios.get(`${API_BASE}/alerts`, {
           params: {
-            domain,
+            domain, // <-- THIS is what fixes sustainability showing ops data
             q: qLive || undefined,
             severity: severity || undefined,
             status: status || undefined,
@@ -177,9 +179,11 @@ export default function AlertsPage() {
       alive = false;
       clearInterval(t);
     };
-  }, [qLive, severity, status, ruleKey, zoneId, hallId, deviceId, sort, page, pageSize]);
+  }, [domain, qLive, severity, status, ruleKey, zoneId, hallId, deviceId, sort, page, pageSize]);
 
   useEffect(() => setPage(1), [severity, status, ruleKey, zoneId, hallId, deviceId, sort, pageSize]);
+
+  // ... keep the rest of your component exactly the same
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
 
