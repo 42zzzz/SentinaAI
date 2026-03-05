@@ -530,6 +530,7 @@ const styles = {
   pageTitle: {
     fontSize: 20,
     fontWeight: 900,
+    color: "#E8486F"
   },
   subTitle: {
     marginTop: 4,

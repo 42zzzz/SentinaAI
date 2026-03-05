@@ -82,12 +82,11 @@
 
 .opsTheme .devicesFiltersRow .filterPill,
 .devicesFiltersRow .filterPill{
-  height: 30px;              /* figma pill height */
-  border-radius: 12px;
-  background: #d9d9d9;       /* figma grey */
+  height: 30px;
+  border-radius: 10px;
+  background: #d9d9d9;
   border: 1px solid #d2d7dc;
-  border-radius: 10px; /* soft edge */
-  padding: 0 12px;
+  padding: 0 12px 1px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -101,13 +100,16 @@
 .opsTheme .pillDeviceType, .pillDeviceType{ width: 165px; }
 .opsTheme .pillStatus, .pillStatus{ width: 150px; }
 .opsTheme .pillSort, .pillSort{ width: 185px; }
+.opsTheme .pillRows, .pillRows{ width: 60px; }
 
 .opsTheme .pillSearch, .pillSearch{
   width: 300px;
   justify-content: space-between;
+  overflow: hidden;
+  border-radius: 10px;
 }
 
-/* left icon slot (space reserved for svg) */
+/* left icon slot */
 .opsTheme .devicesFiltersRow .pillLeftIcon,
 .devicesFiltersRow .pillLeftIcon{
   width: 18px;
@@ -131,7 +133,6 @@
   -webkit-appearance: none;
   padding: 0;
   margin: 0;
-
   font-size: 13px;
   font-weight: 500;
   color: #0f172a;
@@ -145,7 +146,6 @@
   border: 0;
   outline: none;
   background: transparent;
-
   font-size: 15px;
   font-weight: 500;
   color: #0f172a;
@@ -157,30 +157,27 @@
   font-weight: 500;
 }
 
-/* right caret (figma) */
-.opsTheme .devicesFiltersRow .pillRightCaret,
-.devicesFiltersRow .pillRightCaret{
-  width: 0;
-  height: 0;
-  flex: 0 0 auto;
-  border-left: 7px solid transparent;
-  border-right: 7px solid transparent;
-  border-top: 8px solid #0f172a;
-  opacity: 0.85;
-  margin-left: 4px;
-}
-
 /* search icon slot on right */
 .opsTheme .devicesFiltersRow .pillSearchIcon,
 .devicesFiltersRow .pillSearchIcon{
-  width: 18px;
-  height: 18px;
-  flex: 0 0 18px;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border-radius: 8px;
+  line-height: 0;
+  background: #133250;
   color: #0f172a;
   opacity: 0.85;
+}
+
+.opsTheme .devicesFiltersRow .pillSearchIcon svg,
+.devicesFiltersRow .pillSearchIcon svg{
+  width: 15px;
+  height: 16px;
+  display: block;
 }
 
 .opsTheme .devicesFiltersRow .filterPill:hover,
@@ -380,4 +377,93 @@
 .pagerBtn:disabled{
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* =========================
+   PINK ACCENTS (force win)
+   ========================= */
+
+.opsTheme .devicesControlsCard .clearFiltersBtn,
+.devicesControlsCard .clearFiltersBtn{
+  background: #E8486F !important;
+  border-color: #E8486F !important;
+  color: #ffffff !important;
+}
+
+.opsTheme .devicesControlsCard .clearFiltersBtn:hover,
+.devicesControlsCard .clearFiltersBtn:hover{
+  background: #d93f65 !important;
+  border-color: #d93f65 !important;
+}
+
+.opsTheme .devicesHeaderRight .devicesCountTop,
+.devicesHeaderRight .devicesCountTop{
+  color: #E8486F !important;
+  font-weight: 700;
+}
+
+.opsTheme .devicesTable thead th,
+.devicesTable thead th{
+  color: #E8486F !important;
+}
+
+.opsTheme main h1:first-of-type{
+  color: #E8486F !important;
+}
+
+/* =========================
+   FINAL SELECT + CARET BEHAVIOUR
+   (thin caret, absolute positioning, clickable, rotate via .isOpen)
+   ========================= */
+
+.opsTheme .pillSelectWrap,
+.pillSelectWrap{
+  position: relative;
+}
+
+/* select stretches under caret */
+.opsTheme .pillSelectWrap .pillSelect,
+.pillSelectWrap .pillSelect{
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  cursor: pointer;
+  border: 0;
+  outline: none;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 26px;
+  line-height: 30px;
+}
+
+/* caret: thin + absolute */
+.opsTheme .pillSelectWrap .pillRightCaret,
+.pillSelectWrap .pillRightCaret{
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-35%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #133250;
+  opacity: 0.85;
+  pointer-events: none;
+  transition: transform 160ms ease;
+  transform-origin: center;
+}
+
+/* icons don’t block clicks */
+.opsTheme .pillSelectWrap .pillLeftIcon,
+.pillSelectWrap .pillLeftIcon{
+  pointer-events: none;
+}
+
+/* rotate only when wrapper has isOpen (from React state) */
+.opsTheme .pillSelectWrap.isOpen .pillRightCaret,
+.pillSelectWrap.isOpen .pillRightCaret{
+  transform: translateY(-35%) rotate(180deg);
 }

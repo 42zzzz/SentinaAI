@@ -28,12 +28,12 @@ function IconSearch() {
     <svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M6 11C8.76142 11 11 8.76142 11 6C11 3.23858 8.76142 1 6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11Z"
-        stroke="#133250"
+        stroke="#E8486F"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d="M14 15L9 10" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 15L9 10" stroke="#E8486F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -44,7 +44,7 @@ function IconZone() {
       <g clipPath="url(#clip0_9_8863)">
         <path
           d="M13.75 7.5C13.75 10.9518 10.9518 13.75 7.5 13.75M13.75 7.5C13.75 4.04822 10.9518 1.25 7.5 1.25M13.75 7.5H1.25M7.5 13.75C4.04822 13.75 1.25 10.9518 1.25 7.5M7.5 13.75C9.0633 12.0385 9.95172 9.81748 10 7.5C9.95172 5.18252 9.0633 2.96147 7.5 1.25M7.5 13.75C5.9367 12.0385 5.04828 9.81748 5 7.5C5.04828 5.18252 5.9367 2.96147 7.5 1.25M1.25 7.5C1.25 4.04822 4.04822 1.25 7.5 1.25"
-          stroke="#133250"
+          stroke="#E8486F"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -63,19 +63,19 @@ function IconDeviceType() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M15.4483 9.93008H13.2414V7.72318H12.138V12.6887H3.31035V3.86112L8.27589 3.86062V2.75767H6.06898V0.550781H4.96553V2.75767H3.31035C3.01779 2.75797 2.73729 2.87432 2.53042 3.08119C2.32354 3.28806 2.20719 3.56856 2.2069 3.86112V5.51629H0V6.61974H2.2069V9.93008H0V11.0335H2.2069V12.6887C2.20724 12.9812 2.3236 13.2617 2.53047 13.4686C2.73733 13.6754 3.0178 13.7918 3.31035 13.7921H4.96553V15.999H6.06898V13.7921H9.37934V15.999H10.4828V13.7921H12.138C12.4305 13.7917 12.7109 13.6754 12.9178 13.4685C13.1246 13.2617 13.241 12.9812 13.2414 12.6887V11.0335H15.4483V9.93008Z"
-        fill="#133250"
+        fill="#E8486F"
       />
       <path
         d="M10.4828 11.0348H4.96558V5.51758H10.4828V11.0348ZM6.06903 9.93136H9.37938V6.62102H6.06903V9.93136Z"
-        fill="#133250"
+        fill="#E8486F"
       />
       <path
         d="M16.0003 6.62068H14.8969C14.8952 5.15794 14.3134 3.7556 13.279 2.72129C12.2447 1.68698 10.8424 1.10515 9.37964 1.10345V0C11.135 0.0019131 12.8179 0.700061 14.0591 1.94126C15.3003 3.18247 15.9984 4.86535 16.0003 6.62068Z"
-        fill="#133250"
+        fill="#E8486F"
       />
       <path
         d="M13.2417 6.61987H12.1383C12.1374 5.88851 11.8465 5.18734 11.3293 4.67019C10.8122 4.15304 10.111 3.86212 9.37964 3.86126V2.75781C10.4035 2.75905 11.3852 3.16635 12.1092 3.89036C12.8332 4.61436 13.2405 5.59597 13.2417 6.61987Z"
-        fill="#133250"
+        fill="#E8486F"
       />
     </svg>
   );
@@ -86,11 +86,11 @@ function IconStatus() {
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M9.91675 13.2702H4.08341C1.51091 13.2702 0.729248 12.4885 0.729248 9.91602V4.08268C0.729248 1.51018 1.51091 0.728516 4.08341 0.728516H4.95841C5.97925 0.728516 6.30008 1.06102 6.70841 1.60352L7.58341 2.77018C7.77591 3.02685 7.80508 3.06185 8.16675 3.06185H9.91675C12.4892 3.06185 13.2709 3.84352 13.2709 6.41602V9.91602C13.2709 12.4885 12.4892 13.2702 9.91675 13.2702ZM4.08341 1.60352C1.99508 1.60352 1.60425 2.00018 1.60425 4.08268V9.91602C1.60425 11.9985 1.99508 12.3952 4.08341 12.3952H9.91675C12.0051 12.3952 12.3959 11.9985 12.3959 9.91602V6.41602C12.3959 4.33352 12.0051 3.93685 9.91675 3.93685H8.16675C7.42008 3.93685 7.17508 3.68018 6.88341 3.29518L6.00841 2.12852C5.70508 1.72602 5.61175 1.60352 4.95841 1.60352H4.08341Z"
-        fill="#133250"
+        fill="#E8486F"
       />
       <path
         d="M11.6667 4.15852C11.4276 4.15852 11.2292 3.96018 11.2292 3.72102V2.91602C11.2292 1.99435 10.8384 1.60352 9.91675 1.60352H4.66675C4.42758 1.60352 4.22925 1.40518 4.22925 1.16602C4.22925 0.926849 4.42758 0.728516 4.66675 0.728516H9.91675C11.3284 0.728516 12.1042 1.50435 12.1042 2.91602V3.72102C12.1042 3.96018 11.9059 4.15852 11.6667 4.15852Z"
-        fill="#133250"
+        fill="#E8486F"
       />
     </svg>
   );
@@ -101,7 +101,7 @@ function IconSort() {
     <svg width="10" height="12" viewBox="0 0 10 12" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M9.16659 1.5H0.833252L4.16659 6.23V9.5L5.83325 10.5V6.23L9.16659 1.5Z"
-        stroke="#133250"
+        stroke="#E8486F"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -131,6 +131,7 @@ export default function DevicesPage() {
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
+  const [openSelect, setOpenSelect] = useState(null); // "zone" | "hall" | "type" | "status" | "sort" | "rows"
 
   // Debounce search a little
   const [qLive, setQLive] = useState("");
@@ -230,84 +231,142 @@ export default function DevicesPage() {
             </div>
 
             {/* Zone */}
-            <div className="filterPill pillSelectWrap pillZone">
+            <div className={`filterPill pillSelectWrap pillZone ${openSelect === "zone" ? "isOpen" : ""}`}>
               <span className="pillLeftIcon" aria-hidden>
                 <IconZone />
               </span>
-              <select value={zoneId} onChange={(e) => setZoneId(e.target.value)} className="pillSelect">
-                <option value="">All Zones</option>
+
+              <select
+                value={zoneId}
+                className="pillSelect"
+                onFocus={() => setOpenSelect("zone")}
+                onBlur={() => setOpenSelect(null)}
+                onChange={(e) => {
+                  setZoneId(e.target.value);
+                  setOpenSelect(null);        // rotate back immediately after selection
+                  e.currentTarget.blur();     // forces blur so it doesn’t stay “stuck”
+                }}
+              >
+                <option value="">Zones</option>
                 {filters?.zones?.map((z) => (
-                  <option key={z} value={z}>
-                    {z}
-                  </option>
+                  <option key={z} value={z}>{z}</option>
                 ))}
               </select>
+
               <span className="pillRightCaret" aria-hidden />
             </div>
 
             {/* Hall (using Zone icon placeholder) */}
-            <div className="filterPill pillSelectWrap pillHall">
+            <div className={`filterPill pillSelectWrap pillHall ${openSelect === "hall" ? "isOpen" : ""}`}>
               <span className="pillLeftIcon" aria-hidden>
                 <IconZone />
               </span>
-              <select value={hallId} onChange={(e) => setHallId(e.target.value)} className="pillSelect">
-                <option value="">All Halls</option>
+
+              <select
+                value={hallId}
+                className="pillSelect"
+                onFocus={() => setOpenSelect("hall")}
+                onBlur={() => setOpenSelect(null)}
+                onChange={(e) => {
+                  setHallId(e.target.value);
+                  setOpenSelect(null);
+                  e.currentTarget.blur();
+                }}
+              >
+                <option value="">Halls</option>
                 {filters?.halls?.map((h) => (
                   <option key={h} value={h}>
                     {h}
                   </option>
                 ))}
               </select>
+
               <span className="pillRightCaret" aria-hidden />
             </div>
 
             {/* Device Type */}
-            <div className="filterPill pillSelectWrap pillDeviceType">
+            <div className={`filterPill pillSelectWrap pillDeviceType ${openSelect === "type" ? "isOpen" : ""}`}>
               <span className="pillLeftIcon" aria-hidden>
                 <IconDeviceType />
               </span>
-              <select value={deviceType} onChange={(e) => setDeviceType(e.target.value)} className="pillSelect">
-                <option value="">All Types</option>
+
+              <select
+                value={deviceType}
+                className="pillSelect"
+                onFocus={() => setOpenSelect("type")}
+                onBlur={() => setOpenSelect(null)}
+                onChange={(e) => {
+                  setDeviceType(e.target.value);
+                  setOpenSelect(null);
+                  e.currentTarget.blur();
+                }}
+              >
+                <option value="">Types</option>
                 {filters?.deviceTypes?.map((t) => (
                   <option key={t.device_type} value={t.device_type}>
                     {t.device_type}
                   </option>
                 ))}
               </select>
+
               <span className="pillRightCaret" aria-hidden />
             </div>
 
             {/* Status */}
-            <div className="filterPill pillSelectWrap pillStatus">
+            <div className={`filterPill pillSelectWrap pillStatus ${openSelect === "status" ? "isOpen" : ""}`}>
               <span className="pillLeftIcon" aria-hidden>
                 <IconStatus />
               </span>
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className="pillSelect">
-                <option value="">All Statuses</option>
+
+              <select
+                value={status}
+                className="pillSelect"
+                onFocus={() => setOpenSelect("status")}
+                onBlur={() => setOpenSelect(null)}
+                onChange={(e) => {
+                  setStatus(e.target.value);
+                  setOpenSelect(null);
+                  e.currentTarget.blur();
+                }}
+              >
+                <option value="">Status</option>
                 {filters?.statuses?.map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
                 ))}
               </select>
+
               <span className="pillRightCaret" aria-hidden />
             </div>
 
             {/* Sort */}
-            <div className="filterPill pillSelectWrap pillSort">
+            <div className={`filterPill pillSelectWrap pillSort ${openSelect === "sort" ? "isOpen" : ""}`}>
               <span className="pillLeftIcon" aria-hidden>
                 <IconSort />
               </span>
-              <select value={sort} onChange={(e) => setSort(e.target.value)} className="pillSelect">
+
+              <select
+                value={sort}
+                className="pillSelect"
+                onFocus={() => setOpenSelect("sort")}
+                onBlur={() => setOpenSelect(null)}
+                onChange={(e) => {
+                  setSort(e.target.value);
+                  setOpenSelect(null);
+                  e.currentTarget.blur();
+                }}
+              >
                 {filters?.sortOptions?.map((s) => (
                   <option key={s} value={s}>
-                    Sort: {s}
+                    {s}
                   </option>
                 ))}
               </select>
+
               <span className="pillRightCaret" aria-hidden />
             </div>
-          </div>
+            </div>
 
           <div className="devicesControlsBottomRow">
             <button onClick={clearFilters} className="clearFiltersBtn">
@@ -315,17 +374,30 @@ export default function DevicesPage() {
             </button>
 
             <div className="rowsControl">
-              <span className="rowsLabel">Rows:</span>
-              <div className="filterPill pillSelectWrap pillRows">
-                <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} className="pillSelect">
-                  {[10, 20, 50].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <span className="rowsLabel">Rows:</span>
+
+            <div className={`filterPill pillSelectWrap pillRows ${openSelect === "rows" ? "isOpen" : ""}`}>
+              <select
+                value={pageSize}
+                className="pillSelect"
+                onFocus={() => setOpenSelect("rows")}
+                onBlur={() => setOpenSelect(null)}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setOpenSelect(null);
+                  e.currentTarget.blur();
+                }}
+              >
+                {[10, 20, 50].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+
+              <span className="pillRightCaret" aria-hidden />
             </div>
+          </div>
           </div>
         </div>
 
