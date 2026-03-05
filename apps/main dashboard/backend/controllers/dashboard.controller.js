@@ -185,19 +185,23 @@ exports.getTrends = async (req, res) => {
       ? Number(req.query.limit)
       : Math.max(8, Math.min(7 * 24 * 4, Math.round(hours * 4)));
 
-    // whitelist metrics -> SQL expressions
+        // whitelist metrics -> SQL expressions
     const metricExpr =
       metric === "congestion" ? "AVG(flow_congestion_index)::float8" :
       metric === "comfort" ? "AVG(comfort_index)::float8" :
       metric === "temperature" ? "AVG(indoor_temp_c)::float8" :
+      metric === "humidity" ? "AVG(humidity_pct)::float8" :
+      metric === "efficiency" ? "AVG(energy_efficiency_score)::float8" :
       metric === "energy" ? "AVG(hvac_energy_kwh)::float8" :
       metric === "carbon" ? "AVG(carbon_kg_co2)::float8" :
-      "SUM(current_occupancy)::float8"; // occupancy
+      "SUM(current_occupancy)::float8";
 
     const unit =
       metric === "congestion" ? "index" :
       metric === "comfort" ? "index" :
       metric === "temperature" ? "°C" :
+      metric === "humidity" ? "%" :
+      metric === "efficiency" ? "%" :
       metric === "energy" ? "kWh" :
       metric === "carbon" ? "kgCO2" :
       "people";

@@ -182,11 +182,11 @@ export default function SustainabilityDashboard() {
         {/* TREND CHARTS */}
         <div className="grid2">
           <CardShell title="Electricity Consumption" right="6h" icon={<ElectricityIcon />}>
-            <TrendPanel title={null} metric="energy" unit="kWh" hours={6} embedded />
+            <TrendPanel metric="energy" unit="kWh" hours={6} embedded accent="#00802B" />
           </CardShell>
 
           <CardShell title="Carbon Forecast Snapshot" right="6h" icon={<CarbonEmissionIcon />}>
-            <TrendPanel title={null} metric="carbon" unit="kgCO2" hours={6} embedded />
+            <TrendPanel metric="carbon" unit="kgCO2" hours={6} embedded accent="#00802B" />
           </CardShell>
         </div>
 

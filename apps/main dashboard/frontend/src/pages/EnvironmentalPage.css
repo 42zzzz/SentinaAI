@@ -1,0 +1,256 @@
+.envPage{
+  background: var(--bg);
+  min-height: 100%;
+}
+
+.envInner{
+  padding: 22px 26px;
+  max-width: 1400px;
+}
+
+/* top controls */
+.envControls{
+  display: grid;
+  grid-template-columns: 380px 260px 260px 260px 1fr;
+  gap: 14px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+@media (max-width: 1200px){
+  .envControls{
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.envPill{
+  height: 44px;
+  border-radius: 12px;
+  background: #d9d9d9;
+  border: 1px solid #d2d7dc;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 10px;
+}
+
+.envSearch{ background:#d9d9d9; }
+.envInput{
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.envSelect{
+  position: relative;
+}
+.envSelectEl{
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  font-size: 14px;
+  font-weight: 700;
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.envCaret{
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-35%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid #133250;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.envDownloadBtn{
+  justify-self: end;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.envDownloadBtn:hover{ filter: brightness(.95); }
+
+.envError{
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color:#7f1d1d;
+  font-weight: 800;
+}
+
+/* grids */
+.envGridTop{
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1.35fr 1fr 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 1100px){
+  .envGridTop{ grid-template-columns: 1fr; }
+}
+
+.envGridBottom{
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 18px;
+}
+
+@media (max-width: 1200px){
+  .envGridBottom{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 700px){
+  .envGridBottom{ grid-template-columns: 1fr; }
+}
+
+/* cards */
+.envCard, .envKpi{
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+
+.envCardHead{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #eef0f2;
+}
+
+.envCardTitle{
+  font-size: 16px;
+  font-weight: 950;
+  color: #0f172a;
+}
+
+.envCardBody{
+  padding: 14px 16px;
+}
+
+.envMuted{
+  font-size: 13px;
+  opacity: .75;
+}
+
+.envBars{
+  display: grid;
+  gap: 14px;
+}
+
+.envBarRow{
+  display:grid;
+  grid-template-columns: 120px 1fr 70px;
+  gap: 12px;
+  align-items:center;
+}
+
+.envBarLabel{ font-weight: 900; }
+.envBarTrack{
+  height: 12px;
+  background: #f1f5f9;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  overflow:hidden;
+}
+.envBarFill{
+  height:100%;
+  width:0%;
+  background: var(--accent);
+  opacity: .65;
+}
+
+.envBarValue{
+  text-align:right;
+  font-weight: 950;
+}
+
+/* anomalies list */
+.envPillMini{
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0,128,43,0.10);
+  border: 1px solid rgba(0,128,43,0.18);
+  color: #0b5a22;
+  font-weight: 900;
+  font-size: 12px;
+}
+
+.envList{
+  display:grid;
+  gap: 12px;
+}
+
+.envListRow{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  padding: 12px 12px;
+  border-radius: 14px;
+  border: 1px solid #eef0f2;
+  background:#fbfbfc;
+}
+
+.envListLabel{ font-weight: 900; }
+.envListCount{ font-weight: 950; color: var(--accent); }
+
+/* KPI cards */
+.envKpiTop{
+  padding: 16px 16px 8px 16px;
+}
+
+.envKpiLabel{
+  font-size: 15px;
+  font-weight: 950;
+  color: #0f172a;
+}
+
+.envKpiValue{
+  margin-top: 8px;
+  font-size: 36px;
+  font-weight: 950;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.envUnit{
+  font-size: 14px;
+  font-weight: 900;
+  opacity: .7;
+  margin-left: 6px;
+}
+
+.envKpiSub{
+  margin-top: 8px;
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.envKpiChart{
+  padding: 0 16px 16px 16px;
+}

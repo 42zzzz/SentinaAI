@@ -1,5 +1,6 @@
 .sustTheme{
   --sust-accent:#00802B;
+  --spark-accent: #00802B;
 
   /* optional helpers */
   --sust-accent-soft: rgba(0,128,43,.15);
