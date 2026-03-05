@@ -14,14 +14,15 @@
 }
 
 /* ---------- Header ---------- */
-.opsTheme .alertHeaderTitleWrap{
-  display:flex;
-  align-items:center;
-  gap:12px;
+.opsTheme .alertHeaderTitleWrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-.opsTheme .statusPill{
-  margin-left: 6px; /* remove auto push */
+.opsTheme .statusPill {
+    margin-left: 6px;
+    /* remove auto push */
 }
 
 .opsTheme .alertHeader,
@@ -288,20 +289,15 @@
 
 .opsTheme .actionsTable thead th:nth-child(1),
 .actionsTable thead th:nth-child(1) {
-    width: 64%;
+    width: 80%;
 }
 
 .opsTheme .actionsTable thead th:nth-child(2),
 .actionsTable thead th:nth-child(2) {
-    width: 18%;
+    width: 20%;
     text-align: center;
 }
 
-.opsTheme .actionsTable thead th:nth-child(3),
-.actionsTable thead th:nth-child(3) {
-    width: 18%;
-    text-align: center;
-}
 
 .opsTheme .actionsTable td,
 .actionsTable td {
@@ -435,9 +431,10 @@
 /* AUTOMATED: ON but greyed */
 .opsTheme .switch input:checked:disabled+.slider,
 .switch input:checked:disabled+.slider {
-    background: #cbd5e1;
-    /* grey but still visibly ON */
+    background: #84cc16;
+    /* keep green even when disabled */
 }
+
 
 .opsTheme .switch input:checked:disabled+.slider:before,
 .switch input:checked:disabled+.slider:before {

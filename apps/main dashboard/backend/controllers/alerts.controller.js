@@ -154,6 +154,7 @@ exports.listAlerts = async (req, res) => {
         AND ($7::text IS NULL OR a.device_id = $7)
         AND (
           $8::text = '' OR
+          CAST(a.alert_id AS TEXT) ILIKE '%' || $8 || '%' OR
           a.message ILIKE '%' || $8 || '%' OR
           a.rule_key ILIKE '%' || $8 || '%' OR
           COALESCE(r.rule_name,'') ILIKE '%' || $8 || '%' OR
@@ -369,36 +370,55 @@ exports.getAlertDetails = async (req, res) => {
         a.trigger_value,
         a.threshold_value,
         a.detected_at,
+        a.message,
+        a.action_taken,
+
         r.default_response_action,
         r.default_response_type,
-        r.auto_mitigation_enabled
+        r.auto_mitigation_enabled,
+        r.recommended_actions
+
       FROM alerts a
       JOIN rules r
         ON a.rule_key = r.rule_key
       WHERE a.alert_id = $1
     `;
 
-    const alertResult = await coreDb.query(alertQuery, [id]);
+    const result = await coreDb.query(alertQuery, [id]);
 
-    if (alertResult.rows.length === 0) {
+    if (!result.rows.length) {
       return res.status(404).json({
         ok: false,
         error: "Alert not found"
       });
     }
 
-    const alert = alertResult.rows[0];
+    const alert = result.rows[0];
 
-    const action = {
-      text: alert.default_response_action || null,
-      type: alert.default_response_type || "MANUAL",
-      automated: alert.auto_mitigation_enabled || false
-    };
+    /* ---------- Build actions ---------- */
+
+    let actions = [];
+
+    if (alert.recommended_actions) {
+
+      const list = alert.recommended_actions
+        .split(",")
+        .map(a => a.trim())
+        .filter(Boolean);
+
+      actions = list.map((name, i) => ({
+        action_key: name.toLowerCase().replace(/\s+/g, "_"),
+        action_name: name,
+        impact: String(alert.severity || "medium").toLowerCase(),
+        automated: i === 0 && alert.auto_mitigation_enabled === true
+      }));
+
+    }
 
     res.json({
       ok: true,
       alert,
-      action
+      actions
     });
 
   } catch (err) {
@@ -412,4 +432,47 @@ exports.getAlertDetails = async (req, res) => {
 
   }
 
+};
+
+exports.executeActions = async (req, res) => {
+  try {
+    const id = toInt(req.params.id, null);
+    if (!id) return res.status(400).json({ ok: false, error: "Invalid alert id" });
+
+    const userId = req.body?.user_id ? Number(req.body.user_id) : null;
+    const actions = Array.isArray(req.body?.actions) ? req.body.actions : [];
+
+    if (!actions.length) {
+      return res.status(400).json({ ok: false, error: "No actions provided" });
+    }
+
+    // store the executed actions as a readable string
+    const actionTakenText = actions.join(", ");
+
+    const upd = await coreDb.query(
+      `
+      UPDATE alerts
+      SET
+        action_taken = $2,
+        response_action = $2,
+        response_type = 'MANUAL',
+        action_status = 'COMPLETED',
+        auto_response_executed = TRUE,
+        status = 'RESOLVED',
+        resolved_at = NOW(),
+        acknowledged_by = COALESCE($3, acknowledged_by),
+        acknowledged_at = COALESCE(acknowledged_at, NOW())
+      WHERE alert_id = $1
+      AND status NOT IN ('RESOLVED','CLOSED')
+      RETURNING alert_id, status, action_status, action_taken, response_action
+      `,
+      [id, actionTakenText, userId]
+    );
+
+    if (!upd.rows.length) return res.status(404).json({ ok: false, error: "Alert not found" });
+
+    res.json({ ok: true, alert: upd.rows[0] });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 };

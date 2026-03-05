@@ -11,5 +11,6 @@ router.patch("/:id/ack", ctrl.acknowledgeAlert);
 router.patch("/:id/resolve", ctrl.resolveAlert);
 
 router.post("/run-engine", ctrl.runEngineOnce);
+router.post("/:id/execute", ctrl.executeActions);
 
 module.exports = router;

@@ -39,6 +39,22 @@ export default function AlertDetailsPage() {
 
             const data = res.data;
             setAlert(data.alert);
+            // mark already executed actions
+            if (data.alert?.action_taken) {
+
+                const executed = data.alert.action_taken
+                    .split(",")
+                    .map(a => a.trim());
+
+                const initial = {};
+
+                executed.forEach(a => {
+                    const key = a.toLowerCase().replace(/\s+/g, "_");
+                    initial[key] = true;
+                });
+
+                setSelectedActions(initial);
+            }
 
             // Prefer multi-actions if backend sends them
             if (data.actions && Array.isArray(data.actions) && data.actions.length) {
@@ -98,7 +114,7 @@ export default function AlertDetailsPage() {
             user_id: localStorage.getItem("user_id")
         });
 
-        navigate(-1);
+        window.location.reload();
 
     };
 
@@ -224,7 +240,6 @@ export default function AlertDetailsPage() {
                         <thead>
                             <tr>
                                 <th>Action</th>
-                                <th>Impact</th>
                                 <th>Execute</th>
                             </tr>
                         </thead>
@@ -241,13 +256,6 @@ export default function AlertDetailsPage() {
                                         <td>{a.action_name}</td>
 
                                         <td>
-                                            <span className={`impact ${a.impact}`}>
-                                                {a.impact}
-                                            </span>
-                                        </td>
-
-                                        <td>
-
                                             <label className="switch">
 
                                                 <input
@@ -260,7 +268,6 @@ export default function AlertDetailsPage() {
                                                 <span className="slider"></span>
 
                                             </label>
-
                                         </td>
 
                                     </tr>
