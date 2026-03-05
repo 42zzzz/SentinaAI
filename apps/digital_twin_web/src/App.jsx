@@ -14,7 +14,7 @@ function AppContent() {
   const [currentLayer, setCurrentLayer] = useState('occupancy'); 
   const [isEditMode, setIsEditMode] = useState(false);
   
-  // 🕹️ The 3 Modes: 'live', 'history', 'sandbox'
+  // The 3 Modes: 'live', 'history', 'sandbox'
   const [simMode, setSimMode] = useState('live');
   const [timeIndex, setTimeIndex] = useState(12); // Default history to noon (surge)
   
@@ -23,7 +23,7 @@ function AppContent() {
 
   return (
     <div className="app">
-      {/* 🔥 NEW: GLOBAL ANOMALY ALERT BANNER 🔥 */}
+      {/* NEW: GLOBAL ANOMALY ALERT BANNER */}
       {activeAnomalies && activeAnomalies.length > 0 && (
         <div style={{
           position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)',

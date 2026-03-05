@@ -25,6 +25,11 @@
 
 set -euo pipefail
 
+# Git Bash on Windows translates arguments that start with "/" into Windows
+# paths (e.g. "/CN=..." becomes "C:/Program Files/Git/CN=..."), which breaks
+# the openssl -subj flag. This variable disables that translation.
+export MSYS_NO_PATHCONV=1
+
 CERTS_DIR="$(cd "$(dirname "$0")/.." && pwd)/certs"
 mkdir -p "$CERTS_DIR"
 
