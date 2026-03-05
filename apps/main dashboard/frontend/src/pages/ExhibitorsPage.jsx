@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import "./ExhibitorsPage.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -113,163 +114,214 @@ export default function ExhibitorsPage() {
   };
 
   return (
-    <div style={{ padding: 20, maxWidth: 1300 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
-        <h1 style={{ margin: 0 }}>Exhibitors</h1>
-        <div style={{ fontSize: 13, opacity: 0.75 }}>
-          {loading ? "Loading…" : `${total} exhibitors`}
-        </div>
-      </div>
+    <div className="exhibitorsPage">
+      <div className="pageInner">
 
-      {/* Controls */}
-      <div
-        style={{
-          marginTop: 14,
-          padding: 14,
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          display: "grid",
-          gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr",
-          gap: 10,
-        }}
-      >
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search (Exhibitor ID / Name)…"
-          style={inputStyle}
-        />
+        <div className="exhibitorsHeaderRow">
+          <h1>Exhibitors</h1>
 
-        <select value={eventId} onChange={(e) => setEventId(e.target.value)} style={selectStyle}>
-          <option value="">All Events (Global)</option>
-          {events.map((ev) => (
-            <option key={ev.event_id} value={ev.event_id}>
-              {ev.event_id} — {ev.event_name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={packageTier}
-          onChange={(e) => setPackageTier(e.target.value)}
-          style={selectStyle}
-          disabled={!eventId}
-        >
-          <option value="">
-            {eventId ? "All Tiers (in this event)" : "Select event first"}
-          </option>
-          {filters?.packageTiers?.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-
-        <select value={industry} onChange={(e) => setIndustry(e.target.value)} style={selectStyle}>
-          <option value="">All Industries</option>
-          {filters?.industries?.map((i) => (
-            <option key={i} value={i}>{i}</option>
-          ))}
-        </select>
-
-        <select value={hqCountry} onChange={(e) => setHqCountry(e.target.value)} style={selectStyle}>
-          <option value="">All HQ Countries</option>
-          {filters?.hqCountries?.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-
-        <select value={status} onChange={(e) => setStatus(e.target.value)} style={selectStyle}>
-          <option value="">All Statuses</option>
-          {filters?.statuses?.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-
-        <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "space-between" }}>
-          <button onClick={clearFilters} style={btnSecondary}>Clear filters</button>
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <select value={sort} onChange={(e) => setSort(e.target.value)} style={selectStyle}>
-              {filters?.sortOptions?.map((s) => (
-                <option key={s} value={s}>Sort: {s}</option>
-              ))}
-            </select>
-
-            <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} style={selectStyle}>
-              {[10, 20, 50].map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div style={{ marginTop: 14, border: "1px solid #e5e7eb", borderRadius: 12 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th style={th}>Exhibitor</th>
-              <th style={th}>Industry</th>
-              <th style={th}>HQ</th>
-              <th style={th}>Status</th>
-              <th style={th}>Contact</th>
-              <th style={th}>Events</th>
-              <th style={th}>Total Paid</th>
-              <th style={th}>Tier (context)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr
-                key={r.exhibitor_id}
-                style={{ borderBottom: "1px solid #f1f5f9", cursor: "pointer" }}
-                onClick={async () => {
-                  const res = await axios.get(`${API_BASE}/exhibitors/${r.exhibitor_id}`);
-                  setSelectedExhibitor(res.data.exhibitor);
-                  setShowModal(true);
-                }}
-              >
-                <td style={tdStrong}>
-                  <div style={{ fontWeight: 800 }}>{r.exhibitor_name}</div>
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>{r.exhibitor_id}</div>
-                </td>
-                <td style={td}>{r.industry}</td>
-                <td style={td}>{r.hq_country}</td>
-                <td style={td}><span style={pill(r.status)}>{r.status}</span></td>
-                <td style={td}>
-                  {r.contact_name}
-                  <div style={{ fontSize: 12 }}>{r.contact_email}</div>
-                  <div style={{ fontSize: 12 }}>{r.contact_phone?.replace(/^'/, "")}</div>
-                </td>
-                <td style={td}>{r.events_count}</td>
-                <td style={td}>{formatAED(r.total_paid_aed)}</td>
-                <td style={td}>{r.any_package_tier}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* MODAL */}
-      {showModal && selectedExhibitor && (
-        <div style={modalOverlay}>
-          <div style={modalBox}>
-            <h2>{selectedExhibitor.exhibitor_name}</h2>
-            <div style={modalGrid}>
-              <Detail label="Exhibitor ID" value={selectedExhibitor.exhibitor_id} />
-              <Detail label="Industry" value={selectedExhibitor.industry} />
-              <Detail label="HQ Country" value={selectedExhibitor.hq_country} />
-              <Detail label="Contact Name" value={selectedExhibitor.contact_name} />
-              <Detail label="Contact Email" value={selectedExhibitor.contact_email} />
-              <Detail label="Contact Phone" value={selectedExhibitor.contact_phone?.replace(/^'/, "")} />
-              <Detail label="Status" value={selectedExhibitor.status} />
-              <Detail label="Created At" value={new Date(selectedExhibitor.created_at).toLocaleString()} />
-              <Detail label="Updated At" value={new Date(selectedExhibitor.updated_at).toLocaleString()} />
+          <div className="exhibitorsHeaderRight">
+            <div className="exhibitorsCountTop">
+              {loading ? "Loading…" : `${total} exhibitors`}
             </div>
-            <button style={closeBtn} onClick={() => setShowModal(false)}>Close</button>
           </div>
         </div>
-      )}
+
+        <div className="exhibitorsControlsCard">
+
+          <div className="exhibitorsFiltersRow">
+
+            <div className="filterPill pillSearch">
+              <input
+                className="pillInput"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search (Exhibitor ID / Name)"
+              />
+            </div>
+
+            <div className="filterPill pillEvent pillSelectWrap">
+              <select
+                className="pillSelect"
+                value={eventId}
+                onChange={(e) => setEventId(e.target.value)}
+              >
+                <option value="">All Events (Global)</option>
+                {events.map(ev => (
+                  <option key={ev.event_id} value={ev.event_id}>
+                    {ev.event_id} — {ev.event_name}
+                  </option>
+                ))}
+              </select>
+              <div className="pillRightCaret"></div>
+            </div>
+
+            <div className="filterPill pillTier pillSelectWrap">
+              <select
+                className="pillSelect"
+                value={packageTier}
+                onChange={(e) => setPackageTier(e.target.value)}
+                disabled={!eventId}
+              >
+                <option value="">
+                  {eventId ? "All Tiers" : "Select event first"}
+                </option>
+                {filters?.packageTiers?.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              <div className="pillRightCaret"></div>
+            </div>
+
+            <div className="filterPill pillIndustry pillSelectWrap">
+              <select
+                className="pillSelect"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+              >
+                <option value="">All Industries</option>
+                {filters?.industries?.map(i => (
+                  <option key={i} value={i}>{i}</option>
+                ))}
+              </select>
+              <div className="pillRightCaret"></div>
+            </div>
+
+            <div className="filterPill pillCountry pillSelectWrap">
+              <select
+                className="pillSelect"
+                value={hqCountry}
+                onChange={(e) => setHqCountry(e.target.value)}
+              >
+                <option value="">All HQ Countries</option>
+                {filters?.hqCountries?.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <div className="pillRightCaret"></div>
+            </div>
+
+            <div className="filterPill pillStatus pillSelectWrap">
+              <select
+                className="pillSelect"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option value="">All Status</option>
+                {filters?.statuses?.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <div className="pillRightCaret"></div>
+            </div>
+
+          </div>
+
+          <div className="exhibitorsControlsBottomRow">
+
+            <button
+              className="clearFiltersBtn"
+              onClick={clearFilters}
+            >
+              Clear filters
+            </button>
+
+          </div>
+
+        </div>
+
+        <div className="exhibitorsTableCard">
+          <div className="exhibitorsTableScroll">
+
+            <table className="exhibitorsTable">
+
+              <thead>
+                <tr>
+                  <th>Exhibitor</th>
+                  <th>Industry</th>
+                  <th>HQ</th>
+                  <th>Status</th>
+                  <th>Contact</th>
+                  <th>Events</th>
+                  <th>Total Paid</th>
+                  <th>Tier</th>
+                </tr>
+              </thead>
+
+              <tbody>
+
+                {rows.map(r => (
+                  <tr
+                    key={r.exhibitor_id}
+                    className="exhibitorsRow"
+                    onClick={async () => {
+                      const res = await axios.get(`${API_BASE}/exhibitors/${r.exhibitor_id}`)
+                      setSelectedExhibitor(res.data.exhibitor)
+                      setShowModal(true)
+                    }}
+                  >
+
+                    <td>
+                      <div className="exhibitorName">{r.exhibitor_name}</div>
+                      <div className="exhibitorId">{r.exhibitor_id}</div>
+                    </td>
+
+                    <td>{r.industry}</td>
+                    <td>{r.hq_country}</td>
+
+                    <td>
+                      <span className={`statusPill ${r.status}`}>
+                        {r.status}
+                      </span>
+                    </td>
+
+                    <td>
+                      {r.contact_name}
+                      <div className="exhibitorContact">{r.contact_email}</div>
+                      <div className="exhibitorContact">{r.contact_phone}</div>
+                    </td>
+
+                    <td>{r.events_count}</td>
+                    <td>{formatAED(r.total_paid_aed)}</td>
+                    <td>{r.any_package_tier}</td>
+
+                  </tr>
+                ))}
+
+              </tbody>
+
+            </table>
+
+          </div>
+        </div>
+
+        {showModal && selectedExhibitor && (
+          <div className="modalOverlay">
+            <div className="modalBox">
+
+              <h2>{selectedExhibitor.exhibitor_name}</h2>
+
+              <div className="modalGrid">
+                <Detail label="Exhibitor ID" value={selectedExhibitor.exhibitor_id} />
+                <Detail label="Industry" value={selectedExhibitor.industry} />
+                <Detail label="HQ Country" value={selectedExhibitor.hq_country} />
+                <Detail label="Contact Name" value={selectedExhibitor.contact_name} />
+                <Detail label="Contact Email" value={selectedExhibitor.contact_email} />
+                <Detail label="Contact Phone" value={selectedExhibitor.contact_phone?.replace(/^'/, "")} />
+                <Detail label="Status" value={selectedExhibitor.status} />
+              </div>
+
+              <div className="modalFooter">
+                <button className="closeBtn" onClick={() => setShowModal(false)}>
+                  Close
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
@@ -277,8 +329,8 @@ export default function ExhibitorsPage() {
 function Detail({ label, value }) {
   return (
     <div>
-      <div style={{ fontSize: 12, opacity: 0.7 }}>{label}</div>
-      <div style={{ fontWeight: 600 }}>{value || "-"}</div>
+      <div className="modalLabel">{label}</div>
+      <div className="modalValue">{value || "-"}</div>
     </div>
   );
 }
