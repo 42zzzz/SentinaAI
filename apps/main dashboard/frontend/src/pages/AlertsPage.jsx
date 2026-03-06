@@ -526,10 +526,14 @@ export default function AlertsPage() {
                           >
                             <td>{fmtTs(r.detected_at)}</td>
                             <td>
-                              <span style={pillSeverity(r.severity)}>{r.severity}</span>
+                              <span style={pillSeverity(r.severity)}>
+                                {String(r.severity || "").toLowerCase()}
+                              </span>
                             </td>
                             <td>
-                              <span style={pillStatus(r.status)}>{r.status}</span>
+                              <span style={pillStatus(r.status)}>
+                                {String(r.status || "").toLowerCase()}
+                              </span>
                             </td>
                             <td className="tdStrong">{r.rule_name || r.rule_key}</td>
 
@@ -641,24 +645,73 @@ export default function AlertsPage() {
 }
 
 /* keep your existing severity/status pill colors exactly */
-function pillSeverity(sev) {
-  const s = String(sev || "").toUpperCase();
-  const bg =
-    s === "CRITICAL" ? "#fee2e2" :
-    s === "HIGH" ? "#ffedd5" :
-    s === "MEDIUM" ? "#fef9c3" :
-    s === "LOW" ? "#dcfce7" :
-    "#e5e7eb";
-  return { padding: "4px 10px", borderRadius: 999, background: bg, fontSize: 12, fontWeight: 900 };
+function pillSeverity(severity) {
+  const s = String(severity || "").toLowerCase();
+
+  let bg = "#eef2ff";
+  let color = "#1d4ed8";
+
+  if (s === "low") {
+    bg = "rgba(34,197,94,.12)";
+    color = "#166534";
+  } else if (s === "medium") {
+    bg = "rgba(245,158,11,.14)";
+    color = "#92400e";
+  } else if (s === "high") {
+    bg = "rgba(239,68,68,.12)";
+    color = "#991b1b";
+  } else if (s === "critical") {
+    bg = "rgba(239,68,68,.18)";
+    color = "#7f1d1d";
+  }
+
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: "22px",
+    padding: "0 10px",
+    borderRadius: 999,
+    background: bg,
+    color,
+    fontSize: 11,
+    fontWeight: 800,
+    lineHeight: 1,
+    border: "none",
+    textTransform: "lowercase",
+  };
 }
 
-function pillStatus(st) {
-  const s = String(st || "").toUpperCase();
-  const bg =
-    s === "NEW" ? "#e0e7ff" :
-    s === "ACKNOWLEDGED" ? "#fef9c3" :
-    s === "RESOLVED" ? "#dcfce7" :
-    s === "CLOSED" ? "#f3f4f6" :
-    "#e5e7eb";
-  return { padding: "4px 10px", borderRadius: 999, background: bg, fontSize: 12, fontWeight: 800 };
+function pillStatus(status) {
+  const s = String(status || "").toLowerCase();
+
+  let bg = "#eef2ff";
+  let color = "#475569";
+
+  if (s === "new") {
+    bg = "#dfe7ff";
+    color = "#1d4ed8";
+  } else if (s === "acknowledged") {
+    bg = "rgba(245,158,11,.16)";
+    color = "#92400e";
+  } else if (s === "resolved") {
+    bg = "#d9f3e4";
+    color = "#166534";
+  }
+
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: "22px",
+    padding: "0 10px",
+    borderRadius: 999,
+    background: bg,
+    color,
+    fontSize: 11,
+    fontWeight: 800,
+    lineHeight: 1,
+    border: "none",
+    textTransform: "lowercase",
+  };
 }

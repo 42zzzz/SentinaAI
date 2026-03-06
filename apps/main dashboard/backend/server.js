@@ -40,10 +40,11 @@ app.get("/health", (req, res) =>
 
 // --- Exhibitor AI proxy (FastAPI) ---
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
+const EXHIBITOR_AI_SERVICE_URL = process.env.EXHIBITOR_AI_SERVICE_URL || "http://127.0.0.1:8001";
 
 app.get("/api/exhibitor-ai/health", async (req, res) => {
   try {
-    const r = await fetch(`${AI_SERVICE_URL}/health`);
+    const r = await fetch(`${EXHIBITOR_AI_SERVICE_URL}/health`);
     res.status(r.status).send(await r.text());
   } catch (e) {
     res.status(502).json({ error: "Exhibitor AI service unreachable", detail: String(e) });
@@ -53,7 +54,7 @@ app.get("/api/exhibitor-ai/health", async (req, res) => {
 app.get("/api/exhibitor-ai/*path", async (req, res) => {
   try {
     const path = req.originalUrl.replace("/api/exhibitor-ai", "");
-    const r = await fetch(`${AI_SERVICE_URL}${path}`);
+    const r = await fetch(`${EXHIBITOR_AI_SERVICE_URL}${path}`);
     const contentType = r.headers.get("content-type") || "";
 
     if (contentType.includes("application/json")) {
@@ -69,7 +70,7 @@ app.get("/api/exhibitor-ai/*path", async (req, res) => {
 app.get("/api/exhibitor-ai-download/*path", async (req, res) => {
   try {
     const path = req.originalUrl.replace("/api/exhibitor-ai-download", "");
-    const r = await fetch(`${AI_SERVICE_URL}${path}`);
+    const r = await fetch(`${EXHIBITOR_AI_SERVICE_URL}${path}`);
 
     const disp = r.headers.get("content-disposition");
     const type = r.headers.get("content-type");

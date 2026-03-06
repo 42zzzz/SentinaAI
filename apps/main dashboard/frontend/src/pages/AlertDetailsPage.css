@@ -223,6 +223,7 @@
     font-weight: 700;
     font-size: 14px;
     border: 1px solid transparent;
+    text-transform: lowercase;
 }
 
 /* severity color mapping (uses lowercased impact/severity like "medium") */
@@ -534,4 +535,72 @@
     background: rgba(34, 197, 94, .12);
     border-color: rgba(34, 197, 94, .25);
     color: #166534;
+}
+
+/* ===== Devices-style pills ===== */
+.opsTheme .priorityBadge,
+.priorityBadge,
+.opsTheme .statusPill,  
+.statusPill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:22px;
+  padding:0 10px;
+  border-radius:999px;
+  font-size:13px;
+  font-weight:800;
+  line-height:1;
+  border:none;
+  text-transform:lowercase;
+}
+
+/* keep header badge from stretching weirdly */
+.opsTheme .statusPill,
+.statusPill{
+  margin-left:auto;
+}
+
+/* ===== Priority colours ===== */
+.opsTheme .priorityBadge.low,
+.priorityBadge.low{
+  background:rgba(34,197,94,.12);
+  color:#166534;
+}
+
+.opsTheme .priorityBadge.medium,
+.priorityBadge.medium{
+  background:rgba(245,158,11,.14);
+  color:#92400e;
+}
+
+.opsTheme .priorityBadge.high,
+.priorityBadge.high{
+  background:rgba(239,68,68,.12);
+  color:#991b1b;
+}
+
+.opsTheme .priorityBadge.critical,
+.priorityBadge.critical{
+  background:rgba(239,68,68,.18);
+  color:#7f1d1d;
+}
+
+/* ===== Status colours ===== */
+.opsTheme .statusPill.new,
+.statusPill.new{
+  background:#dfe7ff;
+  color:#1d4ed8;
+}
+
+.opsTheme .statusPill.acknowledged,
+.statusPill.acknowledged{
+  background:rgba(245,158,11,.16);
+  color:#92400e;
+}
+
+.opsTheme .statusPill.resolved,
+.statusPill.resolved{
+  background:#d9f3e4;
+  color:#166534;
 }

@@ -75,8 +75,8 @@
 }
 
 .sustTheme .iconCircle{
-  width:42px;
-  height:42px;
+  width:50px;
+  height:50px;
   border-radius:999px;
   display:flex;
   align-items:center;
@@ -86,7 +86,7 @@
   color:#ffffff;
 
   position:absolute;
-  top:-22px;
+  top:-40px;
   left:18px;
 
   border:none;
@@ -108,31 +108,29 @@
 .sustTheme .badge{
   display:inline-flex;
   align-items:center;
-  gap:6px;
-  padding:5px 10px;
+  justify-content:center;
+  height:22px;
+  padding:0 10px;
   border-radius:999px;
-  font-size:12px;
+  font-size:11px;
   font-weight:800;
-  border:1px solid var(--line);
+  border:none;
   background:#fff;
   color:var(--ink);
 }
 
 .sustTheme .badgeGreen{
   background:var(--sust-accent-soft);
-  border-color:var(--sust-accent-border);
   color:#065f1f;
 }
 
 .sustTheme .badgeYellow{
   background:rgba(245,158,11,.15);
-  border-color:rgba(245,158,11,.30);
   color:#92400e;
 }
 
 .sustTheme .badgeRed{
   background:rgba(239,68,68,.15);
-  border-color:rgba(239,68,68,.25);
   color:#991b1b;
 }
 
@@ -188,11 +186,11 @@
 
 .sustTheme .iconCircleFloat{
   position:absolute;
-  top:-22px;
+  top:-40px;
   left:18px;
 
-  width:42px;
-  height:42px;
+  width:50px;
+  height:50px;
 
   border-radius:999px;
   background:var(--sust-accent);
@@ -296,3 +294,4 @@
 .aiModalBody{
   padding:20px;
 }
+

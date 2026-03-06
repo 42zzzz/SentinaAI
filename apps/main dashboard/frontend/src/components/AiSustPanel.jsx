@@ -46,7 +46,7 @@ export default function AiSustPanel() {
     <div className="card" style={{ overflowX: "auto" }}>
       <div className="cardHeaderRow">
         <div className="cardHeaderLeft">
-          <h3 style={{ margin: 0 }}>AI Sustainability – Live Status</h3>
+          <h3 style={{ margin: 0 }}>AI Sustainability: Live Status</h3>
         </div>
         <div className="hint">Source: /ai/sust-live</div>
       </div>

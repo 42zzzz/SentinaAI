@@ -22,9 +22,14 @@
 
 .statusBadge {
     margin-left: 12px;
-    padding: 6px 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    padding: 0 10px;
     border-radius: 999px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 800;
 }
 
 /* STATUS COLORS */
