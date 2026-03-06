@@ -5,6 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 
+import sys
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 import pandas as pd
 import numpy as np
 import random
@@ -216,14 +223,14 @@ print("Models trained successfully! API is ready.")
 
 # --- 2. AUTOMATIC RETRIGGERING LOGIC ---
 def auto_retrain_pipeline():
-    print("\n⚙️ AUTO-RETRIGGER: Anomaly detected by Edge Node!")
-    print("⚙️ Step 7: Syncing new surge data to Cloud...")
-    print("⚙️ Step 8: Updating Random Forest weights...")
+    print("\n AUTO-RETRIGGER: Anomaly detected by Edge Node!")
+    print(" Step 7: Syncing new surge data to Cloud...")
+    print(" Step 8: Updating Random Forest weights...")
     try:
         train_models()
-        print("✅ Models successfully retrained and redeployed!")
+        print(" Models successfully retrained and redeployed!")
     except Exception as e:
-        print(f"❌ Retraining Error: {e}")
+        print(f" Retraining Error: {e}")
 
 # --- 3. SHARED IN-MEMORY HALL STATE (so simulate affects venue-status) ---
 HALL_STATE = {}  # hall_id -> dict
@@ -438,7 +445,7 @@ def simulate_prediction(data: SimulationRequest):
     """
     _ensure_state_initialized()
 
-    print(f"\n🌊 CROWD SURGE INJECTED AT: {data.hall_id} | Occ: {data.occupancy}% | CO2: {data.co2}")
+    print(f"\n CROWD SURGE INJECTED AT: {data.hall_id} | Occ: {data.occupancy}% | CO2: {data.co2}")
 
     updates = []
 
