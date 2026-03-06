@@ -15,7 +15,19 @@ function fmt(n, digits = 0) {
   return x.toFixed(digits);
 }
 
-// simple SVG bar chart (like your “Live Energy Usage” look)
+function metricLabel(metric) {
+  if (metric === "temperature") return "Temperature (°C)";
+  if (metric === "humidity") return "Humidity (%)";
+  if (metric === "carbon") return "Carbon (kgCO2)";
+  if (metric === "efficiency") return "Efficiency (%)";
+  if (metric === "comfort") return "Comfort Index";
+  return "Air Quality Score";
+}
+
+function metricDigits(metric) {
+  return metric === "temperature" ? 1 : metric === "carbon" ? 1 : 0;
+}
+
 function BarTrend({ points = [], height = 220 }) {
   const w = 520;
   const h = height;
@@ -46,8 +58,8 @@ function BarTrend({ points = [], height = 220 }) {
             width={barW}
             height={bh}
             rx="3"
-            fill="var(--accent)"
-            opacity="0.28"
+            fill="var(--green)"
+            opacity={i % 5 === 0 ? 0.55 : 0.28}
           />
         );
       })}
@@ -58,13 +70,15 @@ function BarTrend({ points = [], height = 220 }) {
 export default function EnvironmentalPage() {
   const [q, setQ] = useState("");
   const [zoneId, setZoneId] = useState("");
-  const [metric, setMetric] = useState("air_quality"); // dropdown
+  const [metric, setMetric] = useState("air_quality");
   const [sort, setSort] = useState("desc");
 
+  const [zones, setZones] = useState([]);
   const [overview, setOverview] = useState(null);
   const [byZone, setByZone] = useState([]);
   const [anoms, setAnoms] = useState([]);
 
+  const [trendSelected, setTrendSelected] = useState([]);
   const [trendAQ, setTrendAQ] = useState([]);
   const [trendTemp, setTrendTemp] = useState([]);
   const [trendHum, setTrendHum] = useState([]);
@@ -73,12 +87,30 @@ export default function EnvironmentalPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // Debounce search
   const [qLive, setQLive] = useState("");
   useEffect(() => {
-    const t = setTimeout(() => setQLive(q.trim().toLowerCase()), 250);
+    const t = setTimeout(() => setQLive(q.trim().toLowerCase()), 200);
     return () => clearTimeout(t);
   }, [q]);
+
+  useEffect(() => {
+    let alive = true;
+
+    const loadFilters = async () => {
+      try {
+        const r = await axios.get(`${API_BASE}/environment/filters`);
+        if (!alive) return;
+        setZones(r.data?.zones || []);
+      } catch {
+        if (!alive) return;
+      }
+    };
+
+    loadFilters();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -88,33 +120,29 @@ export default function EnvironmentalPage() {
       setErr("");
 
       try {
-        // 1) Overview KPIs (24h)
-        const ov = await axios.get(`${API_BASE}/environment/overview`, {
-          params: { hours: 24, zone_id: zoneId || undefined },
-        });
-
-        // 2) By-zone bars (24h)
-        const bz = await axios.get(`${API_BASE}/environment/by-zone`, {
-          params: { hours: 24, metric },
-        });
-
-        // 3) Anomalies list (24h)
-        const an = await axios.get(`${API_BASE}/environment/anomalies`, {
-          params: { hours: 24, limit: 6 },
-        });
-
-        // 4) Trends (sparklines + live bars)
-        const [tAQ, tTemp, tHum, tCarb] = await Promise.all([
-          axios.get(`${API_BASE}/dashboard/trends`, {
-            params: { metric: "efficiency", hours: 6, zone_id: zoneId || undefined },
+        const [ov, bz, an, tSel, tAQ, tTemp, tHum, tCarb] = await Promise.all([
+          axios.get(`${API_BASE}/environment/overview`, {
+            params: { hours: 24, zone_id: zoneId || undefined },
           }),
-          axios.get(`${API_BASE}/dashboard/trends`, {
+          axios.get(`${API_BASE}/environment/by-zone`, {
+            params: { hours: 24, metric },
+          }),
+          axios.get(`${API_BASE}/environment/anomalies`, {
+            params: { hours: 24, limit: 6 },
+          }),
+          axios.get(`${API_BASE}/environment/trends`, {
+            params: { metric, hours: metric === "air_quality" ? 6 : 24, zone_id: zoneId || undefined },
+          }),
+          axios.get(`${API_BASE}/environment/trends`, {
+            params: { metric: "air_quality", hours: 24, zone_id: zoneId || undefined },
+          }),
+          axios.get(`${API_BASE}/environment/trends`, {
             params: { metric: "temperature", hours: 24, zone_id: zoneId || undefined },
           }),
-          axios.get(`${API_BASE}/dashboard/trends`, {
+          axios.get(`${API_BASE}/environment/trends`, {
             params: { metric: "humidity", hours: 24, zone_id: zoneId || undefined },
           }),
-          axios.get(`${API_BASE}/dashboard/trends`, {
+          axios.get(`${API_BASE}/environment/trends`, {
             params: { metric: "carbon", hours: 24, zone_id: zoneId || undefined },
           }),
         ]);
@@ -122,17 +150,9 @@ export default function EnvironmentalPage() {
         if (!alive) return;
 
         setOverview(ov.data?.kpis || null);
-
-        // filter by-zone rows using search (optional)
-        const rows = (bz.data?.rows || []).filter((r) =>
-          qLive ? String(r.zone_id || "").toLowerCase().includes(qLive) : true
-        );
-
-        // sort rows
-        rows.sort((a, b) => (sort === "asc" ? a.value - b.value : b.value - a.value));
-        setByZone(rows);
-
+        setByZone(bz.data?.rows || []);
         setAnoms(an.data?.rows || []);
+        setTrendSelected((tSel.data?.points || []).map((p) => ({ ts: p.ts, value: p.value })));
         setTrendAQ((tAQ.data?.points || []).map((p) => ({ ts: p.ts, value: p.value })));
         setTrendTemp((tTemp.data?.points || []).map((p) => ({ ts: p.ts, value: p.value })));
         setTrendHum((tHum.data?.points || []).map((p) => ({ ts: p.ts, value: p.value })));
@@ -152,30 +172,53 @@ export default function EnvironmentalPage() {
       alive = false;
       clearInterval(t);
     };
-  }, [zoneId, metric, sort, qLive]);
+  }, [zoneId, metric]);
 
-  const metricLabel = useMemo(() => {
-    if (metric === "temperature") return "Temperature (°C)";
-    if (metric === "humidity") return "Humidity (%)";
-    if (metric === "carbon") return "Carbon (kgCO2)";
-    if (metric === "efficiency") return "Efficiency (%)";
-    return "Air Quality Score";
-  }, [metric]);
+  const zoneOptions = useMemo(() => {
+    if (zones.length) return zones;
+    return [...new Set((byZone || []).map((r) => r.zone_id).filter(Boolean))].sort();
+  }, [zones, byZone]);
+
+  const byZoneFiltered = useMemo(() => {
+    let rows = [...(byZone || [])];
+
+    if (zoneId) {
+      rows = rows.filter((r) => String(r.zone_id || "") === zoneId);
+    }
+
+    if (qLive) {
+      rows = rows.filter((r) => String(r.zone_id || "").toLowerCase().includes(qLive));
+    }
+
+    rows.sort((a, b) => {
+      const av = Number(a.value || 0);
+      const bv = Number(b.value || 0);
+      return sort === "asc" ? av - bv : bv - av;
+    });
+
+    return rows;
+  }, [byZone, zoneId, qLive, sort]);
 
   const byZoneMax = useMemo(() => {
-    if (!byZone.length) return 1;
-    return Math.max(...byZone.map((r) => Number(r.value || 0)), 1);
-  }, [byZone]);
+    if (!byZoneFiltered.length) return 1;
+    return Math.max(...byZoneFiltered.map((r) => Number(r.value || 0)), 1);
+  }, [byZoneFiltered]);
+
+  const currentMetricLabel = useMemo(() => metricLabel(metric), [metric]);
 
   const downloadReport = () => {
-    // light CSV report (overview + zone table + anomalies)
+    const now = new Date();
     const lines = [];
-    lines.push(["Environmental Report", new Date().toISOString()].join(","));
+
+    lines.push(["Environmental Report", now.toISOString()].join(","));
+    lines.push(["zone_filter", zoneId || "ALL"].join(","));
+    lines.push(["metric", metric].join(","));
+    lines.push(["sort", sort].join(","));
     lines.push("");
 
     if (overview) {
-      lines.push("Overview (24h)");
-      lines.push("air_quality_score,avg_temp_c,avg_humidity_pct,total_carbon_kgco2,avg_efficiency_score,avg_comfort_index");
+      lines.push("Overview (latest 24h window)");
+      lines.push("air_quality_score,avg_temp_c,avg_humidity_pct,total_carbon_kgco2,avg_efficiency_score,avg_comfort_index,min_temp_c,max_temp_c");
       lines.push(
         [
           overview.air_quality_score,
@@ -184,17 +227,19 @@ export default function EnvironmentalPage() {
           overview.total_carbon_kgco2,
           overview.avg_efficiency_score,
           overview.avg_comfort_index,
+          overview.min_temp_c,
+          overview.max_temp_c,
         ].join(",")
       );
       lines.push("");
     }
 
-    lines.push("By Zone");
+    lines.push(`By Zone (${currentMetricLabel})`);
     lines.push("zone_id,value");
-    byZone.forEach((r) => lines.push([r.zone_id, r.value].join(",")));
+    byZoneFiltered.forEach((r) => lines.push([r.zone_id, r.value].join(",")));
     lines.push("");
 
-    lines.push("Anomalies (24h)");
+    lines.push("Anomalies (latest 24h window)");
     lines.push("label,count");
     anoms.forEach((r) => lines.push([r.label, r.count].join(",")));
 
@@ -202,19 +247,14 @@ export default function EnvironmentalPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Environmental_Report_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `Environment_Report_${now.toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  // live chart uses “efficiency” points (6h) just as a visual “live environmental signal”
-  // (we can swap this to air_quality later if you add a direct sensor field)
-  const livePoints = trendAQ;
-
   return (
     <div className="sustTheme envPage">
       <div className="envInner">
-        {/* top controls */}
         <div className="envControls">
           <div className="envPill envSearch">
             <input
@@ -225,11 +265,10 @@ export default function EnvironmentalPage() {
             />
           </div>
 
-          <div className="envPill envSelect">
+          <div className="envPill envSelectWrap">
             <select value={zoneId} onChange={(e) => setZoneId(e.target.value)} className="envSelectEl">
               <option value="">Zone</option>
-              {/* we keep zones from byZone list */}
-              {[...new Set(byZone.map((r) => r.zone_id))].map((z) => (
+              {zoneOptions.map((z) => (
                 <option key={z} value={z}>
                   {z}
                 </option>
@@ -238,7 +277,7 @@ export default function EnvironmentalPage() {
             <span className="envCaret" />
           </div>
 
-          <div className="envPill envSelect">
+          <div className="envPill envSelectWrap">
             <select value={metric} onChange={(e) => setMetric(e.target.value)} className="envSelectEl">
               <option value="air_quality">Metrics: Air quality</option>
               <option value="temperature">Metrics: Temperature</option>
@@ -250,10 +289,10 @@ export default function EnvironmentalPage() {
             <span className="envCaret" />
           </div>
 
-          <div className="envPill envSelect">
+          <div className="envPill envSelectWrap">
             <select value={sort} onChange={(e) => setSort(e.target.value)} className="envSelectEl">
-              <option value="desc">Sort: {metricLabel} (desc)</option>
-              <option value="asc">Sort: {metricLabel} (asc)</option>
+              <option value="desc">Sort: {currentMetricLabel} (desc)</option>
+              <option value="asc">Sort: {currentMetricLabel} (asc)</option>
             </select>
             <span className="envCaret" />
           </div>
@@ -265,14 +304,13 @@ export default function EnvironmentalPage() {
 
         {err ? <div className="envError">{err}</div> : null}
 
-        {/* top grid */}
         <div className="envGridTop">
           <div className="envCard">
             <div className="envCardHead">
               <div className="envCardTitle">Live Environmental Signal</div>
             </div>
             <div className="envCardBody">
-              {loading ? <div className="envMuted">Loading…</div> : <BarTrend points={livePoints} />}
+              {loading ? <div className="envMuted">Loading…</div> : <BarTrend points={trendSelected} />}
             </div>
           </div>
 
@@ -283,9 +321,11 @@ export default function EnvironmentalPage() {
             <div className="envCardBody">
               {loading ? (
                 <div className="envMuted">Loading…</div>
+              ) : !byZoneFiltered.length ? (
+                <div className="envMuted">No zone data found.</div>
               ) : (
                 <div className="envBars">
-                  {byZone.map((r) => {
+                  {byZoneFiltered.map((r) => {
                     const v = Number(r.value || 0);
                     const pct = clamp01(v / byZoneMax) * 100;
                     return (
@@ -294,7 +334,7 @@ export default function EnvironmentalPage() {
                         <div className="envBarTrack">
                           <div className="envBarFill" style={{ width: `${pct}%` }} />
                         </div>
-                        <div className="envBarValue">{fmt(v, metric === "carbon" ? 1 : 0)}</div>
+                        <div className="envBarValue">{fmt(v, metricDigits(metric))}</div>
                       </div>
                     );
                   })}
@@ -311,25 +351,22 @@ export default function EnvironmentalPage() {
             <div className="envCardBody">
               {loading ? (
                 <div className="envMuted">Loading…</div>
+              ) : !anoms.length ? (
+                <div className="envMuted">No anomalies in the latest 24h window.</div>
               ) : (
                 <div className="envList">
-                  {anoms.length ? (
-                    anoms.map((a, idx) => (
-                      <div className="envListRow" key={idx}>
-                        <div className="envListLabel">{a.label}</div>
-                        <div className="envListCount">{a.count}</div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="envMuted">No anomalies in the last 24h.</div>
-                  )}
+                  {anoms.map((a, idx) => (
+                    <div className="envListRow" key={`${a.label}-${idx}`}>
+                      <div className="envListLabel">{a.label}</div>
+                      <div className="envListCount">{a.count}</div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* bottom KPIs */}
         <div className="envGridBottom">
           <div className="envKpi">
             <div className="envKpiTop">
@@ -376,12 +413,11 @@ export default function EnvironmentalPage() {
             <div className="envKpiTop">
               <div className="envKpiLabel">Air Quality Score (24h)</div>
               <div className="envKpiValue">
-                {overview ? fmt(overview.air_quality_score, 0) : "—"} <span className="envUnit">/ 100</span>
+                {overview ? fmt(overview.air_quality_score, 0) : "—"} <span className="envUnit">/100</span>
               </div>
               <div className="envKpiSub">Derived from temp + humidity + carbon</div>
             </div>
             <div className="envKpiChart">
-              {/* reuse efficiency as a “signal” trend */}
               <Sparkline points={trendAQ} height={110} xMode="time" />
             </div>
           </div>
