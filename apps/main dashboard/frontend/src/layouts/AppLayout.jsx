@@ -51,7 +51,17 @@ const iconStyle = {
 };
 
 function SvgIcon({ children }) {
-  return <span style={iconStyle}>{children}</span>;
+  return (
+    <span
+      style={{
+        ...iconStyle,
+        color: "inherit",
+        flexShrink: 0,
+      }}
+    >
+      {children}
+    </span>
+  );
 }
 
 /* ===== Sustainability nav icons (from your SVG list) ===== */
@@ -291,30 +301,40 @@ export default function AppLayout() {
 
             <NavLink to={`${rolePrefix}/booths`} style={navItemStyle}>
               <SvgIcon>
-                <svg width="100%" height="100%" viewBox="0 0 35 33" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M17.0471 2.0552L17.1449 2.05482C19.4789 2.04581 21.2968 2.0388 22.7526 2.14867C24.2316 2.2603 25.432 2.49747 26.504 3.02884C28.0229 3.78167 29.2734 4.91893 30.1065 6.30515C30.6945 7.28358 30.9626 8.38186 31.0958 9.73651C31.227 11.07 31.2334 12.7361 31.2417 14.8754L31.2523 17.6286C31.2605 19.7679 31.267 21.434 31.1461 22.7685C31.0233 24.1241 30.7637 25.2244 30.1833 26.2074C29.3609 27.6 28.1192 28.7468 26.6062 29.5114C25.5383 30.051 24.3398 30.2974 22.8617 30.4205C21.4067 30.5416 19.5888 30.5486 17.2547 30.5576L17.1572 30.5579C14.8231 30.5669 13.0052 30.574 11.5493 30.4641C10.0703 30.3525 8.86996 30.1153 7.79791 29.5839C6.27904 28.8311 5.02857 27.6938 4.19544 26.3076C3.6074 25.3292 3.33934 24.2309 3.2061 22.8762C3.07494 21.5428 3.06852 19.8767 3.06028 17.7374L3.04966 14.9841C3.0414 12.8448 3.03497 11.1787 3.15583 9.84427C3.27862 8.48864 3.5382 7.38832 4.11868 6.40538C4.94109 5.01278 6.18275 3.86591 7.69577 3.10138C8.76369 2.56176 9.96217 2.31534 11.4403 2.19231C12.8952 2.0712 14.7131 2.06419 17.0471 2.0552Z"
-                    fill="currentColor"
+                <svg
+                  width="100%"
+                  height="100%"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  style={{ display: "block", color: "inherit" }}
+                >
+                  <rect
+                    x="3"
+                    y="2.5"
+                    width="18"
+                    height="19"
+                    rx="4.5"
+                    stroke="currentColor"
+                    strokeWidth="2"
                   />
                   <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M22.9881 22.5442C22.9901 23.0591 22.5363 23.4783 21.9745 23.4805L10.9302 23.5231C10.3684 23.5253 9.91132 23.1096 9.90934 22.5947C9.90735 22.0798 10.3612 21.6606 10.923 21.6584L21.9673 21.6158C22.5291 21.6137 22.9861 22.0293 22.9881 22.5442Z"
-                    fill="currentColor"
+                    d="M8 8H13"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
                   />
                   <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M22.9671 17.2161C22.9691 17.731 22.5153 18.1502 21.9535 18.1524L10.9092 18.195C10.3474 18.1971 9.89033 17.7815 9.88834 17.2666C9.88636 16.7516 10.3402 16.3325 10.902 16.3303L21.9463 16.2877C22.5081 16.2855 22.9651 16.7012 22.9671 17.2161Z"
-                    fill="currentColor"
+                    d="M8 12H16"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
                   />
                   <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M17.1341 11.9114C17.1361 12.4263 16.6823 12.8455 16.1205 12.8477L10.889 12.8679C10.3271 12.87 9.8701 12.4544 9.86812 11.9394C9.86613 11.4245 10.32 11.0054 10.8818 11.0032L16.1133 10.983C16.6751 10.9808 17.1321 11.3965 17.1341 11.9114Z"
-                    fill="currentColor"
+                    d="M8 16H16"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
                   />
                 </svg>
               </SvgIcon>
