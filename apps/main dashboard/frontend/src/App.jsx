@@ -22,13 +22,7 @@ import EnergyPage from "./pages/EnergyPage";
 import EnvironmentalPage from "./pages/EnvironmentalPage";
 
 export default function App() {
-<<<<<<< HEAD
   const role = sessionStorage.getItem("role");
-
-=======
-  const role = localStorage.getItem("role");
-  
->>>>>>> fe2434e66ae35106b9ec43c02bcef198532ee3d4
   const redirectByRole = () => {
     switch (role) {
       case "super_admin":
