@@ -117,6 +117,8 @@ export default function SustainabilityDashboard() {
   const [hvacEfficiency, setHvacEfficiency] = useState(null);
   const [automationStatus, setAutomationStatus] = useState("—");
 
+  const [showAiModal, setShowAiModal] = useState(false);
+
   useEffect(() => {
     let alive = true;
 
@@ -176,7 +178,14 @@ export default function SustainabilityDashboard() {
 
           <KpiCard title="HVAC Efficiency" value={hvacValue} sub="AI/analytics score" icon={<HVACIcon />} />
 
-          <KpiCard title="Automation Status" value={automationStatus} sub="AI recommendation" icon={<AutomationIcon />} />
+          <div onClick={() => setShowAiModal(true)} style={{ cursor: "pointer" }}>
+            <KpiCard
+              title="Automation Status"
+              value={automationStatus}
+              sub="AI recommendation"
+              icon={<AutomationIcon />}
+            />
+          </div>
         </div>
 
         {/* TREND CHARTS */}
@@ -208,6 +217,22 @@ export default function SustainabilityDashboard() {
           <AiSustPanel />
         </div>
       </div>
+      {showAiModal && (
+        <div className="aiModalOverlay" onClick={() => setShowAiModal(false)}>
+          <div className="aiModalCard" onClick={(e) => e.stopPropagation()}>
+
+            <div className="aiModalHeader">
+              <h2>AI Sustainability – Live Status</h2>
+              <button onClick={() => setShowAiModal(false)}>Close</button>
+            </div>
+
+            <div className="aiModalBody">
+              <AiSustPanel />
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

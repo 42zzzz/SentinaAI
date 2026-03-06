@@ -215,6 +215,11 @@
   border-collapse:collapse;
 }
 
+.tableLike tbody tr:hover{
+  background:#f8fafc;
+  transition:background 0.15s ease;
+}
+
 .sustTheme .tableLike th,
 .sustTheme .tableLike td{
   padding:10px 16px;
@@ -243,4 +248,50 @@
   transform:translateY(-2px);
   box-shadow:0 14px 34px rgba(15,23,42,0.08);
   transition:all .18s ease;
+}
+
+.aiModalOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:2000;
+}
+
+.aiModalCard{
+  width:1100px;
+  max-height:80vh;
+  overflow:auto;
+  background:white;
+  border-radius:16px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+
+.aiModalHeader{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:18px 24px;
+  border-bottom:1px solid #e5e7eb;
+}
+
+.aiModalHeader h2{
+  margin:0;
+  font-weight:900;
+  color:var(--sust-accent);
+}
+
+.aiModalHeader button{
+  border:none;
+  background:#00802B;
+  color:white;
+  padding:8px 14px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+.aiModalBody{
+  padding:20px;
 }

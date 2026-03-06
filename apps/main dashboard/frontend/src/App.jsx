@@ -17,6 +17,7 @@ import EventDetails from "./pages/EventDetails";
 import ExhibitorDashboard from "./pages/ExhibitorDashboard";
 import SustainabilityDashboard from "./pages/SustainabilityDashboard";
 import AlertDetailsPage from "./pages/AlertDetailsPage";
+import SustainabilityHallDetails from "./pages/SustainabilityHallDetails";
 
 export default function App() {
   const role = localStorage.getItem("role");
@@ -105,6 +106,10 @@ export default function App() {
           <Route path="devices" element={<DevicesPage />} />
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="alerts/:id" element={<AlertDetailsPage />} />
+          <Route
+            path="hall/:id"
+            element={<SustainabilityHallDetails />}
+          />
 
           {/* temporary placeholders */}
           <Route path="energy" element={<div>Energy Page</div>} />

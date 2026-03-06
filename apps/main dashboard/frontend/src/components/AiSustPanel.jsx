@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -14,6 +15,7 @@ function badgeClassForStatus(s) {
 export default function AiSustPanel() {
   const [rows, setRows] = useState([]);
   const [err, setErr] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     let alive = true;
@@ -71,7 +73,11 @@ export default function AiSustPanel() {
           </thead>
           <tbody>
             {rows.map((h) => (
-              <tr key={h.hall_id}>
+              <tr
+                key={h.hall_id}
+                style={{ cursor: "pointer" }}
+                onClick={() => navigate(`/sustainability/hall/${h.hall_id}`)}
+              >
                 <td style={{ fontWeight: 900 }}>{h.hall_name ? `${h.hall_name} (${h.hall_id})` : h.hall_id}</td>
                 <td className="rowRight">{Number(h.hvac_energy_kwh || 0).toFixed(2)}</td>
                 <td className="rowRight">{Number(h.carbon_kg_co2 || 0).toFixed(2)}</td>

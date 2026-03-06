@@ -81,6 +81,8 @@ app.get("/api/exhibitor-ai-download/*path", async (req, res) => {
   }
 });
 
+
+
 // ----------------------
 // Mount routes
 // ----------------------
@@ -93,6 +95,7 @@ app.use("/dashboard", require("./routes/dashboard.routes.js"));
 app.use("/nav", require("./routes/nav.routes.js"));
 app.use("/ai", require("./routes/ai.routes.js"));
 app.use("/alerts", require("./routes/alerts.routes.js"));
+app.use("/sustainability", require("./routes/sustainability.routes.js"));
 
 
 
