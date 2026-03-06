@@ -31,6 +31,9 @@ app.use(express.json());
 const idleTimeout = require("./middleware/idleTimeout.middleware");
 app.use(idleTimeout);
 
+const environmentRoutes = require("./routes/environment.routes");
+
+
 app.get("/health", (req, res) =>
   res.json({ ok: true, service: "backend", time: new Date().toISOString() })
 );
@@ -95,6 +98,7 @@ app.use("/dashboard", require("./routes/dashboard.routes.js"));
 app.use("/nav", require("./routes/nav.routes.js"));
 app.use("/ai", require("./routes/ai.routes.js"));
 app.use("/alerts", require("./routes/alerts.routes.js"));
+app.use("/environment", environmentRoutes);
 app.use("/sustainability", require("./routes/sustainability.routes.js"));
 
 
@@ -102,6 +106,8 @@ app.use("/sustainability", require("./routes/sustainability.routes.js"));
 // 🔐 AUTH LAYER (ADDED BACK)
 app.use("/auth", require("./routes/auth"));
 app.use("/users", require("./routes/users.routes.js"));
+
+
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`✅ API running on http://localhost:${PORT}`));

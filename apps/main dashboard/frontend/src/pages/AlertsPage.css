@@ -1,20 +1,38 @@
 /* frontend/src/pages/AlertsPage.css */
 
+/* =========================
+   THEME ACCENTS (Ops pink, Sust green)
+   ========================= */
+.opsTheme .alertsPage{
+  --alerts-accent:#E8486F;
+  --alerts-accent-bg: rgba(232,72,111,0.08);
+  --alerts-accent-hover:#d93f65;
+}
+
+.sustTheme .alertsPage{
+  --alerts-accent:#00802B;
+  --alerts-accent-bg: rgba(0,128,43,0.08);
+  --alerts-accent-hover:#006b24;
+}
+
 /* ===== page base ===== */
 .opsTheme .alertsPage,
+.sustTheme .alertsPage,
 .alertsPage{
   background: #f5f6f8;
   min-height: 100%;
 }
 
 .opsTheme .alertsPage .pageInner,
+.sustTheme .alertsPage .pageInner,
 .alertsPage .pageInner{
   padding: 22px 26px;
-  max-width: 1400px; /* alerts table needs more width */
+  max-width: 1400px;
 }
 
 /* ===== header row (match Devices) ===== */
 .opsTheme .alertsHeaderRow,
+.sustTheme .alertsHeaderRow,
 .alertsHeaderRow{
   display: flex;
   align-items: flex-start;
@@ -23,6 +41,7 @@
 }
 
 .opsTheme .alertsHeaderRight,
+.sustTheme .alertsHeaderRight,
 .alertsHeaderRight{
   display: flex;
   align-items: center;
@@ -30,6 +49,7 @@
 }
 
 .opsTheme .alertsCountTop,
+.sustTheme .alertsCountTop,
 .alertsCountTop{
   font-size: 13px;
   color: #6b7280;
@@ -37,6 +57,7 @@
 
 /* ===== controls card ===== */
 .opsTheme .alertsControlsCard,
+.sustTheme .alertsControlsCard,
 .alertsControlsCard{
   margin-top: 14px;
   background: #ffffff;
@@ -47,14 +68,16 @@
 
 /* filters rows */
 .opsTheme .alertsFiltersRow,
+.sustTheme .alertsFiltersRow,
 .alertsFiltersRow{
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap; /* alerts has more filters */
+  flex-wrap: wrap;
 }
 
 .opsTheme .alertsFiltersRow2,
+.sustTheme .alertsFiltersRow2,
 .alertsFiltersRow2{
   margin-top: 10px;
   display: flex;
@@ -65,8 +88,8 @@
 /* =========================
    DEVICES-STYLE PILLS (scoped)
    ========================= */
-
 .opsTheme .alertsPage .filterPill,
+.sustTheme .alertsPage .filterPill,
 .alertsPage .filterPill{
   height: 30px;
   border-radius: 10px;
@@ -82,6 +105,7 @@
 }
 
 .opsTheme .alertsPage .pillSearch,
+.sustTheme .alertsPage .pillSearch,
 .alertsPage .pillSearch{
   flex: 1 1 520px;
   min-width: 360px;
@@ -91,21 +115,16 @@
 }
 
 /* widths similar to Devices */
-.opsTheme .alertsPage .pillSeverity, .alertsPage .pillSeverity{ width: 170px; }
-.opsTheme .alertsPage .pillAlertStatus, .alertsPage .pillAlertStatus{ width: 170px; }
-.opsTheme .alertsPage .pillZone, .alertsPage .pillZone{ width: 150px; }
-.opsTheme .alertsPage .pillHall, .alertsPage .pillHall{ width: 150px; }
-.opsTheme .alertsPage .pillSort, .alertsPage .pillSort{ width: 185px; }
-.opsTheme .alertsPage .pillRows, .alertsPage .pillRows{ width: 60px; }
+.opsTheme .alertsPage .pillSeverity, .sustTheme .alertsPage .pillSeverity, .alertsPage .pillSeverity{ width: 170px; }
+.opsTheme .alertsPage .pillAlertStatus, .sustTheme .alertsPage .pillAlertStatus, .alertsPage .pillAlertStatus{ width: 170px; }
+.opsTheme .alertsPage .pillZone, .sustTheme .alertsPage .pillZone, .alertsPage .pillZone{ width: 150px; }
+.opsTheme .alertsPage .pillHall, .sustTheme .alertsPage .pillHall, .alertsPage .pillHall{ width: 150px; }
+.opsTheme .alertsPage .pillSort, .sustTheme .alertsPage .pillSort, .alertsPage .pillSort{ width: 185px; }
+.opsTheme .alertsPage .pillRows, .sustTheme .alertsPage .pillRows, .alertsPage .pillRows{ width: 60px; }
 
-/* device id input pill */
-.opsTheme .alertsPage .pillDeviceId,
-.alertsPage .pillDeviceId{
-  width: 260px;
-}
-
-/* rules pill row 2 */
+/* rules pill */
 .opsTheme .alertsPage .pillRule,
+.sustTheme .alertsPage .pillRule,
 .alertsPage .pillRule{
   flex: 1 1 760px;
   min-width: 420px;
@@ -113,6 +132,7 @@
 
 /* left icon slot */
 .opsTheme .alertsPage .pillLeftIcon,
+.sustTheme .alertsPage .pillLeftIcon,
 .alertsPage .pillLeftIcon{
   width: 18px;
   height: 12px;
@@ -120,13 +140,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #E8486F;
+  color: var(--alerts-accent);
   opacity: 0.85;
-  pointer-events: none; /* don’t block clicks */
+  pointer-events: none;
 }
 
 /* select reset */
 .opsTheme .alertsPage .pillSelect,
+.sustTheme .alertsPage .pillSelect,
 .alertsPage .pillSelect{
   width: 100%;
   border: 0;
@@ -145,6 +166,7 @@
 
 /* input reset */
 .opsTheme .alertsPage .pillInput,
+.sustTheme .alertsPage .pillInput,
 .alertsPage .pillInput{
   width: 100%;
   border: 0;
@@ -156,18 +178,21 @@
 }
 
 .opsTheme .alertsPage .pillInput::placeholder,
+.sustTheme .alertsPage .pillInput::placeholder,
 .alertsPage .pillInput::placeholder{
   color: #6b7280;
   font-weight: 500;
 }
 
 .opsTheme .alertsPage .filterPill:hover,
+.sustTheme .alertsPage .filterPill:hover,
 .alertsPage .filterPill:hover{
   background: #d4d8db;
 }
 
-/* ===== bottom row (devices-like) ===== */
+/* ===== bottom row ===== */
 .opsTheme .alertsControlsBottomRow,
+.sustTheme .alertsControlsBottomRow,
 .alertsControlsBottomRow{
   margin-top: 12px;
   display: flex;
@@ -177,14 +202,16 @@
 }
 
 .opsTheme .alertsBottomRight,
+.sustTheme .alertsBottomRight,
 .alertsBottomRight{
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-/* rows control (same as Devices) */
+/* rows control */
 .opsTheme .rowsControl,
+.sustTheme .rowsControl,
 .rowsControl{
   display: flex;
   align-items: center;
@@ -192,19 +219,21 @@
 }
 
 .opsTheme .rowsLabel,
+.sustTheme .rowsLabel,
 .rowsLabel{
   font-size: 13px;
   color: #6b7280;
 }
 
-/* ===== Final select + caret behaviour (same as Devices) ===== */
+/* select + caret */
 .opsTheme .alertsPage .pillSelectWrap,
+.sustTheme .alertsPage .pillSelectWrap,
 .alertsPage .pillSelectWrap{
   position: relative;
 }
 
-/* select stretches under caret */
 .opsTheme .alertsPage .pillSelectWrap .pillSelect,
+.sustTheme .alertsPage .pillSelectWrap .pillSelect,
 .alertsPage .pillSelectWrap .pillSelect{
   flex: 1 1 auto;
   width: 100%;
@@ -220,8 +249,8 @@
   line-height: 30px;
 }
 
-/* caret: thin + absolute (click passes to select) */
 .opsTheme .alertsPage .pillSelectWrap .pillRightCaret,
+.sustTheme .alertsPage .pillSelectWrap .pillRightCaret,
 .alertsPage .pillSelectWrap .pillRightCaret{
   position: absolute;
   right: 12px;
@@ -238,20 +267,21 @@
   transform-origin: center;
 }
 
-/* rotate only when wrapper has isOpen */
 .opsTheme .alertsPage .pillSelectWrap.isOpen .pillRightCaret,
+.sustTheme .alertsPage .pillSelectWrap.isOpen .pillRightCaret,
 .alertsPage .pillSelectWrap.isOpen .pillRightCaret{
   transform: translateY(-35%) rotate(180deg);
 }
 
-/* ===== Clear filters button (pink) ===== */
+/* ===== Clear filters button (theme accent) ===== */
 .opsTheme .alertsControlsCard .clearFiltersBtn,
+.sustTheme .alertsControlsCard .clearFiltersBtn,
 .alertsControlsCard .clearFiltersBtn{
   height: 34px;
   padding: 0 14px;
   border-radius: 10px;
-  border: 1px solid #E8486F;
-  background: #E8486F;
+  border: 1px solid var(--alerts-accent);
+  background: var(--alerts-accent);
   font-size: 13px;
   font-weight: 600;
   color: #ffffff;
@@ -259,13 +289,15 @@
 }
 
 .opsTheme .alertsControlsCard .clearFiltersBtn:hover,
+.sustTheme .alertsControlsCard .clearFiltersBtn:hover,
 .alertsControlsCard .clearFiltersBtn:hover{
-  background: #d93f65;
-  border-color: #d93f65;
+  background: var(--alerts-accent-hover);
+  border-color: var(--alerts-accent-hover);
 }
 
 /* ===== Error ===== */
 .opsTheme .alertsError,
+.sustTheme .alertsError,
 .alertsError{
   margin-top: 12px;
   padding: 12px;
@@ -275,6 +307,7 @@
 }
 
 .opsTheme .alertsErrorTitle,
+.sustTheme .alertsErrorTitle,
 .alertsErrorTitle{
   font-weight: 800;
   color: #7f1d1d;
@@ -282,14 +315,16 @@
 }
 
 .opsTheme .alertsErrorBody,
+.sustTheme .alertsErrorBody,
 .alertsErrorBody{
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12px;
   color: #7f1d1d;
 }
 
-/* ===== Table (match Devices) ===== */
+/* ===== Table ===== */
 .opsTheme .alertsTableCard,
+.sustTheme .alertsTableCard,
 .alertsTableCard{
   margin-top: 14px;
   background: #ffffff;
@@ -300,20 +335,23 @@
 }
 
 .opsTheme .alertsTableScroll,
+.sustTheme .alertsTableScroll,
 .alertsTableScroll{
   overflow-x: auto;
 }
 
 .opsTheme .alertsTable,
+.sustTheme .alertsTable,
 .alertsTable{
   width: 100%;
   border-collapse: collapse;
 }
 
 .opsTheme .alertsTable thead th,
+.sustTheme .alertsTable thead th,
 .alertsTable thead th{
   background: #fbfbfc;
-  color: #E8486F; /* pink headers */
+  color: var(--alerts-accent);
   font-size: 12px;
   font-weight: 800;
   text-align: left;
@@ -323,6 +361,7 @@
 }
 
 .opsTheme .alertsTable tbody td,
+.sustTheme .alertsTable tbody td,
 .alertsTable tbody td{
   padding: 14px 16px;
   border-bottom: 1px solid #f1f3f5;
@@ -333,44 +372,43 @@
 }
 
 .opsTheme .alertsRow:hover td,
+.sustTheme .alertsRow:hover td,
 .alertsRow:hover td{
   background: #fafafa;
 }
 
 .opsTheme .alertsTableEmpty,
+.sustTheme .alertsTableEmpty,
 .alertsTableEmpty{
   padding: 14px;
   opacity: 0.75;
 }
 
-.opsTheme .tdStrong, .tdStrong{ font-weight: 800; }
+.opsTheme .tdStrong, .sustTheme .tdStrong, .tdStrong{ font-weight: 800; }
 
 .opsTheme .tdMono,
+.sustTheme .tdMono,
 .tdMono{
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12px;
   color: #334155;
 }
 
-/* message can be long; allow wrap but keep row height sane */
-.opsTheme .alertsMsg,
-.alertsMsg{
-  white-space: normal;
-  max-width: 520px;
-}
-
 /* details row */
 .opsTheme .alertsDetailsRow td,
+.sustTheme .alertsDetailsRow td,
 .alertsDetailsRow td{
   background: #fafafa;
 }
 
 .opsTheme .alertsDetailsCell,
+.sustTheme .alertsDetailsCell,
 .alertsDetailsCell{
   padding: 14px;
 }
 
 .opsTheme .alertsDetailsGrid,
+.sustTheme .alertsDetailsGrid,
 .alertsDetailsGrid{
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -378,12 +416,14 @@
 }
 
 .opsTheme .alertsDetailsTitle,
+.sustTheme .alertsDetailsTitle,
 .alertsDetailsTitle{
   font-weight: 800;
   margin-bottom: 6px;
 }
 
 .opsTheme .alertsKv,
+.sustTheme .alertsKv,
 .alertsKv{
   display: flex;
   justify-content: space-between;
@@ -392,18 +432,21 @@
 }
 
 .opsTheme .alertsK,
+.sustTheme .alertsK,
 .alertsK{
   font-size: 12px;
   opacity: 0.7;
 }
 
 .opsTheme .alertsV,
+.sustTheme .alertsV,
 .alertsV{
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12px;
 }
 
 .opsTheme .alertsMetaPre,
+.sustTheme .alertsMetaPre,
 .alertsMetaPre{
   margin: 0;
   padding: 12px;
@@ -416,12 +459,14 @@
 
 /* action buttons */
 .opsTheme .alertsActionBtns,
+.sustTheme .alertsActionBtns,
 .alertsActionBtns{
   display: flex;
   gap: 8px;
 }
 
 .opsTheme .alertsTinyBtn,
+.sustTheme .alertsTinyBtn,
 .alertsTinyBtn{
   padding: 6px 8px;
   border-radius: 10px;
@@ -433,18 +478,21 @@
 }
 
 .opsTheme .alertsTinyBtn:hover,
+.sustTheme .alertsTinyBtn:hover,
 .alertsTinyBtn:hover{
   background: #f8fafc;
 }
 
 .opsTheme .alertsTinyBtn.isDisabled,
+.sustTheme .alertsTinyBtn.isDisabled,
 .alertsTinyBtn.isDisabled{
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* ===== Pagination (match Devices) ===== */
+/* ===== Pagination ===== */
 .opsTheme .alertsPager,
+.sustTheme .alertsPager,
 .alertsPager{
   margin-top: 12px;
   display: flex;
@@ -453,18 +501,21 @@
 }
 
 .opsTheme .alertsPagerLeft,
+.sustTheme .alertsPagerLeft,
 .alertsPagerLeft{
   font-size: 13px;
   color: #6b7280;
 }
 
 .opsTheme .alertsPagerRight,
+.sustTheme .alertsPagerRight,
 .alertsPagerRight{
   display: flex;
   gap: 8px;
 }
 
 .opsTheme .pagerBtn,
+.sustTheme .pagerBtn,
 .pagerBtn{
   height: 36px;
   padding: 0 12px;
@@ -477,146 +528,88 @@
 }
 
 .opsTheme .pagerBtn:hover,
+.sustTheme .pagerBtn:hover,
 .pagerBtn:hover{
   background: #f8fafc;
 }
 
 .opsTheme .pagerBtn:disabled,
+.sustTheme .pagerBtn:disabled,
 .pagerBtn:disabled{
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-/* ===== Pink top-right count ===== */
+/* ===== Accent top-right count (theme) ===== */
 .opsTheme .alertsHeaderRight .alertsCountTop,
+.sustTheme .alertsHeaderRight .alertsCountTop,
 .alertsHeaderRight .alertsCountTop{
-  color: #E8486F !important;
+  color: var(--alerts-accent) !important;
   font-weight: 700;
 }
 
-/* Make page header pink across ops dashboard (same trick as Devices) */
+/* Make page header pink across ops dashboard (unchanged) */
 .opsTheme main h1:first-of-type{
   color: #E8486F !important;
 }
 
 /* =========================
-   Alerts layout polish (match Devices spacing)
+   Alerts: force filters into one line (your existing layout)
    ========================= */
-
-/* Make row 1 behave like Devices: prefer one line, wrap only when needed */
 .opsTheme .alertsFiltersRow,
+.sustTheme .alertsFiltersRow,
 .alertsFiltersRow{
-  flex-wrap: wrap;       /* keep wrap for small screens */
+  flex-wrap: nowrap;
   align-items: center;
 }
 
-/* Search back to Devices size */
 .opsTheme .alertsPage .pillSearch,
-.alertsPage .pillSearch{
-  flex: 0 0 300px;       /* fixed like Devices */
-  width: 300px;
-  min-width: 300px;
-}
-
-/* Device ID input pill: compact */
-.opsTheme .alertsPage .pillDeviceId,
-.alertsPage .pillDeviceId{
-  width: 220px;
-}
-
-/* Make Rules NOT huge — same “normal pill” width */
-.opsTheme .alertsPage .pillRule,
-.alertsPage .pillRule{
-  flex: 0 0 240px;       /* normal dropdown size */
-  width: 240px;
-  min-width: 240px;
-}
-
-/* Make the “row 2” not force full width */
-.opsTheme .alertsFiltersRow2,
-.alertsFiltersRow2{
-  margin-top: 10px;
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-}
-
-/* Optional: keep the rules dropdown text from stretching the pill visually */
-.opsTheme .alertsPage .pillRule .pillSelect,
-.alertsPage .pillRule .pillSelect{
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Keep the whole controls card spacing looking like Devices */
-.opsTheme .alertsControlsCard,
-.alertsControlsCard{
-  padding: 14px;
-}
-
-/* =========================
-   Alerts: force filters into one line
-   ========================= */
-
-.opsTheme .alertsFiltersRow,
-.alertsFiltersRow{
-  flex-wrap: nowrap;          /* keep everything on first line */
-  align-items: center;
-}
-
-/* Search back to Devices size */
-.opsTheme .alertsPage .pillSearch,
+.sustTheme .alertsPage .pillSearch,
 .alertsPage .pillSearch{
   flex: 0 0 240px;
   width: 240px;
   min-width: 240px;
 }
 
-/* Make Rules a normal pill and keep it on the first row */
 .opsTheme .alertsFiltersRow2,
+.sustTheme .alertsFiltersRow2,
 .alertsFiltersRow2{
-  display: none;              /* hide the second row completely */
+  display: none;
 }
 
 .opsTheme .alertsPage .pillRule,
+.sustTheme .alertsPage .pillRule,
 .alertsPage .pillRule{
-  width: 190px;               /* same feel as Sort */
+  width: 190px;
   min-width: 190px;
   flex: 0 0 190px;
 }
 
-/* If any pill text is long, prevent it from expanding */
 .opsTheme .alertsPage .pillSelect,
+.sustTheme .alertsPage .pillSelect,
 .alertsPage .pillSelect{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Only Clear + Sort/Rows stay on row 2 (already your structure) */
 .opsTheme .alertsControlsBottomRow,
+.sustTheme .alertsControlsBottomRow,
 .alertsControlsBottomRow{
   margin-top: 12px;
+  justify-content: space-between;
 }
 
-/* Bottom row: left group + right group (no huge gap) */
-.opsTheme .alertsControlsBottomRow,
-.alertsControlsBottomRow{
-  justify-content: space-between; /* keep left+right separation */
-}
-
-/* Sort + Clear together, tight spacing */
 .opsTheme .alertsBottomLeft,
+.sustTheme .alertsBottomLeft,
 .alertsBottomLeft{
   display: flex;
   align-items: center;
-  gap: 12px;          /* controls spacing between sort and clear */
+  gap: 12px;
 }
 
-/* Right side padding so Rows aligns with top pills */
 .opsTheme .alertsBottomRight,
+.sustTheme .alertsBottomRight,
 .alertsBottomRight{
-  padding-right: 6px; /* tweak to match your top row alignment */
+  padding-right: 6px;
 }
