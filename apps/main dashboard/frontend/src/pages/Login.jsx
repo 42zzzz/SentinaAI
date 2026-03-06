@@ -56,10 +56,11 @@ export default function Login() {
 
       const { token, role, full_name, employee_id } = res.data;
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("role", role);
-      localStorage.setItem("full_name", full_name);
-      localStorage.setItem("employee_id", employee_id);
+      sessionStorage.setItem("token", token);
+      window.dispatchEvent(new Event("sentina:login"));
+      sessionStorage.setItem("role", role);
+      sessionStorage.setItem("full_name", full_name);
+      sessionStorage.setItem("employee_id", employee_id);
 
       switch (role) {
         case "super_admin":

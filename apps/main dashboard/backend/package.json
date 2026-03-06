@@ -4,10 +4,11 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "dev": "concurrently \"npm:dev:api\" \"npm:dev:nav\"",
+    "dev": "concurrently \"npm:dev:api\" \"npm:dev:nav\" \"npm:dev:ai\"",
     "dev:api": "nodemon server.js",
-    "dev:nav": "cmd /c \"pushd ..\\..\\navigation_web\\backend && py app.py\""
-  },
+    "dev:nav": "cmd /c \"pushd ..\\..\\navigation_web\\backend && py app.py\"",
+    "dev:ai": "cmd /c \"pushd ..\\..\\..\\services\\ai-detection && py -m uvicorn app:app --reload --port 8000\""
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
