@@ -43,6 +43,7 @@ from pathfinder import DijkstraPathfinder
 from telemetry_processor import TelemetryProcessor
 from event_store import EventStore
 from iot_validator import validate_iot_payload  # NFR-24/25
+from devices_registry import DEVICES_REGISTRY, device_telemetry as _device_telemetry_store
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="/static")
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
@@ -842,6 +843,29 @@ def api_events_reload():
         return jsonify({"ok": False, "error": f"events_dir_not_found: {events_dir}"}), 400
     event_store = EventStore.load(events_dir)
     return jsonify({"ok": True, "loaded_from": str(events_dir)})
+
+
+@app.route("/api/devices", methods=["GET"])
+def get_devices():
+    """Return the full IoT device registry."""
+    return jsonify({"status": "success", "devices": DEVICES_REGISTRY})
+
+
+@app.route("/api/devices/status", methods=["GET"])
+def get_device_status():
+    """Return live device telemetry.
+    Initially returns the static status from the registry.
+    When MQTT integration is active, _device_telemetry_store is populated
+    by a paho-mqtt subscriber and takes precedence.
+    """
+    status_map = {}
+    for device in DEVICES_REGISTRY:
+        did = device["id"]
+        if did in _device_telemetry_store:
+            status_map[did] = _device_telemetry_store[did]
+        else:
+            status_map[did] = {"status": device.get("status", "online")}
+    return jsonify({"status": "success", "devices": status_map})
 
 
 @app.route("/api/health", methods=["GET"])
