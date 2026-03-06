@@ -56,7 +56,7 @@ export default function AiOpsPanel() {
       <div className="cardHeaderRow">
         <div className="cardHeaderLeft">
           <h3 className="cardTitleBig" style={{ margin: 0 }}>
-            AI Operations – Live Status
+            AI Operations: Live Status
           </h3>
         </div>
         <div className="hint">Source: /ai/ops-live</div>

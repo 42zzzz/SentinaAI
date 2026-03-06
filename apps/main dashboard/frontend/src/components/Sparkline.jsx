@@ -1,3 +1,4 @@
+// frontend/src/components/Sparkline.jsx
 import React, { useMemo } from "react";
 
 function fmtCount(n) {
@@ -12,7 +13,6 @@ function fmtX(ts, xMode) {
     if (xMode === "date") {
       return d.toLocaleDateString([], { month: "short", day: "2-digit" });
     }
-    // time
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   } catch {
     return "";
@@ -20,7 +20,8 @@ function fmtX(ts, xMode) {
 }
 
 export default function Sparkline({ points = [], height = 110, xMode = "time", accent }) {
-  const ACCENT = accent || "var(--sust-accent, #E8486F)";
+  // ✅ If accent passed -> use it. Else fallback to CSS var. Else fallback pink.
+  const ACCENT = accent || "var(--spark-accent, #E8486F)";
 
   const w = 320;
   const h = height;
@@ -31,14 +32,13 @@ export default function Sparkline({ points = [], height = 110, xMode = "time", a
   const padBottom = 22;
 
   if (!points.length) {
-    return <div style={{ width: w, height: h, opacity: 0.4, fontSize: 12 }}>—</div>;
+    return <div style={{ width: "100%", height: h, opacity: 0.4, fontSize: 12 }}>—</div>;
   }
 
   const ys = points.map((p) => Number(p.value || 0)).filter(Number.isFinite);
   const yRawMax = Math.max(...ys, 0);
-  const yLabelMax = Math.max(1, Math.ceil(yRawMax)); // integer ceiling
+  const yLabelMax = Math.max(1, Math.ceil(yRawMax));
 
-  // scale from 0..yLabelMax so axis always makes sense for "counts"
   const yMin = 0;
   const yMax = yLabelMax;
 
@@ -59,9 +59,9 @@ export default function Sparkline({ points = [], height = 110, xMode = "time", a
     .join(" ");
 
   const baselineY = yScale(0);
-  const areaD = `${d} L ${xScale(points.length - 1).toFixed(2)} ${baselineY.toFixed(
+  const areaD = `${d} L ${xScale(points.length - 1).toFixed(2)} ${baselineY.toFixed(2)} L ${xScale(0).toFixed(
     2
-  )} L ${xScale(0).toFixed(2)} ${baselineY.toFixed(2)} Z`;
+  )} ${baselineY.toFixed(2)} Z`;
 
   const firstTs = points[0]?.ts;
   const lastTs = points[points.length - 1]?.ts;
@@ -69,12 +69,16 @@ export default function Sparkline({ points = [], height = 110, xMode = "time", a
   const lastX = xScale(points.length - 1);
   const lastY = yScale(points[points.length - 1]?.value);
 
-  // only 2 meaningful grid lines: max + 0
   const grid = useMemo(() => [yMax, 0], [yMax]);
 
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block" }}>
-      {/* Y grid + labels (max & 0 only) */}
+    <svg
+      width="100%"
+      height={h}
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      style={{ display: "block", maxWidth: "100%" }}
+    >
       {grid.map((v, idx) => {
         const y = yScale(v);
         return (
@@ -87,27 +91,13 @@ export default function Sparkline({ points = [], height = 110, xMode = "time", a
         );
       })}
 
-      {/* Axes */}
       <line x1={padLeft} x2={padLeft} y1={padTop} y2={h - padBottom} stroke="#9ca3af" strokeWidth="1" />
-      <line
-        x1={padLeft}
-        x2={w - padRight}
-        y1={h - padBottom}
-        y2={h - padBottom}
-        stroke="#9ca3af"
-        strokeWidth="1"
-      />
+      <line x1={padLeft} x2={w - padRight} y1={h - padBottom} y2={h - padBottom} stroke="#9ca3af" strokeWidth="1" />
 
-      {/* Area fill */}
       <path d={areaD} fill={ACCENT} opacity="0.12" />
-
-      {/* Line */}
       <path d={d} fill="none" stroke={ACCENT} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-
-      {/* Last point dot */}
       <circle cx={lastX} cy={lastY} r="3.5" fill={ACCENT} stroke="#ffffff" strokeWidth="2" />
 
-      {/* X labels */}
       <text x={padLeft} y={h - 6} fontSize="10" textAnchor="start" fill="#6b7280">
         {fmtX(firstTs, xMode)}
       </text>

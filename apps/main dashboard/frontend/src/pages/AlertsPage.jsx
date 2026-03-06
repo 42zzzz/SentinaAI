@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./AlertsPage.css";
 import { useNavigate } from "react-router-dom";
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 const roleDomainMap = {
@@ -29,18 +30,18 @@ function safeJson(v) {
   }
 }
 
-/* ---- Inline SVG Icons (reuse Devices look) ---- */
+/* ---- Inline SVG Icons (theme-aware: uses currentColor) ---- */
 function IconSearch() {
   return (
     <svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M6 11C8.76142 11 11 8.76142 11 6C11 3.23858 8.76142 1 6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11Z"
-        stroke="#E8486F"
+        stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d="M14 15L9 10" stroke="#E8486F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 15L9 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -51,7 +52,7 @@ function IconZone() {
       <g clipPath="url(#clip0_9_8863)">
         <path
           d="M13.75 7.5C13.75 10.9518 10.9518 13.75 7.5 13.75M13.75 7.5C13.75 4.04822 10.9518 1.25 7.5 1.25M13.75 7.5H1.25M7.5 13.75C9.0633 12.0385 9.95172 9.81748 10 7.5C9.95172 5.18252 9.0633 2.96147 7.5 1.25M7.5 13.75C5.9367 12.0385 5.04828 9.81748 5 7.5C5.04828 5.18252 5.9367 2.96147 7.5 1.25M1.25 7.5C1.25 4.04822 4.04822 1.25 7.5 1.25"
-          stroke="#E8486F"
+          stroke="currentColor"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -70,11 +71,11 @@ function IconStatus() {
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M9.91675 13.2702H4.08341C1.51091 13.2702 0.729248 12.4885 0.729248 9.91602V4.08268C0.729248 1.51018 1.51091 0.728516 4.08341 0.728516H4.95841C5.97925 0.728516 6.30008 1.06102 6.70841 1.60352L7.58341 2.77018C7.77591 3.02685 7.80508 3.06185 8.16675 3.06185H9.91675C12.4892 3.06185 13.2709 3.84352 13.2709 6.41602V9.91602C13.2709 12.4885 12.4892 13.2702 9.91675 13.2702ZM4.08341 1.60352C1.99508 1.60352 1.60425 2.00018 1.60425 4.08268V9.91602C1.60425 11.9985 1.99508 12.3952 4.08341 12.3952H9.91675C12.0051 12.3952 12.3959 11.9985 12.3959 9.91602V6.41602C12.3959 4.33352 12.0051 3.93685 9.91675 3.93685H8.16675C7.42008 3.93685 7.17508 3.68018 6.88341 3.29518L6.00841 2.12852C5.70508 1.72602 5.61175 1.60352 4.95841 1.60352H4.08341Z"
-        fill="#E8486F"
+        fill="currentColor"
       />
       <path
         d="M11.6667 4.15852C11.4276 4.15852 11.2292 3.96018 11.2292 3.72102V2.91602C11.2292 1.99435 10.8384 1.60352 9.91675 1.60352H4.66675C4.42758 1.60352 4.22925 1.40518 4.22925 1.16602C4.22925 0.926849 4.42758 0.728516 4.66675 0.728516H9.91675C11.3284 0.728516 12.1042 1.50435 12.1042 2.91602V3.72102C12.1042 3.96018 11.9059 4.15852 11.6667 4.15852Z"
-        fill="#E8486F"
+        fill="currentColor"
       />
     </svg>
   );
@@ -83,12 +84,7 @@ function IconStatus() {
 function IconSort() {
   return (
     <svg width="10" height="12" viewBox="0 0 10 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M9.16659 1.5H0.833252L4.16659 6.23V9.5L5.83325 10.5V6.23L9.16659 1.5Z"
-        stroke="#E8486F"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M9.16659 1.5H0.833252L4.16659 6.23V9.5L5.83325 10.5V6.23L9.16659 1.5Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -100,8 +96,11 @@ const IconRule = IconStatus;
 export default function AlertsPage() {
   const navigate = useNavigate();
 
-  const role = localStorage.getItem("role");
+  const role = localStorage.getItem("role") || "operations_manager";
   const domain = roleDomainMap[role] || "OPERATIONS";
+
+  // ✅ theme wrapper like DevicesPage
+  const themeClass = role === "sustainability_manager" ? "sustTheme" : "opsTheme";
 
   const [filters, setFilters] = useState(null);
 
@@ -130,7 +129,7 @@ export default function AlertsPage() {
     return () => clearTimeout(t);
   }, [q]);
 
-  // ✅ IMPORTANT: filters must be fetched per-domain
+  // ✅ filters are fetched per-domain
   useEffect(() => {
     axios
       .get(`${API_BASE}/alerts/filters`, { params: { domain } })
@@ -138,7 +137,7 @@ export default function AlertsPage() {
       .catch((e) => setError(e?.response?.data?.error || e.message || "Failed to load alert filters"));
   }, [domain]);
 
-  // ✅ IMPORTANT: alerts list must include domain in params
+  // ✅ alerts list includes domain
   useEffect(() => {
     let alive = true;
 
@@ -148,7 +147,7 @@ export default function AlertsPage() {
       try {
         const res = await axios.get(`${API_BASE}/alerts`, {
           params: {
-            domain, // <-- THIS is what fixes sustainability showing ops data
+            domain,
             q: qLive || undefined,
             severity: severity || undefined,
             status: status || undefined,
@@ -183,8 +182,6 @@ export default function AlertsPage() {
 
   useEffect(() => setPage(1), [severity, status, ruleKey, zoneId, hallId, deviceId, sort, pageSize]);
 
-  // ... keep the rest of your component exactly the same
-
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
 
   const clearFilters = () => {
@@ -212,11 +209,11 @@ export default function AlertsPage() {
           prev.map((r) =>
             r.alert_id === alertId
               ? {
-                ...r,
-                status: updated.status,
-                acknowledged_by: updated.acknowledged_by,
-                acknowledged_at: updated.acknowledged_at,
-              }
+                  ...r,
+                  status: updated.status,
+                  acknowledged_by: updated.acknowledged_by,
+                  acknowledged_at: updated.acknowledged_at,
+                }
               : r
           )
         );
@@ -242,400 +239,404 @@ export default function AlertsPage() {
   };
 
   return (
-    <div className="alertsPage">
-      <div className="pageInner">
-        <div className="alertsHeaderRow">
-          <div className="alertsTitleWrap">{/* keep empty for consistency */}</div>
+    <div className={themeClass}>
+      <div className="alertsPage">
+        <div className="pageInner">
+          <div className="alertsHeaderRow">
+            <div className="alertsTitleWrap">{/* keep empty for consistency */}</div>
 
-          <div className="alertsHeaderRight">
-            <div className="alertsCountTop">{loading ? "Loading…" : `${total} alerts`}</div>
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className="alertsControlsCard">
-          <div className="alertsFiltersRow">
-            {/* Search */}
-            <div className="filterPill pillSearch" role="search">
-              <span className="pillLeftIcon" aria-hidden>
-                <IconSearch />
-              </span>
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search (message, rule, zone/hall/device)…"
-                className="pillInput"
-              />
-            </div>
-
-            {/* Severity */}
-            <div className={`filterPill pillSelectWrap pillSeverity ${openSelect === "sev" ? "isOpen" : ""}`}>
-              <span className="pillLeftIcon" aria-hidden>
-                <IconSeverity />
-              </span>
-              <select
-                value={severity}
-                className="pillSelect"
-                onFocus={() => setOpenSelect("sev")}
-                onBlur={() => setOpenSelect(null)}
-                onChange={(e) => {
-                  setSeverity(e.target.value);
-                  setOpenSelect(null);
-                  e.currentTarget.blur();
-                }}
-              >
-                <option value="">All Severities</option>
-                {filters?.severities?.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <span className="pillRightCaret" aria-hidden />
-            </div>
-
-            {/* Status */}
-            <div className={`filterPill pillSelectWrap pillAlertStatus ${openSelect === "status" ? "isOpen" : ""}`}>
-              <span className="pillLeftIcon" aria-hidden>
-                <IconStatus />
-              </span>
-              <select
-                value={status}
-                className="pillSelect"
-                onFocus={() => setOpenSelect("status")}
-                onBlur={() => setOpenSelect(null)}
-                onChange={(e) => {
-                  setStatus(e.target.value);
-                  setOpenSelect(null);
-                  e.currentTarget.blur();
-                }}
-              >
-                <option value="">All Statuses</option>
-                {filters?.statuses?.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <span className="pillRightCaret" aria-hidden />
-            </div>
-
-            {/* Zone */}
-            <div className={`filterPill pillSelectWrap pillZone ${openSelect === "zone" ? "isOpen" : ""}`}>
-              <span className="pillLeftIcon" aria-hidden>
-                <IconZone />
-              </span>
-              <select
-                value={zoneId}
-                className="pillSelect"
-                onFocus={() => setOpenSelect("zone")}
-                onBlur={() => setOpenSelect(null)}
-                onChange={(e) => {
-                  setZoneId(e.target.value);
-                  setOpenSelect(null);
-                  e.currentTarget.blur();
-                }}
-              >
-                <option value="">All Zones</option>
-                {filters?.zones?.map((z) => (
-                  <option key={z} value={z}>
-                    {z}
-                  </option>
-                ))}
-              </select>
-              <span className="pillRightCaret" aria-hidden />
-            </div>
-
-            {/* Hall */}
-            <div className={`filterPill pillSelectWrap pillHall ${openSelect === "hall" ? "isOpen" : ""}`}>
-              <span className="pillLeftIcon" aria-hidden>
-                <IconZone />
-              </span>
-              <select
-                value={hallId}
-                className="pillSelect"
-                onFocus={() => setOpenSelect("hall")}
-                onBlur={() => setOpenSelect(null)}
-                onChange={(e) => {
-                  setHallId(e.target.value);
-                  setOpenSelect(null);
-                  e.currentTarget.blur();
-                }}
-              >
-                <option value="">All Halls</option>
-                {filters?.halls?.map((h) => (
-                  <option key={h} value={h}>
-                    {h}
-                  </option>
-                ))}
-              </select>
-              <span className="pillRightCaret" aria-hidden />
-            </div>
-
-            {/* Rules */}
-            <div className={`filterPill pillSelectWrap pillRule ${openSelect === "rule" ? "isOpen" : ""}`}>
-              <span className="pillLeftIcon" aria-hidden>
-                <IconRule />
-              </span>
-              <select
-                value={ruleKey}
-                className="pillSelect"
-                onFocus={() => setOpenSelect("rule")}
-                onBlur={() => setOpenSelect(null)}
-                onChange={(e) => {
-                  setRuleKey(e.target.value);
-                  setOpenSelect(null);
-                  e.currentTarget.blur();
-                }}
-              >
-                <option value="">All Rules</option>
-                {filters?.rules?.map((r) => (
-                  <option key={r.rule_key} value={r.rule_key}>
-                    {r.rule_key} — {r.rule_name}
-                  </option>
-                ))}
-              </select>
-              <span className="pillRightCaret" aria-hidden />
+            <div className="alertsHeaderRight">
+              <div className="alertsCountTop">{loading ? "Loading…" : `${total} alerts`}</div>
             </div>
           </div>
 
-          <div className="alertsControlsBottomRow">
-            <div className="alertsBottomLeft">
-              {/* Sort */}
-              <div className={`filterPill pillSelectWrap pillSort ${openSelect === "sort" ? "isOpen" : ""}`}>
+          {/* Controls */}
+          <div className="alertsControlsCard">
+            <div className="alertsFiltersRow">
+              {/* Search */}
+              <div className="filterPill pillSearch" role="search">
                 <span className="pillLeftIcon" aria-hidden>
-                  <IconSort />
+                  <IconSearch />
+                </span>
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search (message, rule, zone/hall/device)…"
+                  className="pillInput"
+                />
+              </div>
+
+              {/* Severity */}
+              <div className={`filterPill pillSelectWrap pillSeverity ${openSelect === "sev" ? "isOpen" : ""}`}>
+                <span className="pillLeftIcon" aria-hidden>
+                  <IconSeverity />
                 </span>
                 <select
-                  value={sort}
+                  value={severity}
                   className="pillSelect"
-                  onFocus={() => setOpenSelect("sort")}
+                  onFocus={() => setOpenSelect("sev")}
                   onBlur={() => setOpenSelect(null)}
                   onChange={(e) => {
-                    setSort(e.target.value);
+                    setSeverity(e.target.value);
                     setOpenSelect(null);
                     e.currentTarget.blur();
                   }}
                 >
-                  {filters?.sortOptions?.map((s) => (
+                  <option value="">All Severities</option>
+                  {filters?.severities?.map((s) => (
                     <option key={s} value={s}>
-                      Sort: {s}
+                      {s}
                     </option>
                   ))}
                 </select>
                 <span className="pillRightCaret" aria-hidden />
               </div>
 
-              <button onClick={clearFilters} className="clearFiltersBtn">
-                Clear filters
-              </button>
+              {/* Status */}
+              <div className={`filterPill pillSelectWrap pillAlertStatus ${openSelect === "status" ? "isOpen" : ""}`}>
+                <span className="pillLeftIcon" aria-hidden>
+                  <IconStatus />
+                </span>
+                <select
+                  value={status}
+                  className="pillSelect"
+                  onFocus={() => setOpenSelect("status")}
+                  onBlur={() => setOpenSelect(null)}
+                  onChange={(e) => {
+                    setStatus(e.target.value);
+                    setOpenSelect(null);
+                    e.currentTarget.blur();
+                  }}
+                >
+                  <option value="">All Statuses</option>
+                  {filters?.statuses?.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <span className="pillRightCaret" aria-hidden />
+              </div>
+
+              {/* Zone */}
+              <div className={`filterPill pillSelectWrap pillZone ${openSelect === "zone" ? "isOpen" : ""}`}>
+                <span className="pillLeftIcon" aria-hidden>
+                  <IconZone />
+                </span>
+                <select
+                  value={zoneId}
+                  className="pillSelect"
+                  onFocus={() => setOpenSelect("zone")}
+                  onBlur={() => setOpenSelect(null)}
+                  onChange={(e) => {
+                    setZoneId(e.target.value);
+                    setOpenSelect(null);
+                    e.currentTarget.blur();
+                  }}
+                >
+                  <option value="">All Zones</option>
+                  {filters?.zones?.map((z) => (
+                    <option key={z} value={z}>
+                      {z}
+                    </option>
+                  ))}
+                </select>
+                <span className="pillRightCaret" aria-hidden />
+              </div>
+
+              {/* Hall */}
+              <div className={`filterPill pillSelectWrap pillHall ${openSelect === "hall" ? "isOpen" : ""}`}>
+                <span className="pillLeftIcon" aria-hidden>
+                  <IconZone />
+                </span>
+                <select
+                  value={hallId}
+                  className="pillSelect"
+                  onFocus={() => setOpenSelect("hall")}
+                  onBlur={() => setOpenSelect(null)}
+                  onChange={(e) => {
+                    setHallId(e.target.value);
+                    setOpenSelect(null);
+                    e.currentTarget.blur();
+                  }}
+                >
+                  <option value="">All Halls</option>
+                  {filters?.halls?.map((h) => (
+                    <option key={h} value={h}>
+                      {h}
+                    </option>
+                  ))}
+                </select>
+                <span className="pillRightCaret" aria-hidden />
+              </div>
+
+              {/* Rules */}
+              <div className={`filterPill pillSelectWrap pillRule ${openSelect === "rule" ? "isOpen" : ""}`}>
+                <span className="pillLeftIcon" aria-hidden>
+                  <IconRule />
+                </span>
+                <select
+                  value={ruleKey}
+                  className="pillSelect"
+                  onFocus={() => setOpenSelect("rule")}
+                  onBlur={() => setOpenSelect(null)}
+                  onChange={(e) => {
+                    setRuleKey(e.target.value);
+                    setOpenSelect(null);
+                    e.currentTarget.blur();
+                  }}
+                >
+                  <option value="">All Rules</option>
+                  {filters?.rules?.map((r) => (
+                    <option key={r.rule_key} value={r.rule_key}>
+                      {r.rule_key} — {r.rule_name}
+                    </option>
+                  ))}
+                </select>
+                <span className="pillRightCaret" aria-hidden />
+              </div>
             </div>
 
-            <div className="alertsBottomRight">
-              <div className="rowsControl">
-                <span className="rowsLabel">Rows:</span>
-                <div className={`filterPill pillSelectWrap pillRows ${openSelect === "rows" ? "isOpen" : ""}`}>
+            <div className="alertsControlsBottomRow">
+              <div className="alertsBottomLeft">
+                {/* Sort */}
+                <div className={`filterPill pillSelectWrap pillSort ${openSelect === "sort" ? "isOpen" : ""}`}>
+                  <span className="pillLeftIcon" aria-hidden>
+                    <IconSort />
+                  </span>
                   <select
-                    value={pageSize}
+                    value={sort}
                     className="pillSelect"
-                    onFocus={() => setOpenSelect("rows")}
+                    onFocus={() => setOpenSelect("sort")}
                     onBlur={() => setOpenSelect(null)}
                     onChange={(e) => {
-                      setPageSize(Number(e.target.value));
+                      setSort(e.target.value);
                       setOpenSelect(null);
                       e.currentTarget.blur();
                     }}
                   >
-                    {[10, 20, 50].map((n) => (
-                      <option key={n} value={n}>
-                        {n}
+                    {filters?.sortOptions?.map((s) => (
+                      <option key={s} value={s}>
+                        Sort: {s}
                       </option>
                     ))}
                   </select>
                   <span className="pillRightCaret" aria-hidden />
                 </div>
+
+                <button onClick={clearFilters} className="clearFiltersBtn">
+                  Clear filters
+                </button>
+              </div>
+
+              <div className="alertsBottomRight">
+                <div className="rowsControl">
+                  <span className="rowsLabel">Rows:</span>
+                  <div className={`filterPill pillSelectWrap pillRows ${openSelect === "rows" ? "isOpen" : ""}`}>
+                    <select
+                      value={pageSize}
+                      className="pillSelect"
+                      onFocus={() => setOpenSelect("rows")}
+                      onBlur={() => setOpenSelect(null)}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setOpenSelect(null);
+                        e.currentTarget.blur();
+                      }}
+                    >
+                      {[10, 20, 50].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="pillRightCaret" aria-hidden />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Error */}
-        {error ? (
-          <div className="alertsError">
-            <div className="alertsErrorTitle">Error</div>
-            <div className="alertsErrorBody">{error}</div>
-          </div>
-        ) : null}
+          {/* Error */}
+          {error ? (
+            <div className="alertsError">
+              <div className="alertsErrorTitle">Error</div>
+              <div className="alertsErrorBody">{error}</div>
+            </div>
+          ) : null}
 
-        {/* Table */}
-        <div className="alertsTableCard">
-          <div className="alertsTableScroll">
-            <table className="alertsTable">
-              <thead>
-                <tr>
-                  <th>Detected</th>
-                  <th>Severity</th>
-                  <th>Status</th>
-                  <th>Rule</th>
-                  <th>Zone</th>
-                  <th>Hall</th>
-                  <th>Device</th>
-                  <th>Trigger</th>
-                  <th>Recommended Action</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {loading ? (
+          {/* Table */}
+          <div className="alertsTableCard">
+            <div className="alertsTableScroll">
+              <table className="alertsTable">
+                <thead>
                   <tr>
-                    <td colSpan={10} className="alertsTableEmpty">
-                      Loading…
-                    </td>
+                    <th>Detected</th>
+                    <th>Severity</th>
+                    <th>Status</th>
+                    <th>Rule</th>
+                    <th>Zone</th>
+                    <th>Hall</th>
+                    <th>Device</th>
+                    <th>Trigger</th>
+                    <th>Recommended Action</th>
+                    <th>Actions</th>
                   </tr>
-                ) : rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="alertsTableEmpty">
-                      No alerts found.
-                    </td>
-                  </tr>
-                ) : (
-                  rows.flatMap((r) => {
-                    const isOpen = expandedId === r.alert_id;
-                    const meta = safeJson(r.metadata);
+                </thead>
 
-                    const triggerStr =
-                      r.trigger_value === null || r.trigger_value === undefined
-                        ? "-"
-                        : `${Number(r.trigger_value).toFixed(3)} / ${Number(r.threshold_value ?? 0).toFixed(3)}`;
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={10} className="alertsTableEmpty">
+                        Loading…
+                      </td>
+                    </tr>
+                  ) : rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="alertsTableEmpty">
+                        No alerts found.
+                      </td>
+                    </tr>
+                  ) : (
+                    rows.flatMap((r) => {
+                      const isOpen = expandedId === r.alert_id;
+                      const meta = safeJson(r.metadata);
 
-                    return [
-                      (
-                        <tr
-                          key={r.alert_id}
-                          className="alertsRow"
-                          onClick={() => {
+                      const triggerStr =
+                        r.trigger_value === null || r.trigger_value === undefined
+                          ? "-"
+                          : `${Number(r.trigger_value).toFixed(3)} / ${Number(r.threshold_value ?? 0).toFixed(3)}`;
 
-                            const rolePathMap = {
-                              operations_manager: "operations",
-                              sustainability_manager: "sustainability",
-                              soc_analyst: "soc",
-                              exhibitor: "exhibitor",
-                            };
+                      return [
+                        (
+                          <tr
+                            key={r.alert_id}
+                            className="alertsRow"
+                            onClick={() => {
+                              const rolePathMap = {
+                                operations_manager: "operations",
+                                sustainability_manager: "sustainability",
+                                soc_analyst: "soc",
+                                exhibitor: "exhibitor",
+                              };
 
-                            const basePath = rolePathMap[role] || "operations";
+                              const basePath = rolePathMap[role] || "operations";
+                              navigate(`/${basePath}/alerts/${r.alert_id}`);
+                            }}
+                          >
+                            <td>{fmtTs(r.detected_at)}</td>
+                            <td>
+                              <span style={pillSeverity(r.severity)}>
+                                {String(r.severity || "").toLowerCase()}
+                              </span>
+                            </td>
+                            <td>
+                              <span style={pillStatus(r.status)}>
+                                {String(r.status || "").toLowerCase()}
+                              </span>
+                            </td>
+                            <td className="tdStrong">{r.rule_name || r.rule_key}</td>
 
-                            navigate(`/${basePath}/alerts/${r.alert_id}`);
-                          }}
-                        >
-                          <td>{fmtTs(r.detected_at)}</td>
-                          <td>
-                            <span style={pillSeverity(r.severity)}>{r.severity}</span>
-                          </td>
-                          <td>
-                            <span style={pillStatus(r.status)}>{r.status}</span>
-                          </td>
-                          <td className="tdStrong">{r.rule_name || r.rule_key}</td>
+                            <td className="tdMono">{r.zone_id || "-"}</td>
+                            <td className="tdMono">{r.hall_id || "-"}</td>
+                            <td className="tdMono">{r.device_id || "-"}</td>
 
-                          {/* NEW: split location */}
-                          <td className="tdMono">{r.zone_id || "-"}</td>
-                          <td className="tdMono">{r.hall_id || "-"}</td>
-                          <td className="tdMono">{r.device_id || "-"}</td>
+                            <td className="tdMono">{triggerStr}</td>
+                            <td>{r.recommended_action || r.response_action || "-"}</td>
 
-                          <td className="tdMono">{triggerStr}</td>
-                          <td>{r.recommended_action || r.response_action || "-"}</td>
-
-                          <td onClick={(e) => e.stopPropagation()}>
-                            <div className="alertsActionBtns">
-                              <button
-                                disabled={r.status !== "NEW"}
-                                onClick={() => ack(r.alert_id)}
-                                className={`alertsTinyBtn ${r.status !== "NEW" ? "isDisabled" : ""}`}
-                              >
-                                Ack
-                              </button>
-                              <button
-                                disabled={r.status === "RESOLVED" || r.status === "CLOSED"}
-                                onClick={() => resolve(r.alert_id)}
-                                className={`alertsTinyBtn ${r.status === "RESOLVED" || r.status === "CLOSED" ? "isDisabled" : ""
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <div className="alertsActionBtns">
+                                <button
+                                  disabled={r.status !== "NEW"}
+                                  onClick={() => ack(r.alert_id)}
+                                  className={`alertsTinyBtn ${r.status !== "NEW" ? "isDisabled" : ""}`}
+                                >
+                                  Ack
+                                </button>
+                                <button
+                                  disabled={r.status === "RESOLVED" || r.status === "CLOSED"}
+                                  onClick={() => resolve(r.alert_id)}
+                                  className={`alertsTinyBtn ${
+                                    r.status === "RESOLVED" || r.status === "CLOSED" ? "isDisabled" : ""
                                   }`}
-                              >
-                                Resolve
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ),
-                      isOpen ? (
-                        <tr key={`${r.alert_id}-details`} className="alertsDetailsRow">
-                          <td colSpan={10} className="alertsDetailsCell">
-                            <div className="alertsDetailsGrid">
-                              <div>
-                                <div className="alertsDetailsTitle">Details</div>
-                                <div className="alertsKv">
-                                  <span className="alertsK">Alert ID</span>
-                                  <span className="alertsV">{r.alert_id}</span>
+                                >
+                                  Resolve
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ),
+                        isOpen ? (
+                          <tr key={`${r.alert_id}-details`} className="alertsDetailsRow">
+                            <td colSpan={10} className="alertsDetailsCell">
+                              <div className="alertsDetailsGrid">
+                                <div>
+                                  <div className="alertsDetailsTitle">Details</div>
+                                  <div className="alertsKv">
+                                    <span className="alertsK">Alert ID</span>
+                                    <span className="alertsV">{r.alert_id}</span>
+                                  </div>
+                                  <div className="alertsKv">
+                                    <span className="alertsK">Rule Key</span>
+                                    <span className="alertsV">{r.rule_key}</span>
+                                  </div>
+                                  <div className="alertsKv">
+                                    <span className="alertsK">Event Timestamp</span>
+                                    <span className="alertsV">{fmtTs(r.event_timestamp)}</span>
+                                  </div>
+                                  <div className="alertsKv">
+                                    <span className="alertsK">Action Status</span>
+                                    <span className="alertsV">{r.action_status || "-"}</span>
+                                  </div>
+                                  <div className="alertsKv">
+                                    <span className="alertsK">Acknowledged At</span>
+                                    <span className="alertsV">{fmtTs(r.acknowledged_at)}</span>
+                                  </div>
+                                  <div className="alertsKv">
+                                    <span className="alertsK">Resolved At</span>
+                                    <span className="alertsV">{fmtTs(r.resolved_at)}</span>
+                                  </div>
                                 </div>
-                                <div className="alertsKv">
-                                  <span className="alertsK">Rule Key</span>
-                                  <span className="alertsV">{r.rule_key}</span>
-                                </div>
-                                <div className="alertsKv">
-                                  <span className="alertsK">Event Timestamp</span>
-                                  <span className="alertsV">{fmtTs(r.event_timestamp)}</span>
-                                </div>
-                                <div className="alertsKv">
-                                  <span className="alertsK">Action Status</span>
-                                  <span className="alertsV">{r.action_status || "-"}</span>
-                                </div>
-                                <div className="alertsKv">
-                                  <span className="alertsK">Acknowledged At</span>
-                                  <span className="alertsV">{fmtTs(r.acknowledged_at)}</span>
-                                </div>
-                                <div className="alertsKv">
-                                  <span className="alertsK">Resolved At</span>
-                                  <span className="alertsV">{fmtTs(r.resolved_at)}</span>
+
+                                <div>
+                                  <div className="alertsDetailsTitle">Metadata</div>
+                                  <pre className="alertsMetaPre">{JSON.stringify(meta || {}, null, 2)}</pre>
                                 </div>
                               </div>
-
-                              <div>
-                                <div className="alertsDetailsTitle">Metadata</div>
-                                <pre className="alertsMetaPre">{JSON.stringify(meta || {}, null, 2)}</pre>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : null,
-                    ].filter(Boolean);
-                  })
-                )}
-              </tbody>
-            </table>
+                            </td>
+                          </tr>
+                        ) : null,
+                      ].filter(Boolean);
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
 
-        {/* Pagination */}
-        <div className="alertsPager">
-          <div className="alertsPagerLeft">
-            Page {page} of {totalPages}
-          </div>
-          <div className="alertsPagerRight">
-            <button disabled={page <= 1} onClick={() => setPage(1)} className="pagerBtn">
-              {"<<"}
-            </button>
-            <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="pagerBtn">
-              Prev
-            </button>
-            <button
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="pagerBtn"
-            >
-              Next
-            </button>
-            <button disabled={page >= totalPages} onClick={() => setPage(totalPages)} className="pagerBtn">
-              {">>"}
-            </button>
+          {/* Pagination */}
+          <div className="alertsPager">
+            <div className="alertsPagerLeft">
+              Page {page} of {totalPages}
+            </div>
+            <div className="alertsPagerRight">
+              <button disabled={page <= 1} onClick={() => setPage(1)} className="pagerBtn">
+                {"<<"}
+              </button>
+              <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="pagerBtn">
+                Prev
+              </button>
+              <button
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="pagerBtn"
+              >
+                Next
+              </button>
+              <button disabled={page >= totalPages} onClick={() => setPage(totalPages)} className="pagerBtn">
+                {">>"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -644,24 +645,73 @@ export default function AlertsPage() {
 }
 
 /* keep your existing severity/status pill colors exactly */
-function pillSeverity(sev) {
-  const s = String(sev || "").toUpperCase();
-  const bg =
-    s === "CRITICAL" ? "#fee2e2" :
-      s === "HIGH" ? "#ffedd5" :
-        s === "MEDIUM" ? "#fef9c3" :
-          s === "LOW" ? "#dcfce7" :
-            "#e5e7eb";
-  return { padding: "4px 10px", borderRadius: 999, background: bg, fontSize: 12, fontWeight: 900 };
+function pillSeverity(severity) {
+  const s = String(severity || "").toLowerCase();
+
+  let bg = "#eef2ff";
+  let color = "#1d4ed8";
+
+  if (s === "low") {
+    bg = "rgba(34,197,94,.12)";
+    color = "#166534";
+  } else if (s === "medium") {
+    bg = "rgba(245,158,11,.14)";
+    color = "#92400e";
+  } else if (s === "high") {
+    bg = "rgba(239,68,68,.12)";
+    color = "#991b1b";
+  } else if (s === "critical") {
+    bg = "rgba(239,68,68,.18)";
+    color = "#7f1d1d";
+  }
+
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: "22px",
+    padding: "0 10px",
+    borderRadius: 999,
+    background: bg,
+    color,
+    fontSize: 11,
+    fontWeight: 800,
+    lineHeight: 1,
+    border: "none",
+    textTransform: "lowercase",
+  };
 }
 
-function pillStatus(st) {
-  const s = String(st || "").toUpperCase();
-  const bg =
-    s === "NEW" ? "#e0e7ff" :
-      s === "ACKNOWLEDGED" ? "#fef9c3" :
-        s === "RESOLVED" ? "#dcfce7" :
-          s === "CLOSED" ? "#f3f4f6" :
-            "#e5e7eb";
-  return { padding: "4px 10px", borderRadius: 999, background: bg, fontSize: 12, fontWeight: 800 };
+function pillStatus(status) {
+  const s = String(status || "").toLowerCase();
+
+  let bg = "#eef2ff";
+  let color = "#475569";
+
+  if (s === "new") {
+    bg = "#dfe7ff";
+    color = "#1d4ed8";
+  } else if (s === "acknowledged") {
+    bg = "rgba(245,158,11,.16)";
+    color = "#92400e";
+  } else if (s === "resolved") {
+    bg = "#d9f3e4";
+    color = "#166534";
+  }
+
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: "22px",
+    padding: "0 10px",
+    borderRadius: 999,
+    background: bg,
+    color,
+    fontSize: 11,
+    fontWeight: 800,
+    lineHeight: 1,
+    border: "none",
+    textTransform: "lowercase",
+  };
 }

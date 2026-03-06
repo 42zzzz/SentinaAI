@@ -25,6 +25,7 @@ export default function TrendPanel({
 
   // ✅ NEW: when true, parent card provides header/border/padding
   embedded = false,
+  accent
 }) {
   const [points, setPoints] = useState([]);
   const [err, setErr] = useState("");
@@ -69,42 +70,41 @@ export default function TrendPanel({
   const showUnitOnHeadline = !(metric === "occupancy" || unit === "people");
 
   const content = (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16, alignItems: "center" }}>
-      <div>
-        <div style={{ fontSize: 40, fontWeight: 950, lineHeight: 1.02 }}>
-          {latest === null
-            ? "—"
-            : `${formatValue(metric, unit, latest)}${showUnitOnHeadline && unit ? ` ${unit}` : ""}`}
-        </div>
-
-        <div style={{ marginTop: 10, fontSize: 13, opacity: 0.75 }}>
-          {delta === null
-            ? ""
-            : `Change: ${delta >= 0 ? "+" : ""}${formatValue(metric, unit, delta)}${unit ? ` ${unit}` : ""}`}
-        </div>
-
-        {err ? (
-          <div
-            style={{
-              marginTop: 8,
-              padding: 10,
-              borderRadius: 10,
-              background: "#fff1f2",
-              border: "1px solid #fecdd3",
-              fontSize: 12,
-            }}
-          >
-            {err}
-          </div>
-        ) : null}
+  <div
+    style={{
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 16,
+      alignItems: "center",
+      justifyContent: "space-between",
+      minWidth: 0,
+    }}
+  >
+    <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+      <div style={{ fontSize: 40, fontWeight: 950, lineHeight: 1.02 }}>
+        {latest === null
+          ? "—"
+          : `${formatValue(metric, unit, latest)}${showUnitOnHeadline && unit ? ` ${unit}` : ""}`}
       </div>
 
-      <div style={{ justifySelf: "end" }}>
-        {/* ✅ we'll make Sparkline pink in Sparkline.jsx */}
-        <Sparkline points={points} height={110} />
+      <div style={{ marginTop: 10, fontSize: 13, opacity: 0.75 }}>
+        {delta === null
+          ? ""
+          : `Change: ${delta >= 0 ? "+" : ""}${formatValue(metric, unit, delta)}${unit ? ` ${unit}` : ""}`}
       </div>
+
+      {err ? (
+        <div style={{ marginTop: 8, padding: 10, borderRadius: 10, background: "#fff1f2", border: "1px solid #fecdd3", fontSize: 12 }}>
+          {err}
+        </div>
+      ) : null}
     </div>
-  );
+
+    <div style={{ flex: "0 1 340px", minWidth: 180, maxWidth: "100%", justifySelf: "end" }}>
+      <Sparkline points={points} height={110} />
+    </div>
+  </div>
+);
 
   // ✅ Embedded mode: just return content (no outer card/header)
   if (embedded) return content;
