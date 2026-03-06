@@ -19,7 +19,7 @@ import SustainabilityDashboard from "./pages/SustainabilityDashboard";
 import AlertDetailsPage from "./pages/AlertDetailsPage";
 
 export default function App() {
-  const role = localStorage.getItem("role");
+  const role = sessionStorage.getItem("role");
 
   const redirectByRole = () => {
     switch (role) {
