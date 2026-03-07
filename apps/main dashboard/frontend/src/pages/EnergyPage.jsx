@@ -1,4 +1,4 @@
-// frontend/src/pages/EnergyPage.jsx
+﻿// frontend/src/pages/EnergyPage.jsx
 import "./EnergyPage.css";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";

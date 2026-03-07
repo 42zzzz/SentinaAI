@@ -1,4 +1,4 @@
-// frontend/src/components/TopHallsToday.jsx
+﻿// frontend/src/components/TopHallsToday.jsx
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 

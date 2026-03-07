@@ -1,4 +1,4 @@
-// frontend/src/components/AlertsTrendPanel.jsx
+﻿// frontend/src/components/AlertsTrendPanel.jsx
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Sparkline from "./Sparkline";

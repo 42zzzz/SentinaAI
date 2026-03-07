@@ -1,4 +1,4 @@
-// frontend/src/pages/AlertsPage.jsx
+﻿// frontend/src/pages/AlertsPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./AlertsPage.css";

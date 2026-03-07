@@ -1,4 +1,4 @@
-// frontend/src/pages/SustainabilityDashboard.jsx
+﻿// frontend/src/pages/SustainabilityDashboard.jsx
 import "./SustainabilityDashboard.css";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";

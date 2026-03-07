@@ -1,4 +1,4 @@
-// frontend/src/pages/DevicesPage.jsx
+﻿// frontend/src/pages/DevicesPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./DevicesPage.css";
