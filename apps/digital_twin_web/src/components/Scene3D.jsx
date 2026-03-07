@@ -1,31 +1,38 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Text } from '@react-three/drei';
 import HallMesh from './HallMesh';
+import DeviceLayer from './DeviceLayer';
+import HallFocusCamera from './HallFocusCamera';
 import { useHalls } from '../context/HallsContext';
 import { useTheme } from '../context/ThemeContext';
 import { SCALE, HALL_HEIGHT, DWTC_OUTLINE } from '../data/hallsLayout';
 
 function FrameLimiter() {
   const { invalidate } = useThree();
-  
+
   useEffect(() => {
     const interval = setInterval(() => {
       invalidate();
     }, 1000 / 24);
-    
+
     return () => clearInterval(interval);
   }, [invalidate]);
-  
+
   return null;
 }
 
 // 🔥 Scene3D with Floating Block Labels and Theme Support
-function Scene3D({ telemetryData, currentView, currentLayer }) {
+function Scene3D({ telemetryData, currentView, currentLayer, devices, deviceTelemetry }) {
   const { halls, selectedHallId, setSelectedHallId } = useHalls();
   const { theme } = useTheme();
+  const controlsRef = useRef();
+
   const centerX = (DWTC_OUTLINE.minX + DWTC_OUTLINE.maxX) / 2;
   const centerY = (DWTC_OUTLINE.minY + DWTC_OUTLINE.maxY) / 2;
+
+  // Is any hall currently focused? Used by HallMesh to fade unfocused halls.
+  const anyHallSelected = !!selectedHallId;
 
   // Theme-based colors
   const sceneColors = {
@@ -54,24 +61,28 @@ function Scene3D({ telemetryData, currentView, currentLayer }) {
       shadows
       frameloop="demand"
       gl={{ preserveDrawingBuffer: true }}
-      style={{ 
-        width: '100vw', 
-        height: '100vh', 
+      style={{
+        width: '100vw',
+        height: '100vh',
         background: colors.background,
         transition: 'background-color 0.3s ease'
       }}
     >
       <FrameLimiter />
-      
+
       <PerspectiveCamera makeDefault position={[30, 40, 30]} fov={60} />
-      <OrbitControls 
+      <OrbitControls
+        ref={controlsRef}
         enableDamping
         dampingFactor={0.05}
         minDistance={15}
         maxDistance={100}
         maxPolarAngle={Math.PI / 2}
       />
-      
+
+      {/* Camera focus animation — listens to selectedHallId and lerps camera */}
+      <HallFocusCamera controlsRef={controlsRef} />
+
       <ambientLight intensity={colors.ambient} />
       <directionalLight
         position={[50, 80, 50]}
@@ -97,18 +108,19 @@ function Scene3D({ telemetryData, currentView, currentLayer }) {
               hall={hall}
               centerX={centerX}
               centerY={centerY}
-              onClick={() => setSelectedHallId(hall.id)}
+              onClick={() => setSelectedHallId(selectedHallId === hall.id ? null : hall.id)}
               telemetryData={telemetryData}
               currentView={currentView}
               isSelected={selectedHallId === hall.id}
+              anyHallSelected={anyHallSelected}
               currentLayer={currentLayer}
             />
-            
+
             {/* 🔥 THE HALL NAME ON THE BLOCK 🔥 */}
             <Text
-              position={[x, HALL_HEIGHT + 1, z]} 
-              rotation={[-Math.PI / 2, 0, 0]} 
-              fontSize={2.5} 
+              position={[x, HALL_HEIGHT + 1, z]}
+              rotation={[-Math.PI / 2, 0, 0]}
+              fontSize={2.5}
               color={theme === 'dark' ? '#ffffff' : '#1a1a1a'}
               anchorX="center"
               anchorY="middle"
@@ -124,9 +136,19 @@ function Scene3D({ telemetryData, currentView, currentLayer }) {
         );
       })}
 
-      <gridHelper 
-        args={[200, 50, colors.grid, colors.gridFaint]} 
-        position={[0, 0, 0]} 
+      {/* IoT device layer — rendered after halls so devices appear on top */}
+      {devices && devices.length > 0 && (
+        <DeviceLayer
+          devices={devices}
+          selectedHallId={selectedHallId}
+          currentView={currentView}
+          deviceTelemetry={deviceTelemetry}
+        />
+      )}
+
+      <gridHelper
+        args={[200, 50, colors.grid, colors.gridFaint]}
+        position={[0, 0, 0]}
       />
     </Canvas>
   );
