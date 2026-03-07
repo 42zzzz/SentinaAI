@@ -73,6 +73,15 @@ const colorRamps = {
     { stop: 0.8, r: 255, g: 255, b: 0,   a: 230 },
     { stop: 1.0, r: 255, g: 255, b: 255, a: 255 },
   ],
+  rainbow: [
+    { stop: 0.00, r: 0,   g: 0,   b: 0,   a: 0   },
+    { stop: 0.15, r: 0,   g: 0,   b: 200, a: 120 },
+    { stop: 0.35, r: 0,   g: 200, b: 255, a: 170 },
+    { stop: 0.55, r: 0,   g: 220, b: 0,   a: 200 },
+    { stop: 0.70, r: 255, g: 230, b: 0,   a: 220 },
+    { stop: 0.85, r: 255, g: 100, b: 0,   a: 235 },
+    { stop: 1.00, r: 255, g: 0,   b: 0,   a: 255 },
+  ],
 };
 
 function mapIntensityToColor(intensity, ramp, alphaMultiplier = 1.0) {
