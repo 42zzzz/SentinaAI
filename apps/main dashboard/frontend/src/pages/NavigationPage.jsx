@@ -32,6 +32,7 @@ export default function NavigationPage() {
   const [loading,     setLoading]     = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [avoidCrowds, setAvoidCrowds] = useState(true);
+  const [demoMode,    setDemoMode]    = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -118,6 +119,13 @@ export default function NavigationPage() {
             <span style={toggleLabel}>Avoid Crowds</span>
           </label>
 
+          <label style={toggleWrap}>
+            <span style={toggleTrack(demoMode)} onClick={() => setDemoMode(v => !v)}>
+              <span style={toggleThumb(demoMode)} />
+            </span>
+            <span style={toggleLabel}>Demo IoT</span>
+          </label>
+
           {error ? <div style={{ color: "#b91c1c", fontWeight: 800 }}>{error}</div> : null}
         </div>
       </div>
@@ -129,6 +137,7 @@ export default function NavigationPage() {
           pathPoints={pathPts}
           showHeatmap={showHeatmap}
           avoidCrowds={avoidCrowds}
+          demoMode={demoMode}
         />
       </div>
 
