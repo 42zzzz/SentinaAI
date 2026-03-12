@@ -1,21 +1,15 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { DEVICE_TYPE_CONFIG, DEVICE_STATUS_CONFIG } from '../data/devicesLayout';
-import { SCALE, HALL_HEIGHT, DWTC_OUTLINE } from '../data/hallsLayout';
+import { SCALE, DWTC_OUTLINE } from '../data/hallsLayout';
 
 const LERP_SPEED = 0.1;
 
-// Cylinder geometry per device type (cached)
-const GEOMETRY_CACHE = {};
-function getGeometry(type) {
-  if (!GEOMETRY_CACHE[type]) {
-    const g = new THREE.CylinderGeometry(0.4, 0.4, 0.8, 8);
-    GEOMETRY_CACHE[type] = g;
-  }
-  return GEOMETRY_CACHE[type];
-}
+// Devices sit inside the hall (halls span y=0–10; y=3 is visible through
+// the semi-transparent walls when the hall is selected).
+const BASE_Y = 3;
 
 function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
   const [hovered, setHovered] = useState(false);
@@ -25,88 +19,72 @@ function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
 
   const worldX = (device.svgX - centerX) * SCALE;
   const worldZ = (device.svgY - centerY) * SCALE;
-  // Float above the hall surface; devices sit just above the top of the hall block
-  const baseY = HALL_HEIGHT + 0.8;
 
-  // Resolve current device status from live telemetry or fall back to static
   const liveStatus = deviceTelemetry?.[device.id]?.status ?? device.status;
   const typeConfig = DEVICE_TYPE_CONFIG[device.type] ?? DEVICE_TYPE_CONFIG.other;
   const statusConfig = DEVICE_STATUS_CONFIG[liveStatus] ?? DEVICE_STATUS_CONFIG.online;
 
-  // Target scale: large + labelled when hall is selected, tiny when not
+  // Imperative scale animation — refs in JSX props don't re-render, so we
+  // mutate the mesh scale directly inside useFrame instead.
+  const meshRef = useRef();
+  const animScaleRef = useRef(isHallSelected ? 1.5 : 0.5);
   const targetScale = isHallSelected ? 1.5 : 0.5;
-  const scaleRef = useRef(targetScale);
 
   useFrame(() => {
-    scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, targetScale, LERP_SPEED);
+    animScaleRef.current = THREE.MathUtils.lerp(animScaleRef.current, targetScale, LERP_SPEED);
+    if (meshRef.current) {
+      meshRef.current.scale.setScalar(animScaleRef.current);
+    }
   });
 
-  const geometry = useMemo(() => getGeometry(device.type), [device.type]);
-
   const showTooltip = isHallSelected && hovered;
-  const showLabel = isHallSelected;
 
   return (
-    <group position={[worldX, baseY, worldZ]}>
+    // Hidden entirely when hall is not selected — keeps default view uncluttered.
+    <group position={[worldX, BASE_Y, worldZ]} visible={isHallSelected}>
       <mesh
-        geometry={geometry}
-        scale={[scaleRef.current, scaleRef.current, scaleRef.current]}
+        ref={meshRef}
         onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
         onPointerOut={() => setHovered(false)}
         castShadow
       >
+        <sphereGeometry args={[0.35, 16, 12]} />
         <meshStandardMaterial
           color={typeConfig.color}
           emissive={typeConfig.color}
-          emissiveIntensity={isHallSelected ? 0.6 : 0.1}
+          emissiveIntensity={0.6}
           roughness={0.4}
           metalness={0.5}
-          transparent
-          opacity={isHallSelected ? 1.0 : 0.45}
         />
       </mesh>
 
-      {/* Status dot — small sphere on top of the cylinder */}
-      {isHallSelected && (
-        <mesh position={[0, 0.65, 0]}>
-          <sphereGeometry args={[0.18, 8, 8]} />
-          <meshStandardMaterial
-            color={statusConfig.color}
-            emissive={statusConfig.color}
-            emissiveIntensity={0.8}
-          />
-        </mesh>
-      )}
-
       {/* Label shown when hall is focused */}
-      {showLabel && (
-        <Html
-          position={[0, 1.4, 0]}
-          center
-          zIndexRange={[200, 0]}
-          style={{ pointerEvents: 'none' }}
-        >
-          <div style={{
-            background: 'rgba(10, 10, 20, 0.88)',
-            color: '#f1f5f9',
-            padding: '3px 7px',
-            borderRadius: '4px',
-            fontSize: '10px',
-            fontWeight: '600',
-            whiteSpace: 'nowrap',
-            border: `1px solid ${typeConfig.color}44`,
-            boxShadow: `0 0 6px ${typeConfig.color}55`,
-            letterSpacing: '0.02em',
-          }}>
-            {device.label}
-          </div>
-        </Html>
-      )}
+      <Html
+        position={[0, 1.0, 0]}
+        center
+        zIndexRange={[200, 0]}
+        style={{ pointerEvents: 'none' }}
+      >
+        <div style={{
+          background: 'rgba(10, 10, 20, 0.88)',
+          color: '#f1f5f9',
+          padding: '3px 7px',
+          borderRadius: '4px',
+          fontSize: '10px',
+          fontWeight: '600',
+          whiteSpace: 'nowrap',
+          border: `1px solid ${typeConfig.color}44`,
+          boxShadow: `0 0 6px ${typeConfig.color}55`,
+          letterSpacing: '0.02em',
+        }}>
+          {device.label}
+        </div>
+      </Html>
 
       {/* Tooltip on hover */}
       {showTooltip && (
         <Html
-          position={[0, 2.6, 0]}
+          position={[0, 2.2, 0]}
           center
           zIndexRange={[300, 0]}
         >
