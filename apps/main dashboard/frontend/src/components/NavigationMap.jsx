@@ -214,23 +214,16 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
           ctx.closePath();
         }
 
-        // 1. Corridors — match navigation_web visual style:
-        //    dark grey floor fill + double stroke (thick black outer, thin cream inner)
+        // 1. Corridors
         for (const corridor of nm.corridor_polygons ?? []) {
           const poly = corridor?.polygon ?? (Array.isArray(corridor) ? corridor : null);
           if (!Array.isArray(poly) || poly.length < 3) continue;
           tracePoly(poly);
           ctx.fillStyle = "rgba(43,43,43,0.18)";
           ctx.fill();
-          // outer stroke
-          ctx.strokeStyle = "rgba(17,17,17,0.95)";
-          ctx.lineWidth   = 12 / vp.zoom;
+          ctx.strokeStyle = "rgba(0,0,0,1)";
+          ctx.lineWidth   = 4 / vp.zoom;
           ctx.lineJoin    = "miter";
-          ctx.stroke();
-          // inner stroke (re-trace same path)
-          tracePoly(poly);
-          ctx.strokeStyle = "rgba(242,240,230,0.95)";
-          ctx.lineWidth   = 6 / vp.zoom;
           ctx.stroke();
         }
 
