@@ -67,6 +67,11 @@ iot_sensor_data: Dict[str, float] = {}
 event_store: Optional[EventStore] = None
 
 
+def _normalize_room_name(name: str) -> str:
+    """'North Hall 1' → 'northhall1', 'NorthHall1' → 'northhall1'"""
+    return (name or "").lower().replace(" ", "")
+
+
 def _ensure_rooms_metadata(nm: Dict) -> list[Dict]:
     """
     Guarantee nm['rooms_metadata'] exists.
@@ -95,12 +100,17 @@ def _ensure_rooms_metadata(nm: Dict) -> list[Dict]:
             x = float(node.get("x", 0))
             y = float(node.get("y", 0))
 
+        svg_lookup = nm.get("_svg_room_polygons", {})
+        node_name = node.get("name", node.get("id", ""))
+        svg_poly = svg_lookup.get(_normalize_room_name(node_name))
+        polygon = svg_poly if svg_poly else node.get("polygon", [])
+
         rooms_md.append(
             {
                 "id": node.get("id"),
                 "name": node.get("name", node.get("id")),
                 "position": {"x": x, "y": y},
-                "polygon": node.get("polygon", []),
+                "polygon": polygon,
             }
         )
 
@@ -508,6 +518,11 @@ def initialize_system() -> None:
         navmesh_data["transformer"] = transformer
         navmesh_data["generator"] = generator
         navmesh_data["corridor_polygons"] = geometry_data.get("corridors", [])
+        navmesh_data["_svg_room_polygons"] = {
+            _normalize_room_name(r.get("name", "")): r.get("polygon", [])
+            for r in geometry_data.get("rooms", [])
+            if r.get("polygon")
+        }
 
         # IMPORTANT: manual navmesh may not have rooms_metadata; build it if possible
         _ensure_rooms_metadata(navmesh_data)
@@ -529,6 +544,11 @@ def initialize_system() -> None:
 
         navmesh_data["transformer"] = transformer
         navmesh_data["generator"] = generator
+        navmesh_data["_svg_room_polygons"] = {
+            _normalize_room_name(r.get("name", "")): r.get("polygon", [])
+            for r in geometry_data.get("rooms", [])
+            if r.get("polygon")
+        }
 
         print(f"\nNavmesh Generated:")
         print(f"  Nodes: {len(navmesh_data['nodes'])}")
