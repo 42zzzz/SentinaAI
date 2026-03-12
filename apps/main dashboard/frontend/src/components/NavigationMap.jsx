@@ -198,12 +198,20 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
     const container = containerRef.current;
     if (!container) return;
 
+    // Defer PIXI init by one macrotask so React 18 StrictMode's immediate
+    // cleanup can cancel the timeout before a WebGL context is ever created.
+    // This avoids the "Unable to auto-detect a suitable renderer" error caused
+    // by StrictMode's mount→cleanup→remount cycle exhausting WebGL contexts.
+    let app = null;
+    let ro  = null;
+    const timeoutId = setTimeout(() => {
+
     // Use explicit pixel dimensions — avoids WebGL context creation on a 0×0 canvas
     const W = Math.max(container.clientWidth,  1);
     const H = Math.max(container.clientHeight, 1);
 
     // Let PIXI create its own canvas with known dimensions (no view: option)
-    const app = new PIXI.Application({
+    app = new PIXI.Application({
       width: W,
       height: H,
       backgroundColor: 0xf8fafc,
@@ -325,7 +333,7 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
     }, { passive: false });
 
     // ─── resize ────────────────────────────────────────────────────────────
-    const ro = new ResizeObserver(() => {
+    ro = new ResizeObserver(() => {
       const w = container.clientWidth, h = container.clientHeight;
       if (w > 0 && h > 0) app.renderer.resize(w, h);
     });
@@ -541,10 +549,15 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
     loadNavmesh().then(loadIoT);
     intervalRef.current = setInterval(refresh, 5000);
 
+    }, 0); // end of deferred init setTimeout
+
     return () => {
+      clearTimeout(timeoutId);
       clearInterval(intervalRef.current);
-      ro.disconnect();
-      try { app.destroy(true, { children: true, texture: true, baseTexture: true }); } catch (_) {}
+      if (ro) ro.disconnect();
+      if (app) {
+        try { app.destroy(true, { children: true, texture: true, baseTexture: true }); } catch (_) {}
+      }
       canvasRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
