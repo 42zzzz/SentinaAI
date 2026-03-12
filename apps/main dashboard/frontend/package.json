@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@pixi/canvas-renderer": "^7.4.3",
     "axios": "^1.13.5",
     "pixi.js": "^7.3.2",
     "react": "^19.2.0",

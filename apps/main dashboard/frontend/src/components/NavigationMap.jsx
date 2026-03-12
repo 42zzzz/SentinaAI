@@ -4,6 +4,7 @@
 
 import { useEffect, useRef } from "react";
 import * as PIXI from "pixi.js";
+import "@pixi/canvas-renderer"; // registers CanvasRenderer so PIXI can fall back (or be forced) to Canvas2D
 import { aggregateHeatmapGrid, generateHeatmapImageData } from "../utils/heatmapUtils.js";
 
 // ─── helpers ───────────────────────────────────────────────────────────────
@@ -217,6 +218,7 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
       backgroundColor: 0xf8fafc,
       antialias: true,
       resolution: 1,
+      forceCanvas: true, // 2D floor plan needs no WebGL; Canvas2D frees GPU contexts for Three.js
     });
     appRef.current = app;
 
