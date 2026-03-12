@@ -222,7 +222,7 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
           ctx.fillStyle = "rgba(43,43,43,0.18)";
           ctx.fill();
           ctx.strokeStyle = "rgba(0,0,0,1)";
-          ctx.lineWidth   = 4 / vp.zoom;
+          ctx.lineWidth   = 2 / vp.zoom;
           ctx.lineJoin    = "miter";
           ctx.stroke();
         }
@@ -248,7 +248,7 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
           ctx.fill();
           // 4px solid black outline — matches nav_web room style
           ctx.strokeStyle = "rgba(0,0,0,1)";
-          ctx.lineWidth   = 4 / vp.zoom;
+          ctx.lineWidth   = 2 / vp.zoom;
           ctx.lineJoin    = "miter";
           ctx.stroke();
 
@@ -269,7 +269,7 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
           ctx.moveTo(pts[0].x, pts[0].y);
           for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
           ctx.strokeStyle = "rgba(0,188,212,0.95)";
-          ctx.lineWidth   = 6 / vp.zoom;
+          ctx.lineWidth   = 4 / vp.zoom;
           ctx.lineJoin    = "round";
           ctx.lineCap     = "round";
           ctx.stroke();
