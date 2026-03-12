@@ -22,6 +22,16 @@ function HallFocusCamera({ controlsRef }) {
     animating: false,
   });
 
+  // Cancel animation the moment the user starts orbiting/zooming so they
+  // can free-roam immediately after the hall focus animation begins.
+  useEffect(() => {
+    const controls = controlsRef?.current;
+    if (!controls) return;
+    const stopAnimation = () => { state.current.animating = false; };
+    controls.addEventListener('start', stopAnimation);
+    return () => controls.removeEventListener('start', stopAnimation);
+  }, [controlsRef]);
+
   useEffect(() => {
     if (!selectedHallId) {
       state.current.targetPos.copy(DEFAULT_CAMERA_POS);
