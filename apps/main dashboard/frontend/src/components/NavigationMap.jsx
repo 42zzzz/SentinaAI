@@ -1,13 +1,12 @@
 // NavigationMap.jsx
-// PixiJS-powered convention-centre floor plan for the main dashboard.
-// Drops in as a replacement for the old SVG overlay in NavigationPage.jsx.
+// Canvas2D floor plan — no PixiJS dependency.
+// Draws rooms, corridors, heatmap overlay and navigation path directly onto
+// an HTML5 <canvas> element using the 2D context API.
 
 import { useEffect, useRef } from "react";
-import * as PIXI from "pixi.js";
-import "@pixi/canvas-renderer"; // registers CanvasRenderer so PIXI can fall back (or be forced) to Canvas2D
 import { aggregateHeatmapGrid, generateHeatmapImageData } from "../utils/heatmapUtils.js";
 
-// ─── helpers ───────────────────────────────────────────────────────────────
+// ─── helpers ────────────────────────────────────────────────────────────────
 
 function getHallColor(name) {
   const n = (name ?? "").toLowerCase();
@@ -17,25 +16,19 @@ function getHallColor(name) {
   if (n.startsWith("hall")) {
     const num = parseInt(n.replace("hall", "").trim(), 10);
     if (!isNaN(num)) {
-      if (num >= 1 && num <= 6) return { color: 0x2f8f9d, alpha: 0.4 };
-      if (num >= 7 && num <= 10) return { color: 0x1f3a5f, alpha: 0.3 };
+      if (num >= 1 && num <= 6)  return { color: 0x2f8f9d, alpha: 0.40 };
+      if (num >= 7 && num <= 10) return { color: 0x1f3a5f, alpha: 0.30 };
     }
   }
-  return { color: 0xaaaacc, alpha: 0.3 };
+  return { color: 0xaaaacc, alpha: 0.30 };
 }
 
-function polyPoints(poly) {
-  // accepts [[x,y]] or [{x,y}]
-  const pts = [];
-  for (const p of poly ?? []) {
-    if (Array.isArray(p)) { pts.push(p[0], p[1]); }
-    else { pts.push(p.x, p.y); }
-  }
-  return pts;
+function hexToRgb(hex) {
+  return { r: (hex >> 16) & 0xff, g: (hex >> 8) & 0xff, b: hex & 0xff };
 }
 
 function centroid(poly) {
-  if (!poly || poly.length === 0) return { x: 0, y: 0 };
+  if (!poly || !poly.length) return { x: 0, y: 0 };
   let sx = 0, sy = 0;
   for (const p of poly) {
     sx += Array.isArray(p) ? p[0] : p.x;
@@ -43,7 +36,6 @@ function centroid(poly) {
   }
   return { x: sx / poly.length, y: sy / poly.length };
 }
-
 
 function pointInPolygon(wx, wy, poly) {
   let inside = false;
@@ -66,7 +58,6 @@ function getCrowdStatus(occ) {
   return           { label: "Normal",       color: "#22c55e" };
 }
 
-// Deterministic hash + PRNG (FNV-1a + Mulberry32) for stable demo values
 function hashString(s) {
   s = String(s ?? "");
   let h = 2166136261;
@@ -119,50 +110,34 @@ function buildDemoIoTData(real, nodes) {
   return out;
 }
 
-// ─── component ─────────────────────────────────────────────────────────────
+// ─── component ──────────────────────────────────────────────────────────────
 
 export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMode }) {
-  const containerRef = useRef(null);
-  const canvasRef    = useRef(null); // set to app.view after PIXI init
+  const containerRef    = useRef(null);
+  const canvasRef       = useRef(null);
+  const ctxRef          = useRef(null);
+  const navmeshRef      = useRef(null);
+  const iotDataRef      = useRef({});
+  const iotDataRealRef  = useRef({});
+  const viewportRef     = useRef({ zoom: 1, x: 0, y: 0 });
+  const showHeatRef     = useRef(showHeatmap);
+  const demoModeRef     = useRef(demoMode);
+  const intervalRef     = useRef(null);
+  const tooltipRef      = useRef(null);
+  const hitTestRef      = useRef([]);
+  const heatCanvasRef   = useRef(null);   // offscreen canvas for heatmap image
+  const pathPointsRef   = useRef(pathPoints);
+  const renderRef       = useRef(null);
+  const renderHeatmapRef = useRef(null);
 
-  // Stable refs so callbacks see latest values without re-mounting PIXI
-  const appRef        = useRef(null);
-  const layersRef     = useRef({});
-  const navmeshRef    = useRef(null);
-  const iotDataRef    = useRef({});
-  const viewportRef   = useRef({ zoom: 1, x: 0, y: 0 });
-  const heatSpriteRef = useRef(null);
-  const heatCanvasRef = useRef(null);
-  const showHeatRef   = useRef(showHeatmap);
-  const intervalRef   = useRef(null);
-  const tooltipRef       = useRef(null);
-  const hitTestRef       = useRef([]);
-  const demoModeRef      = useRef(demoMode);
-  const iotDataRealRef   = useRef({});     // raw data from backend
-  const renderHeatmapRef = useRef(null);   // set inside main useEffect
-
-  // Keep showHeat ref in sync + re-render heatmap instantly on toggle
+  // Sync showHeatmap → re-render (heatmap layer is toggled inside render())
   useEffect(() => {
     showHeatRef.current = showHeatmap;
-    const { heatmap, rooms, corridors, corridorOutlines } = layersRef.current;
-
-    if (heatmap) heatmap.visible = showHeatmap;
-
-    // Re-render in case the sprite was created while the layer was hidden
-    if (showHeatmap) renderHeatmapRef.current?.();
-
-    // Greyscale hall colours so they don't clash with the rainbow heatmap
-    const makeGrey = () => {
-      const f = new PIXI.ColorMatrixFilter();
-      f.greyscale(0, false);
-      return [f];
-    };
-    if (rooms)            rooms.filters            = showHeatmap ? makeGrey() : null;
-    if (corridors)        corridors.filters        = showHeatmap ? makeGrey() : null;
-    if (corridorOutlines) corridorOutlines.filters = showHeatmap ? makeGrey() : null;
+    if (showHeatmap) renderHeatmapRef.current?.(); // rebuild if just switched on
+    else             renderRef.current?.();
   }, [showHeatmap]);
 
-  // Demo mode toggle: rebuild iot data and re-render heatmap
+  // Sync demoMode → rebuild IoT simulation data → re-render heatmap
   useEffect(() => {
     demoModeRef.current = demoMode;
     const nm = navmeshRef.current;
@@ -170,409 +145,390 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
     const real = iotDataRealRef.current;
     iotDataRef.current = demoMode ? buildDemoIoTData(real, nm.nodes) : { ...real };
     renderHeatmapRef.current?.();
-    if (layersRef.current.heatmap) layersRef.current.heatmap.visible = showHeatRef.current;
   }, [demoMode]);
 
-  // Re-draw path whenever pathPoints changes
+  // Sync pathPoints → re-render (path is drawn in the main render pass)
   useEffect(() => {
-    const layer = layersRef.current.path;
-    if (!layer) return;
-    layer.removeChildren();
-    if (!pathPoints || pathPoints.length < 2) return;
-
-    const g = new PIXI.Graphics();
-    g.lineStyle(6, 0x00bcd4, 0.95);
-    g.moveTo(pathPoints[0].x, pathPoints[0].y);
-    for (let i = 1; i < pathPoints.length; i++) g.lineTo(pathPoints[i].x, pathPoints[i].y);
-
-    // start (green) / end (red) circles
-    const start = new PIXI.Graphics();
-    start.beginFill(0x22c55e).drawCircle(pathPoints[0].x, pathPoints[0].y, 10).endFill();
-    const end = new PIXI.Graphics();
-    end.beginFill(0xef4444).drawCircle(pathPoints[pathPoints.length - 1].x, pathPoints[pathPoints.length - 1].y, 10).endFill();
-
-    layer.addChild(g, start, end);
+    pathPointsRef.current = pathPoints;
+    renderRef.current?.();
   }, [pathPoints]);
 
-  // ─── mount: init PIXI ────────────────────────────────────────────────────
+  // ─── main canvas lifecycle ─────────────────────────────────────────────
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    // Defer PIXI init by one macrotask so React 18 StrictMode's immediate
-    // cleanup can cancel the timeout before a WebGL context is ever created.
-    // This avoids the "Unable to auto-detect a suitable renderer" error caused
-    // by StrictMode's mount→cleanup→remount cycle exhausting WebGL contexts.
-    let app = null;
-    let ro  = null;
+    let alive = true;
+    let ro    = null;
+
+    // Defer one macrotask so React 18 StrictMode's immediate cleanup can
+    // cancel this before any canvas/context is created.
     const timeoutId = setTimeout(() => {
+      if (!alive) return;
 
-    // Use explicit pixel dimensions — avoids WebGL context creation on a 0×0 canvas
-    const W = Math.max(container.clientWidth,  1);
-    const H = Math.max(container.clientHeight, 1);
+      // ── create canvas ────────────────────────────────────────────────────
+      const canvas = document.createElement("canvas");
+      canvas.width  = Math.max(container.clientWidth,  1);
+      canvas.height = Math.max(container.clientHeight, 1);
+      canvas.style.cssText = "display:block;width:100%;height:100%;cursor:grab";
+      container.insertBefore(canvas, container.firstChild);
+      canvasRef.current = canvas;
 
-    // Let PIXI create its own canvas with known dimensions (no view: option)
-    app = new PIXI.Application({
-      width: W,
-      height: H,
-      backgroundColor: 0xf8fafc,
-      antialias: true,
-      resolution: 1,
-      forceCanvas: true, // 2D floor plan needs no WebGL; Canvas2D frees GPU contexts for Three.js
-    });
-    appRef.current = app;
+      const ctx = canvas.getContext("2d");
+      ctxRef.current = ctx;
 
-    // Insert canvas before the zoom controls overlay
-    app.view.style.display = "block";
-    app.view.style.width   = "100%";
-    app.view.style.height  = "100%";
-    container.insertBefore(app.view, container.firstChild);
-    canvasRef.current = app.view; // so pan/zoom listeners use the real canvas
-    app.stage.sortableChildren = true;
+      // Offscreen canvas for the heatmap image (reused across updates)
+      const heatCanvas = document.createElement("canvas");
+      heatCanvasRef.current = heatCanvas;
 
-    // layers
-    const layers = {
-      corridors:       new PIXI.Container(),
-      heatmap:         new PIXI.Container(),
-      corridorOutlines:new PIXI.Container(),
-      rooms:           new PIXI.Container(),
-      path:            new PIXI.Container(),
-    };
-    layers.corridors.zIndex        = 10;
-    layers.heatmap.zIndex          = 20;
-    layers.corridorOutlines.zIndex = 5;
-    layers.rooms.zIndex            = 40;
-    layers.path.zIndex             = 50;
-    layers.heatmap.visible         = showHeatRef.current;
-
-    for (const l of Object.values(layers)) app.stage.addChild(l);
-    layersRef.current = layers;
-
-    // reusable offscreen canvas for heatmap texture
-    heatCanvasRef.current = document.createElement("canvas");
-
-    // ─── pan / zoom ────────────────────────────────────────────────────────
-    let dragging = false, dragStart = { x: 0, y: 0 }, vpStart = { x: 0, y: 0 };
-
-    const applyViewport = () => {
       const vp = viewportRef.current;
-      app.stage.scale.set(vp.zoom);
-      app.stage.position.set(vp.x * vp.zoom, vp.y * vp.zoom);
-    };
 
-    const cv = app.view; // shorthand for event binding
+      // ── coordinate helper ────────────────────────────────────────────────
+      function screenToWorld(sx, sy) {
+        return { x: sx / vp.zoom - vp.x, y: sy / vp.zoom - vp.y };
+      }
 
-    cv.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0) return;
-      dragging = true;
-      dragStart = { x: e.clientX, y: e.clientY };
-      vpStart   = { ...viewportRef.current };
-      try { cv.setPointerCapture(e.pointerId); } catch (_) {}
-    });
-    cv.addEventListener("pointermove", (e) => {
-      if (dragging) {
-        const vp = viewportRef.current;
-        vp.x = vpStart.x + (e.clientX - dragStart.x) / vp.zoom;
-        vp.y = vpStart.y + (e.clientY - dragStart.y) / vp.zoom;
-        applyViewport();
+      // ── main render pass ─────────────────────────────────────────────────
+      function render() {
+        const nm = navmeshRef.current;
+        const W  = canvas.width, H = canvas.height;
+
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillRect(0, 0, W, H);
+
+        if (!nm) return;
+
+        ctx.save();
+        ctx.translate(vp.x * vp.zoom, vp.y * vp.zoom);
+        ctx.scale(vp.zoom, vp.zoom);
+
+        const lw = 1.5 / vp.zoom; // screen-space line width
+
+        // 1. Corridors
+        for (const corridor of nm.corridor_polygons ?? []) {
+          const poly = corridor?.polygon ?? (Array.isArray(corridor) ? corridor : null);
+          if (!Array.isArray(poly) || poly.length < 3) continue;
+          ctx.beginPath();
+          poly.forEach((p, i) => {
+            const x = Array.isArray(p) ? p[0] : p.x;
+            const y = Array.isArray(p) ? p[1] : p.y;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+          ctx.fillStyle   = "rgba(248,250,252,0.05)";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(85,85,85,0.25)";
+          ctx.lineWidth   = lw;
+          ctx.stroke();
+        }
+
+        // 2. Heatmap overlay
+        if (showHeatRef.current && heatCanvas._bounds && heatCanvas.width > 0) {
+          const b = heatCanvas._bounds;
+          ctx.globalAlpha = 0.75;
+          ctx.drawImage(heatCanvas, b.minX, b.minY, b.w, b.h);
+          ctx.globalAlpha = 1;
+        }
+
+        // 3. Rooms + labels (greyscale when heatmap is active)
+        if (showHeatRef.current) ctx.filter = "grayscale(100%)";
+        for (const room of nm.rooms ?? []) {
+          const poly = room.polygon;
+          if (!poly || poly.length < 3) continue;
+          const { color, alpha } = getHallColor(room.name);
+          const { r, g, b } = hexToRgb(color);
+
+          ctx.beginPath();
+          poly.forEach((p, i) => {
+            const x = Array.isArray(p) ? p[0] : p.x;
+            const y = Array.isArray(p) ? p[1] : p.y;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+          ctx.fillStyle   = `rgba(${r},${g},${b},${alpha})`;
+          ctx.fill();
+          ctx.strokeStyle = `rgba(${r},${g},${b},0.6)`;
+          ctx.lineWidth   = lw;
+          ctx.stroke();
+
+          const c    = centroid(poly);
+          const size = Math.max(8, Math.min(13, 11 / vp.zoom));
+          ctx.fillStyle    = "#1e293b";
+          ctx.font         = `600 ${size}px sans-serif`;
+          ctx.textAlign    = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(room.name ?? room.id ?? "", c.x, c.y);
+        }
+        ctx.filter = "none";
+
+        // 4. Navigation path
+        const pts = pathPointsRef.current;
+        if (pts && pts.length >= 2) {
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.strokeStyle = "rgba(0,188,212,0.95)";
+          ctx.lineWidth   = 6 / vp.zoom;
+          ctx.lineJoin    = "round";
+          ctx.lineCap     = "round";
+          ctx.stroke();
+
+          const r = 10 / vp.zoom;
+          ctx.beginPath();
+          ctx.arc(pts[0].x, pts[0].y, r, 0, Math.PI * 2);
+          ctx.fillStyle = "#22c55e";
+          ctx.fill();
+
+          const last = pts[pts.length - 1];
+          ctx.beginPath();
+          ctx.arc(last.x, last.y, r, 0, Math.PI * 2);
+          ctx.fillStyle = "#ef4444";
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+
+      renderRef.current = render;
+
+      // ── heatmap builder ──────────────────────────────────────────────────
+      function renderHeatmap() {
+        const nm     = navmeshRef.current;
+        const iotRaw = iotDataRef.current;
+        if (!nm || !nm.nodes) { render(); return; }
+
+        const telPoints = [];
+        for (const node of nm.nodes) {
+          if (node.type !== "room") continue;
+          const occ = Number(iotRaw[node.id]);
+          if (!isFinite(occ) || occ <= 0) continue;
+          const pos = node.position ?? (node.polygon ? centroid(node.polygon) : null);
+          if (!pos) continue;
+          telPoints.push({
+            x: pos.x ?? (Array.isArray(pos) ? pos[0] : 0),
+            y: pos.y ?? (Array.isArray(pos) ? pos[1] : 0),
+            value: occ,
+          });
+        }
+        if (!telPoints.length) { heatCanvas._bounds = null; render(); return; }
+
+        // Derive map bounds from all polygon vertices
+        let bMinX = Infinity, bMinY = Infinity, bMaxX = -Infinity, bMaxY = -Infinity;
+        const allPolys = [
+          ...(nm.nodes ?? []).map(n => n.polygon).filter(p => Array.isArray(p) && p.length >= 3),
+          ...(nm.corridor_polygons ?? [])
+            .map(c => c?.polygon ?? (Array.isArray(c) ? c : null))
+            .filter(p => Array.isArray(p) && p.length >= 3),
+        ];
+        for (const poly of allPolys) {
+          for (const p of poly) {
+            const px = Array.isArray(p) ? p[0] : p.x;
+            const py = Array.isArray(p) ? p[1] : p.y;
+            if (Number.isFinite(px)) { bMinX = Math.min(bMinX, px); bMaxX = Math.max(bMaxX, px); }
+            if (Number.isFinite(py)) { bMinY = Math.min(bMinY, py); bMaxY = Math.max(bMaxY, py); }
+          }
+        }
+        if (!Number.isFinite(bMinX)) {
+          bMinX = 0; bMinY = 0;
+          bMaxX = nm?.scale_info?.svg_dimensions?.width  ?? 1600;
+          bMaxY = nm?.scale_info?.svg_dimensions?.height ?? 900;
+        }
+        const bounds = { minX: bMinX, minY: bMinY, maxX: bMaxX, maxY: bMaxY };
+
+        let cell = 14;
+        let gridData = aggregateHeatmapGrid(telPoints, cell, 400, bounds);
+        if (!gridData || gridData.width === 0) { render(); return; }
+
+        const maxTex = 2048;
+        while ((gridData.width > maxTex || gridData.height > maxTex) && cell < 200) {
+          cell = Math.ceil(cell * 1.25);
+          gridData = aggregateHeatmapGrid(telPoints, cell, 400, bounds);
+        }
+
+        const rgba = generateHeatmapImageData(gridData, "rainbow", 1.0);
+        heatCanvas.width  = gridData.width;
+        heatCanvas.height = gridData.height;
+        heatCanvas.getContext("2d").putImageData(
+          new ImageData(rgba, gridData.width, gridData.height), 0, 0
+        );
+        heatCanvas._bounds = {
+          minX: bounds.minX,
+          minY: bounds.minY,
+          w: gridData.width  * cell,
+          h: gridData.height * cell,
+        };
+        render();
+      }
+
+      renderHeatmapRef.current = renderHeatmap;
+
+      // ── navmesh helpers ──────────────────────────────────────────────────
+      function buildHitTest(nm) {
+        hitTestRef.current = [];
+        for (const node of nm.nodes ?? []) {
+          const poly = node.polygon;
+          if (!poly || poly.length < 3) continue;
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          for (const p of poly) {
+            const x = Array.isArray(p) ? p[0] : p.x;
+            const y = Array.isArray(p) ? p[1] : p.y;
+            minX = Math.min(minX, x); minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+          }
+          hitTestRef.current.push({ node, poly, bbox: { minX, minY, maxX, maxY } });
+        }
+      }
+
+      function centerMap() {
+        const nm   = navmeshRef.current;
+        const svgW = nm?.scale_info?.svg_dimensions?.width  ?? 1600;
+        const svgH = nm?.scale_info?.svg_dimensions?.height ?? 900;
+        const zoom = Math.min(canvas.width / svgW, canvas.height / svgH) * 0.92;
+        vp.zoom = zoom;
+        vp.x    = (canvas.width  / zoom - svgW) / 2;
+        vp.y    = (canvas.height / zoom - svgH) / 2;
+        render();
+      }
+
+      container._resetView = centerMap;
+      container._zoomIn    = () => { vp.zoom = Math.min(5, vp.zoom * 1.25); render(); };
+      container._zoomOut   = () => { vp.zoom = Math.max(0.3, vp.zoom / 1.25); render(); };
+
+      // ── pan / zoom ───────────────────────────────────────────────────────
+      let dragging = false, dragStart = { x: 0, y: 0 }, vpStart = { x: 0, y: 0 };
+
+      canvas.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0) return;
+        dragging  = true;
+        dragStart = { x: e.clientX, y: e.clientY };
+        vpStart   = { x: vp.x, y: vp.y };
+        canvas.style.cursor = "grabbing";
+        try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      canvas.addEventListener("pointermove", (e) => {
+        if (dragging) {
+          vp.x = vpStart.x + (e.clientX - dragStart.x) / vp.zoom;
+          vp.y = vpStart.y + (e.clientY - dragStart.y) / vp.zoom;
+          render();
+          if (tooltipRef.current) tooltipRef.current.style.display = "none";
+          return;
+        }
+
+        // Hover tooltip
+        const tip  = tooltipRef.current;
+        const hits = hitTestRef.current;
+        if (!tip || !hits.length) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const { x: wx, y: wy } = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+
+        let found = null;
+        for (const h of hits) {
+          if (wx < h.bbox.minX || wx > h.bbox.maxX || wy < h.bbox.minY || wy > h.bbox.maxY) continue;
+          if (pointInPolygon(wx, wy, h.poly)) { found = h; break; }
+        }
+
+        if (!found) { tip.style.display = "none"; return; }
+
+        const occ    = Number(iotDataRef.current[found.node.id]);
+        const occPct = isFinite(occ) && occ > 0 ? Math.round(occ * 100) : null;
+        const crowd  = occPct !== null ? getCrowdStatus(occ) : null;
+
+        tip.innerHTML =
+          `<div style="font-weight:700;font-size:13px;margin-bottom:3px">${found.node.name ?? found.node.id ?? "Room"}</div>` +
+          (occPct !== null
+            ? `<div style="font-size:12px;opacity:0.85;margin-bottom:2px">Occupancy: ${occPct}%</div>` +
+              `<div style="font-size:11px;font-weight:700;color:${crowd.color}">${crowd.label}</div>`
+            : "");
+
+        const cRect = container.getBoundingClientRect();
+        tip.style.display = "block";
+        tip.style.left = Math.max(8, Math.min(e.clientX - cRect.left + 14, cRect.width  - 180)) + "px";
+        tip.style.top  = Math.max(8, Math.min(e.clientY - cRect.top  + 14, cRect.height - 90))  + "px";
+      });
+
+      const stopDrag = () => { dragging = false; canvas.style.cursor = "grab"; };
+      canvas.addEventListener("pointerup",     stopDrag);
+      canvas.addEventListener("pointercancel", stopDrag);
+      canvas.addEventListener("pointerleave",  () => {
         if (tooltipRef.current) tooltipRef.current.style.display = "none";
-        return;
+      });
+
+      canvas.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const rect    = canvas.getBoundingClientRect();
+        const mx      = e.clientX - rect.left;
+        const my      = e.clientY - rect.top;
+        const factor  = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+        const newZoom = Math.max(0.3, Math.min(5, vp.zoom * factor));
+        vp.x    = mx / newZoom - mx / vp.zoom + vp.x;
+        vp.y    = my / newZoom - my / vp.zoom + vp.y;
+        vp.zoom = newZoom;
+        render();
+      }, { passive: false });
+
+      // ── resize ───────────────────────────────────────────────────────────
+      ro = new ResizeObserver(() => {
+        const w = container.clientWidth, h = container.clientHeight;
+        if (w > 0 && h > 0) { canvas.width = w; canvas.height = h; render(); }
+      });
+      ro.observe(container);
+
+      // ── data loading ─────────────────────────────────────────────────────
+      async function loadNavmesh() {
+        try {
+          const res  = await fetch(`${apiBase}/nav/navmesh`, { cache: "no-store" });
+          const data = await res.json();
+          if (!res.ok || !data?.nodes) return;
+          navmeshRef.current = data;
+          buildHitTest(data);
+          centerMap();
+        } catch (_) {}
       }
 
-      // ── hover tooltip ──────────────────────────────────────────────────────
-      const tip  = tooltipRef.current;
-      const hits = hitTestRef.current;
-      if (!tip || !hits.length) return;
-
-      const rect  = cv.getBoundingClientRect();
-      const world = app.stage.toLocal(new PIXI.Point(e.clientX - rect.left, e.clientY - rect.top));
-      const wx = world.x, wy = world.y;
-
-      let found = null;
-      for (const h of hits) {
-        if (wx < h.bbox.minX || wx > h.bbox.maxX || wy < h.bbox.minY || wy > h.bbox.maxY) continue;
-        if (pointInPolygon(wx, wy, h.poly)) { found = h; break; }
+      async function loadIoT() {
+        try {
+          const res  = await fetch(`${apiBase}/nav/iot/data`, { cache: "no-store" });
+          const data = await res.json();
+          if (data && typeof data === "object") {
+            iotDataRealRef.current = data;
+            iotDataRef.current = demoModeRef.current
+              ? buildDemoIoTData(data, navmeshRef.current?.nodes)
+              : { ...data };
+            renderHeatmap();
+          }
+        } catch (_) {}
       }
 
-      if (!found) { tip.style.display = "none"; return; }
+      loadNavmesh().then(loadIoT);
+      intervalRef.current = setInterval(loadIoT, 5000);
 
-      const occ    = Number(iotDataRef.current[found.node.id]);
-      const occPct = isFinite(occ) && occ > 0 ? Math.round(occ * 100) : null;
-      const crowd  = occPct !== null ? getCrowdStatus(occ) : null;
-
-      tip.innerHTML =
-        `<div style="font-weight:700;font-size:13px;margin-bottom:3px">${found.node.name ?? found.node.id ?? "Room"}</div>` +
-        (occPct !== null
-          ? `<div style="font-size:12px;opacity:0.85;margin-bottom:2px">Occupancy: ${occPct}%</div>` +
-            `<div style="font-size:11px;font-weight:700;color:${crowd.color}">${crowd.label}</div>`
-          : "");
-
-      const cRect = containerRef.current.getBoundingClientRect();
-      const relX  = e.clientX - cRect.left;
-      const relY  = e.clientY - cRect.top;
-      tip.style.display = "block";
-      tip.style.left = Math.max(8, Math.min(relX + 14, cRect.width  - 180)) + "px";
-      tip.style.top  = Math.max(8, Math.min(relY + 14, cRect.height - 90))  + "px";
-    });
-    const stopDrag = () => { dragging = false; };
-    cv.addEventListener("pointerup",     stopDrag);
-    cv.addEventListener("pointercancel", stopDrag);
-    cv.addEventListener("pointerleave",  () => { if (tooltipRef.current) tooltipRef.current.style.display = "none"; });
-
-    cv.addEventListener("wheel", (e) => {
-      e.preventDefault();
-      const vp  = viewportRef.current;
-      const rect = cv.getBoundingClientRect();
-      const mx  = e.clientX - rect.left;
-      const my  = e.clientY - rect.top;
-      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-      const newZoom = Math.max(0.3, Math.min(5, vp.zoom * factor));
-      // zoom toward cursor
-      vp.x = mx / newZoom - mx / vp.zoom + vp.x;
-      vp.y = my / newZoom - my / vp.zoom + vp.y;
-      vp.zoom = newZoom;
-      applyViewport();
-    }, { passive: false });
-
-    // ─── resize ────────────────────────────────────────────────────────────
-    ro = new ResizeObserver(() => {
-      const w = container.clientWidth, h = container.clientHeight;
-      if (w > 0 && h > 0) app.renderer.resize(w, h);
-    });
-    ro.observe(container);
-
-    // ─── rendering helpers ─────────────────────────────────────────────────
-
-    function centerMap() {
-      const nm = navmeshRef.current;
-      const svgW = nm?.scale_info?.svg_dimensions?.width  ?? 1600;
-      const svgH = nm?.scale_info?.svg_dimensions?.height ?? 900;
-      const scW  = app.screen.width, scH = app.screen.height;
-      const zoom  = Math.min(scW / svgW, scH / svgH) * 0.92;
-      viewportRef.current = {
-        zoom,
-        x: (scW / zoom - svgW) / 2,
-        y: (scH / zoom - svgH) / 2,
-      };
-      applyViewport();
-    }
-
-    // expose reset for button
-    containerRef.current._resetView = centerMap;
-    containerRef.current._zoomIn    = () => { viewportRef.current.zoom = Math.min(5, viewportRef.current.zoom * 1.25); applyViewport(); };
-    containerRef.current._zoomOut   = () => { viewportRef.current.zoom = Math.max(0.3, viewportRef.current.zoom / 1.25); applyViewport(); };
-
-    function drawRooms(nm) {
-      const layer = layers.rooms;
-      layer.removeChildren();
-      for (const room of nm.rooms ?? []) {
-        const poly = room.polygon;
-        if (!poly || poly.length < 3) continue;
-        const pts = polyPoints(poly);
-        const { color, alpha } = getHallColor(room.name);
-        const g = new PIXI.Graphics();
-        g.beginFill(color, alpha);
-        g.lineStyle(1.5, color, 0.6);
-        g.drawPolygon(pts);
-        g.endFill();
-        layer.addChild(g);
-
-        // label
-        const c = centroid(poly);
-        const label = new PIXI.Text(room.name ?? room.id ?? "", {
-          fontSize: 11,
-          fill: 0x1e293b,
-          fontWeight: "600",
-          align: "center",
-          wordWrap: true,
-          wordWrapWidth: 120,
-        });
-        label.anchor.set(0.5);
-        label.position.set(c.x, c.y);
-        layer.addChild(label);
-      }
-    }
-
-    function drawCorridors(nm) {
-      const layer = layers.corridors;
-      const outlines = layers.corridorOutlines;
-      layer.removeChildren();
-      outlines.removeChildren();
-      for (const corridor of nm.corridor_polygons ?? []) {
-        // corridor_polygons items are either {polygon:[...]} objects or raw arrays
-        const poly = corridor?.polygon ?? (Array.isArray(corridor) ? corridor : null);
-        if (!Array.isArray(poly) || poly.length < 3) continue;
-        const pts = polyPoints(poly);
-
-        // Fill — near-transparent background colour so it's neutral under semi-transparent rooms
-        const g = new PIXI.Graphics();
-        g.beginFill(0xf8fafc, 0.05);
-        g.drawPolygon(pts);
-        g.endFill();
-        layer.addChild(g);
-
-        // Outline — faint wall boundary; low alpha prevents bleed through room fills
-        const o = new PIXI.Graphics();
-        o.lineStyle(2, 0x555555, 0.25);
-        o.drawPolygon(pts);
-        outlines.addChild(o);
-      }
-    }
-
-    function buildHitTest(nm) {
-      hitTestRef.current = [];
-      for (const node of nm.nodes ?? []) {
-        const poly = node.polygon;
-        if (!poly || poly.length < 3) continue;
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const p of poly) {
-          const x = Array.isArray(p) ? p[0] : p.x;
-          const y = Array.isArray(p) ? p[1] : p.y;
-          minX = Math.min(minX, x); minY = Math.min(minY, y);
-          maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
-        }
-        hitTestRef.current.push({ node, poly, bbox: { minX, minY, maxX, maxY } });
-      }
-    }
-
-    function renderHeatmap() {
-      const nm     = navmeshRef.current;
-      const iotRaw = iotDataRef.current;
-      const layer  = layers.heatmap;
-      layer.removeChildren();
-      heatSpriteRef.current = null;
-
-      if (!nm || !nm.nodes) return;
-
-      // Build {x, y, value} points from room centroids + IoT occupancy
-      const telPoints = [];
-      for (const node of nm.nodes) {
-        if (node.type !== "room") continue;
-        const occ = Number(iotRaw[node.id]);
-        if (!isFinite(occ) || occ <= 0) continue;
-        const pos = node.position ?? (node.polygon ? centroid(node.polygon) : null);
-        if (!pos) continue;
-        const x = pos.x ?? (Array.isArray(pos) ? pos[0] : 0);
-        const y = pos.y ?? (Array.isArray(pos) ? pos[1] : 0);
-        telPoints.push({ x, y, value: occ });
-      }
-      if (telPoints.length === 0) return;
-
-      // Derive bounds from ALL polygon vertices so the heatmap always covers
-      // the full map regardless of whether scale_info matches the coordinate space
-      let bMinX = Infinity, bMinY = Infinity, bMaxX = -Infinity, bMaxY = -Infinity;
-      const allPolys = [
-        ...(nm.nodes ?? []).map(n => n.polygon).filter(p => Array.isArray(p) && p.length >= 3),
-        ...(nm.corridor_polygons ?? []).map(c => c?.polygon ?? (Array.isArray(c) ? c : null)).filter(p => Array.isArray(p) && p.length >= 3),
-      ];
-      for (const poly of allPolys) {
-        for (const p of poly) {
-          const px = Array.isArray(p) ? p[0] : p.x;
-          const py = Array.isArray(p) ? p[1] : p.y;
-          if (Number.isFinite(px)) { bMinX = Math.min(bMinX, px); bMaxX = Math.max(bMaxX, px); }
-          if (Number.isFinite(py)) { bMinY = Math.min(bMinY, py); bMaxY = Math.max(bMaxY, py); }
-        }
-      }
-      if (!Number.isFinite(bMinX)) {
-        bMinX = 0; bMinY = 0;
-        bMaxX = nm?.scale_info?.svg_dimensions?.width  ?? 1600;
-        bMaxY = nm?.scale_info?.svg_dimensions?.height ?? 900;
-      }
-      const bounds = { minX: bMinX, minY: bMinY, maxX: bMaxX, maxY: bMaxY };
-
-      const cell = 14;
-      let gridData = aggregateHeatmapGrid(telPoints, cell, 400, bounds);
-      if (!gridData || gridData.width === 0) return;
-
-      // Cap to avoid WebGL texture limits
-      const maxTex = 2048;
-      let scaledCell = cell;
-      while ((gridData.width > maxTex || gridData.height > maxTex) && scaledCell < 200) {
-        scaledCell = Math.ceil(scaledCell * 1.25);
-        gridData = aggregateHeatmapGrid(telPoints, scaledCell, 400, bounds);
-      }
-
-      const rgba     = generateHeatmapImageData(gridData, "rainbow", 1.0);
-      const offCanvas = heatCanvasRef.current;
-      offCanvas.width  = gridData.width;
-      offCanvas.height = gridData.height;
-      const ctx = offCanvas.getContext("2d");
-      ctx.putImageData(new ImageData(rgba, gridData.width, gridData.height), 0, 0);
-
-      const tex = PIXI.Texture.from(offCanvas);
-      tex.baseTexture.resource.update(); // force PixiJS to re-read canvas data on reuse
-      const sprite = new PIXI.Sprite(tex);
-      sprite.x      = bounds.minX;
-      sprite.y      = bounds.minY;
-      sprite.width  = gridData.width  * scaledCell;
-      sprite.height = gridData.height * scaledCell;
-      sprite.alpha  = 0.75;
-      layer.addChild(sprite);
-      heatSpriteRef.current = sprite;
-    }
-
-    // Expose renderHeatmap so the demoMode useEffect can call it without re-mounting
-    renderHeatmapRef.current = renderHeatmap;
-
-    // ─── data loading ──────────────────────────────────────────────────────
-
-    async function loadNavmesh() {
-      try {
-        const res  = await fetch(`${apiBase}/nav/navmesh`, { cache: "no-store" });
-        const data = await res.json();
-        if (!res.ok || !data?.nodes) return;
-        navmeshRef.current = data;
-        drawRooms(data);
-        buildHitTest(data);
-        drawCorridors(data);
-        centerMap();
-      } catch (_) {}
-    }
-
-    async function loadIoT() {
-      try {
-        const res  = await fetch(`${apiBase}/nav/iot/data`, { cache: "no-store" });
-        const data = await res.json();
-        if (data && typeof data === "object") {
-          iotDataRealRef.current = data;
-          iotDataRef.current = demoModeRef.current
-            ? buildDemoIoTData(data, navmeshRef.current?.nodes)
-            : { ...data };
-          renderHeatmap();
-        }
-      } catch (_) {}
-    }
-
-    async function refresh() {
-      await loadIoT();
-      if (layersRef.current.heatmap) layersRef.current.heatmap.visible = showHeatRef.current;
-    }
-
-    loadNavmesh().then(loadIoT);
-    intervalRef.current = setInterval(refresh, 5000);
-
-    }, 0); // end of deferred init setTimeout
+    }, 0); // end deferred init
 
     return () => {
+      alive = false;
       clearTimeout(timeoutId);
       clearInterval(intervalRef.current);
       if (ro) ro.disconnect();
-      if (app) {
-        try { app.destroy(true, { children: true, texture: true, baseTexture: true }); } catch (_) {}
+      if (canvasRef.current) {
+        try { canvasRef.current.remove(); } catch (_) {}
+        canvasRef.current = null;
+        ctxRef.current    = null;
       }
-      canvasRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiBase]);
 
-  // ─── zoom button handlers (read from exposed refs) ─────────────────────
+  // ─── zoom button handlers ────────────────────────────────────────────────
   const zoomIn    = () => containerRef.current?._zoomIn?.();
   const zoomOut   = () => containerRef.current?._zoomOut?.();
   const resetView = () => containerRef.current?._resetView?.();
 
   return (
     <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100%" }}>
-      {/* PIXI injects its canvas here via useEffect */}
+      {/* Canvas2D inserted by useEffect */}
 
       {/* Hover tooltip */}
       <div ref={tooltipRef} style={tooltipStyle} />
@@ -586,6 +542,8 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
     </div>
   );
 }
+
+// ─── styles ─────────────────────────────────────────────────────────────────
 
 const tooltipStyle = {
   position:       "absolute",
@@ -603,28 +561,28 @@ const tooltipStyle = {
 };
 
 const zoomBar = {
-  position: "absolute",
-  top: 10,
-  right: 10,
-  display: "flex",
+  position:      "absolute",
+  top:           10,
+  right:         10,
+  display:       "flex",
   flexDirection: "column",
-  gap: 4,
-  zIndex: 10,
+  gap:           4,
+  zIndex:        10,
 };
 
 const zoomBtn = {
-  width: 32,
-  height: 32,
-  borderRadius: 8,
-  border: "1px solid #e5e7eb",
-  background: "white",
-  color: "#374151",
-  fontWeight: 700,
-  fontSize: 16,
-  cursor: "pointer",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-  display: "flex",
-  alignItems: "center",
+  width:          32,
+  height:         32,
+  borderRadius:   8,
+  border:         "1px solid #e5e7eb",
+  background:     "white",
+  color:          "#374151",
+  fontWeight:     700,
+  fontSize:       16,
+  cursor:         "pointer",
+  boxShadow:      "0 2px 6px rgba(0,0,0,0.1)",
+  display:        "flex",
+  alignItems:     "center",
   justifyContent: "center",
-  lineHeight: 1,
+  lineHeight:     1,
 };
