@@ -203,12 +203,8 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
         ctx.translate(vp.x * vp.zoom, vp.y * vp.zoom);
         ctx.scale(vp.zoom, vp.zoom);
 
-        const lw = 1.5 / vp.zoom; // screen-space line width
-
-        // 1. Corridors
-        for (const corridor of nm.corridor_polygons ?? []) {
-          const poly = corridor?.polygon ?? (Array.isArray(corridor) ? corridor : null);
-          if (!Array.isArray(poly) || poly.length < 3) continue;
+        // Helper: trace a polygon path without stroking/filling
+        function tracePoly(poly) {
           ctx.beginPath();
           poly.forEach((p, i) => {
             const x = Array.isArray(p) ? p[0] : p.x;
@@ -216,10 +212,25 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
             i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
           });
           ctx.closePath();
-          ctx.fillStyle   = "rgba(248,250,252,0.05)";
+        }
+
+        // 1. Corridors — match navigation_web visual style:
+        //    dark grey floor fill + double stroke (thick black outer, thin cream inner)
+        for (const corridor of nm.corridor_polygons ?? []) {
+          const poly = corridor?.polygon ?? (Array.isArray(corridor) ? corridor : null);
+          if (!Array.isArray(poly) || poly.length < 3) continue;
+          tracePoly(poly);
+          ctx.fillStyle = "rgba(43,43,43,0.18)";
           ctx.fill();
-          ctx.strokeStyle = "rgba(85,85,85,0.25)";
-          ctx.lineWidth   = lw;
+          // outer stroke
+          ctx.strokeStyle = "rgba(17,17,17,0.95)";
+          ctx.lineWidth   = 12 / vp.zoom;
+          ctx.lineJoin    = "miter";
+          ctx.stroke();
+          // inner stroke (re-trace same path)
+          tracePoly(poly);
+          ctx.strokeStyle = "rgba(242,240,230,0.95)";
+          ctx.lineWidth   = 6 / vp.zoom;
           ctx.stroke();
         }
 
@@ -239,17 +250,13 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
           const { color, alpha } = getHallColor(room.name);
           const { r, g, b } = hexToRgb(color);
 
-          ctx.beginPath();
-          poly.forEach((p, i) => {
-            const x = Array.isArray(p) ? p[0] : p.x;
-            const y = Array.isArray(p) ? p[1] : p.y;
-            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-          });
-          ctx.closePath();
+          tracePoly(poly);
           ctx.fillStyle   = `rgba(${r},${g},${b},${alpha})`;
           ctx.fill();
-          ctx.strokeStyle = `rgba(${r},${g},${b},0.6)`;
-          ctx.lineWidth   = lw;
+          // 4px solid black outline — matches nav_web room style
+          ctx.strokeStyle = "rgba(0,0,0,1)";
+          ctx.lineWidth   = 4 / vp.zoom;
+          ctx.lineJoin    = "miter";
           ctx.stroke();
 
           const c    = centroid(poly);
