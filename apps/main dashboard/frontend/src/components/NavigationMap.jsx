@@ -227,12 +227,39 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
           ctx.stroke();
         }
 
-        // 2. Heatmap overlay
+        // 2. Heatmap overlay — clipped to polygon union
         if (showHeatRef.current && heatCanvas._bounds && heatCanvas.width > 0) {
           const b = heatCanvas._bounds;
+          ctx.save();
+
+          // Build a single clip path from every room + corridor polygon
+          ctx.beginPath();
+          for (const room of nm.rooms ?? []) {
+            const poly = room.polygon;
+            if (!poly || poly.length < 3) continue;
+            poly.forEach((p, i) => {
+              const x = Array.isArray(p) ? p[0] : p.x;
+              const y = Array.isArray(p) ? p[1] : p.y;
+              i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.closePath();
+          }
+          for (const corridor of nm.corridor_polygons ?? []) {
+            const poly = corridor?.polygon ?? (Array.isArray(corridor) ? corridor : null);
+            if (!Array.isArray(poly) || poly.length < 3) continue;
+            poly.forEach((p, i) => {
+              const x = Array.isArray(p) ? p[0] : p.x;
+              const y = Array.isArray(p) ? p[1] : p.y;
+              i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.closePath();
+          }
+          ctx.clip();
+
           ctx.globalAlpha = 0.75;
           ctx.drawImage(heatCanvas, b.minX, b.minY, b.w, b.h);
           ctx.globalAlpha = 1;
+          ctx.restore();
         }
 
         // 3. Rooms + labels (greyscale when heatmap is active)
@@ -539,6 +566,64 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
         <button onClick={zoomOut}   style={zoomBtn} title="Zoom out">−</button>
         <button onClick={resetView} style={zoomBtn} title="Reset view">⟳</button>
       </div>
+
+      {/* Heatmap colour scale legend */}
+      {showHeatmap && (
+        <div style={heatLegend}>
+          <span style={heatLegendTitle}>Occupancy</span>
+          <div style={{ display: "flex", alignItems: "flex-start" }}>
+            {/* Zone labels + coloured dots — left side */}
+            <div style={{ position: "relative", height: 120, width: 82, marginRight: 6 }}>
+              {[
+                { label: "Very Crowded", color: "#dc2626", top: 12  },
+                { label: "Crowded",      color: "#f97316", top: 36  },
+                { label: "Moderate",     color: "#eab308", top: 66  },
+                { label: "Normal",       color: "#22c55e", top: 102 },
+              ].map(({ label, color, top }) => (
+                <div key={label} style={{
+                  position: "absolute", top, right: 0,
+                  transform: "translateY(-50%)",
+                  display: "flex", alignItems: "center", gap: 4,
+                }}>
+                  <span style={zoneLabel}>{label}</span>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                </div>
+              ))}
+            </div>
+
+            {/* Colour bar with threshold tick lines */}
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              <div style={heatLegendBar} />
+              {[24, 48, 84].map(top => (
+                <div key={top} style={{
+                  position: "absolute", top,
+                  left: -2, right: -2, height: 1,
+                  background: "rgba(255,255,255,0.45)",
+                  pointerEvents: "none",
+                }} />
+              ))}
+            </div>
+
+            {/* Percentage ticks — right side */}
+            <div style={{ position: "relative", height: 120, width: 30, marginLeft: 5 }}>
+              {[
+                { label: "100%", top: 0   },
+                { label: "75%",  top: 30  },
+                { label: "50%",  top: 60  },
+                { label: "25%",  top: 90  },
+                { label: "0%",   top: 120 },
+              ].map(({ label, top }) => (
+                <span key={label} style={{
+                  position: "absolute", top,
+                  transform: "translateY(-50%)",
+                  fontSize: 9, color: "rgba(255,255,255,0.6)",
+                  fontFamily: "sans-serif", whiteSpace: "nowrap",
+                }}>{label}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -585,4 +670,56 @@ const zoomBtn = {
   alignItems:     "center",
   justifyContent: "center",
   lineHeight:     1,
+};
+
+const heatLegend = {
+  position:       "absolute",
+  bottom:         16,
+  left:           16,
+  display:        "flex",
+  flexDirection:  "column",
+  alignItems:     "center",
+  gap:            6,
+  zIndex:         10,
+  background:     "rgba(15,23,42,0.82)",
+  backdropFilter: "blur(6px)",
+  borderRadius:   10,
+  padding:        "10px 10px 8px",
+  boxShadow:      "0 4px 16px rgba(0,0,0,0.25)",
+  pointerEvents:  "none",
+};
+
+const heatLegendBar = {
+  width:      18,
+  height:     120,
+  borderRadius: 6,
+  // rainbow ramp: red (high) → orange → yellow → green → cyan → blue (low)
+  background: "linear-gradient(to bottom, " +
+    "rgba(255,0,0,1) 0%, " +
+    "rgba(255,100,0,1) 15%, " +
+    "rgba(255,230,0,1) 30%, " +
+    "rgba(0,220,0,1) 45%, " +
+    "rgba(0,200,255,1) 65%, " +
+    "rgba(0,0,200,1) 85%, " +
+    "rgba(20,20,40,0.6) 100%)",
+  border:     "1px solid rgba(255,255,255,0.15)",
+};
+
+const zoneLabel = {
+  fontSize:   9,
+  fontWeight: 600,
+  fontFamily: "sans-serif",
+  color:      "rgba(255,255,255,0.82)",
+  whiteSpace: "nowrap",
+  lineHeight: 1,
+};
+
+const heatLegendTitle = {
+  color:       "rgba(255,255,255,0.55)",
+  fontSize:    9,
+  fontWeight:  500,
+  fontFamily:  "sans-serif",
+  marginTop:   2,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
 };
