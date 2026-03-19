@@ -73,6 +73,7 @@ function Scene3D({ telemetryData, currentView, currentLayer, devices, deviceTele
       <PerspectiveCamera makeDefault position={[30, 40, 30]} fov={60} />
       <OrbitControls
         ref={controlsRef}
+        makeDefault
         enableDamping
         dampingFactor={0.05}
         minDistance={15}
@@ -81,7 +82,7 @@ function Scene3D({ telemetryData, currentView, currentLayer, devices, deviceTele
       />
 
       {/* Camera focus animation — listens to selectedHallId and lerps camera */}
-      <HallFocusCamera controlsRef={controlsRef} />
+      <HallFocusCamera />
 
       <ambientLight intensity={colors.ambient} />
       <directionalLight

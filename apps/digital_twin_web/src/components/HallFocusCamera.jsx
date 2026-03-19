@@ -9,9 +9,11 @@ const DEFAULT_TARGET = new THREE.Vector3(0, 0, 0);
 const LERP_FACTOR = 0.07;
 const ARRIVE_THRESHOLD = 0.05;
 
-function HallFocusCamera({ controlsRef }) {
+function HallFocusCamera() {
   const { selectedHallId } = useHalls();
-  const { camera } = useThree();
+  // useThree().controls is set by OrbitControls makeDefault — guaranteed available
+  // before any useEffect runs, unlike a forwarded ref which may be null on first effect.
+  const { camera, controls } = useThree();
 
   const centerX = (DWTC_OUTLINE.minX + DWTC_OUTLINE.maxX) / 2;
   const centerY = (DWTC_OUTLINE.minY + DWTC_OUTLINE.maxY) / 2;
@@ -23,14 +25,12 @@ function HallFocusCamera({ controlsRef }) {
   });
 
   // Cancel animation the moment the user starts orbiting/zooming.
-  // OrbitControls fires 'start' on deliberate drag/scroll, not on a simple click.
   useEffect(() => {
-    const controls = controlsRef?.current;
     if (!controls) return;
     const stopAnimation = () => { state.current.animating = false; };
     controls.addEventListener('start', stopAnimation);
     return () => controls.removeEventListener('start', stopAnimation);
-  }, [controlsRef]);
+  }, [controls]);
 
   useEffect(() => {
     if (!selectedHallId) {
@@ -47,7 +47,6 @@ function HallFocusCamera({ controlsRef }) {
     const worldX = (center.x - centerX) * SCALE;
     const worldZ = (center.y - centerY) * SCALE;
 
-    // Position camera above and slightly behind the hall
     state.current.targetPos.set(worldX, 28, worldZ + 18);
     state.current.targetLookAt.set(worldX, 0, worldZ);
     state.current.animating = true;
@@ -55,7 +54,6 @@ function HallFocusCamera({ controlsRef }) {
 
   useFrame(() => {
     if (!state.current.animating) return;
-    const controls = controlsRef?.current;
 
     camera.position.lerp(state.current.targetPos, LERP_FACTOR);
 
