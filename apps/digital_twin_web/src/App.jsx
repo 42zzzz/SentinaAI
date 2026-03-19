@@ -4,6 +4,7 @@ import InfoPanel from './components/InfoPanel';
 import Controls from './components/Controls';
 import Legend from './components/Legend';
 import HallDetails from './components/HallDetails';
+import HallEditor from './components/HallEditor';
 import { HallsProvider, useHalls } from './context/HallsContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { useTelemetry } from './hooks/useTelemetry';
@@ -58,6 +59,8 @@ function AppContent() {
           <Legend currentLayer={currentLayer} />
         </>
       )}
+
+      {isEditMode && <HallEditor onClose={() => setIsEditMode(false)} />}
 
       <Controls
         currentView={currentView} onViewChange={setCurrentView}
