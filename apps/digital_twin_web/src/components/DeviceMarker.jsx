@@ -27,16 +27,15 @@ function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
     // Hidden entirely when hall is not selected — keeps default view uncluttered.
     <group position={[worldX, BASE_Y, worldZ]} visible={isHallSelected}>
 
-      {/* Clipart icon badge */}
+      {/* Clipart icon badge — highest z-index so it's never covered by labels */}
       <Html
         position={[0, 0.5, 0]}
         center
-        distanceFactor={8}
-        zIndexRange={[100, 0]}
+        zIndexRange={[300, 0]}
       >
         <div
-          onPointerEnter={() => setHovered(true)}
-          onPointerLeave={() => setHovered(false)}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
           style={{
             width: 36,
             height: 36,
@@ -66,9 +65,9 @@ function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
         </div>
       </Html>
 
-      {/* Label shown when hall is focused */}
+      {/* Label shown when hall is focused — floats above the icon badge */}
       <Html
-        position={[0, 1.0, 0]}
+        position={[0, 2.0, 0]}
         center
         zIndexRange={[200, 0]}
         style={{ pointerEvents: 'none' }}
@@ -92,9 +91,9 @@ function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
       {/* Tooltip on hover */}
       {showTooltip && (
         <Html
-          position={[0, 2.2, 0]}
+          position={[0, 3.5, 0]}
           center
-          zIndexRange={[300, 0]}
+          zIndexRange={[400, 0]}
         >
           <div style={{
             background: 'rgba(10, 10, 25, 0.96)',

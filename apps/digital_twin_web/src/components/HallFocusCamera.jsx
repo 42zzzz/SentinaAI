@@ -22,8 +22,8 @@ function HallFocusCamera({ controlsRef }) {
     animating: false,
   });
 
-  // Cancel animation the moment the user starts orbiting/zooming so they
-  // can free-roam immediately after the hall focus animation begins.
+  // Cancel animation the moment the user starts orbiting/zooming.
+  // OrbitControls fires 'start' on deliberate drag/scroll, not on a simple click.
   useEffect(() => {
     const controls = controlsRef?.current;
     if (!controls) return;
