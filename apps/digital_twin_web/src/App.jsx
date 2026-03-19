@@ -8,7 +8,7 @@ import { HallsProvider, useHalls } from './context/HallsContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { useTelemetry } from './hooks/useTelemetry';
 import { useDeviceTelemetry } from './hooks/useDeviceTelemetry';
-import { DEVICES_LAYOUT } from './data/devicesLayout';
+import { DEVICES_LAYOUT } from './data/devicesLayout.jsx';
 import './App.css';
 
 function AppContent() {

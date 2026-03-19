@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Html } from '@react-three/drei';
-import { DEVICE_TYPE_CONFIG, DEVICE_STATUS_CONFIG } from '../data/devicesLayout';
+import { DEVICE_TYPE_CONFIG, DEVICE_STATUS_CONFIG } from '../data/devicesLayout.jsx';
 import { SCALE, DWTC_OUTLINE } from '../data/hallsLayout';
 
 // Devices sit inside the hall at floor level — visible through semi-transparent
