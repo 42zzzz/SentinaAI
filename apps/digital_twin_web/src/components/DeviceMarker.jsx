@@ -1,14 +1,10 @@
-import React, { useState, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import React, { useState } from 'react';
 import { Html } from '@react-three/drei';
-import * as THREE from 'three';
 import { DEVICE_TYPE_CONFIG, DEVICE_STATUS_CONFIG } from '../data/devicesLayout';
 import { SCALE, DWTC_OUTLINE } from '../data/hallsLayout';
 
-const LERP_SPEED = 0.1;
-
-// Devices sit inside the hall (halls span y=0–10; y=3 is visible through
-// the semi-transparent walls when the hall is selected).
+// Devices sit inside the hall at floor level — visible through semi-transparent
+// walls when the hall is selected.
 const BASE_Y = 3;
 
 function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
@@ -21,42 +17,54 @@ function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
   const worldZ = (device.svgY - centerY) * SCALE;
 
   const liveStatus = deviceTelemetry?.[device.id]?.status ?? device.status;
-  const typeConfig = DEVICE_TYPE_CONFIG[device.type] ?? DEVICE_TYPE_CONFIG.other;
-  const statusConfig = DEVICE_STATUS_CONFIG[liveStatus] ?? DEVICE_STATUS_CONFIG.online;
-
-  // Imperative scale animation — refs in JSX props don't re-render, so we
-  // mutate the mesh scale directly inside useFrame instead.
-  const meshRef = useRef();
-  const animScaleRef = useRef(isHallSelected ? 1.5 : 0.5);
-  const targetScale = isHallSelected ? 1.5 : 0.5;
-
-  useFrame(() => {
-    animScaleRef.current = THREE.MathUtils.lerp(animScaleRef.current, targetScale, LERP_SPEED);
-    if (meshRef.current) {
-      meshRef.current.scale.setScalar(animScaleRef.current);
-    }
-  });
+  const typeConfig   = DEVICE_TYPE_CONFIG[device.type]   ?? DEVICE_TYPE_CONFIG.other;
+  const statusConfig = DEVICE_STATUS_CONFIG[liveStatus]  ?? DEVICE_STATUS_CONFIG.online;
 
   const showTooltip = isHallSelected && hovered;
+  const Icon = typeConfig.icon;
 
   return (
     // Hidden entirely when hall is not selected — keeps default view uncluttered.
     <group position={[worldX, BASE_Y, worldZ]} visible={isHallSelected}>
-      <mesh
-        ref={meshRef}
-        onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
-        onPointerOut={() => setHovered(false)}
-        castShadow
+
+      {/* Clipart icon badge */}
+      <Html
+        position={[0, 0.5, 0]}
+        center
+        distanceFactor={8}
+        zIndexRange={[100, 0]}
       >
-        <sphereGeometry args={[0.35, 16, 12]} />
-        <meshStandardMaterial
-          color={typeConfig.color}
-          emissive={typeConfig.color}
-          emissiveIntensity={0.6}
-          roughness={0.4}
-          metalness={0.5}
-        />
-      </mesh>
+        <div
+          onPointerEnter={() => setHovered(true)}
+          onPointerLeave={() => setHovered(false)}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            background: typeConfig.color,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '2px solid rgba(255,255,255,0.9)',
+            boxShadow: `0 2px 10px rgba(0,0,0,0.55), 0 0 12px ${typeConfig.color}66`,
+            cursor: 'pointer',
+            position: 'relative',
+          }}
+        >
+          <Icon />
+          {/* Status dot — bottom-right corner */}
+          <div style={{
+            position: 'absolute',
+            bottom: -1,
+            right: -1,
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            background: statusConfig.color,
+            border: '1.5px solid #0a0a14',
+          }} />
+        </div>
+      </Html>
 
       {/* Label shown when hall is focused */}
       <Html

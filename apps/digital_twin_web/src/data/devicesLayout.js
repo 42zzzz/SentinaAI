@@ -122,13 +122,54 @@ export const DEVICES_LAYOUT = [
   { id: 'GW_H6_01',   type: 'gateway',        label: 'Hub Gateway',      hallId: 'Hall6',      svgX: 1015, svgY: 385, telemetryKey: 'HZD06_GW01', status: 'online' },
 ];
 
+// Clipart-style SVG icons — white on colored badge background
+const PersonIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+    <circle cx="12" cy="6" r="4" />
+    <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+  </svg>
+);
+
+const ThermometerIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+    <rect x="10" y="2" width="4" height="13" rx="2" />
+    <circle cx="12" cy="18" r="4" />
+    <rect x="11" y="3" width="2" height="10" fill="rgba(0,0,0,0.25)" />
+  </svg>
+);
+
+const WifiIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+    <path d="M1.5 8.5a15 15 0 0 1 21 0" />
+    <path d="M5 12a12 12 0 0 1 14 0" />
+    <path d="M8.5 15.5a7 7 0 0 1 7 0" />
+    <circle cx="12" cy="19" r="1.5" fill="white" stroke="none" />
+  </svg>
+);
+
+const CrowdIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+    <circle cx="8" cy="6" r="3" />
+    <path d="M2 18c0-3.3 2.7-6 6-6s6 2.7 6 18" />
+    <circle cx="17" cy="6" r="2.5" opacity="0.8" />
+    <path d="M13 18c0-2.8 1.8-5 4-5s4 2.2 4 5" opacity="0.8" />
+  </svg>
+);
+
+const GearIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1l2.1-2.1M17 7l2.1-2.1" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+  </svg>
+);
+
 // Device type visual config
 export const DEVICE_TYPE_CONFIG = {
-  people_counter: { color: '#60a5fa', label: 'People Counter' },
-  environmental:  { color: '#34d399', label: 'Environmental'  },
-  gateway:        { color: '#f59e0b', label: 'Gateway'        },
-  crowd_sensor:   { color: '#a78bfa', label: 'Crowd Sensor'   },
-  other:          { color: '#94a3b8', label: 'Device'         },
+  people_counter: { color: '#60a5fa', label: 'People Counter', icon: PersonIcon      },
+  environmental:  { color: '#34d399', label: 'Environmental',  icon: ThermometerIcon },
+  gateway:        { color: '#f59e0b', label: 'Gateway',        icon: WifiIcon        },
+  crowd_sensor:   { color: '#a78bfa', label: 'Crowd Sensor',   icon: CrowdIcon       },
+  other:          { color: '#94a3b8', label: 'Device',         icon: GearIcon        },
 };
 
 // Status visual config
