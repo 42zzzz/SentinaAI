@@ -31,7 +31,6 @@ function HallCountBadge({ hallId, count }) {
           pointerEvents: 'none',
           userSelect: 'none',
         }}>
-          <span style={{ fontSize: '13px' }}>⬡</span>
           {count}
         </div>
       </Html>
