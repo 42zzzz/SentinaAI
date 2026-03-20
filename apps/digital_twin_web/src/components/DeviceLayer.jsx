@@ -8,20 +8,22 @@ import { HALLS_LAYOUT } from '../data/hallsLayout';
 const HALL_ZONE_MAP = {};
 HALLS_LAYOUT.forEach(h => { HALL_ZONE_MAP[h.id] = (h.zone || '').toLowerCase(); });
 
-// Camera distance beyond which individual icons collapse to count badges
-const LOD_THRESHOLD = 30;
+// Unselected halls collapse at 30 units; selected hall stays detailed up to 60.
+const LOD_THRESHOLD          = 30;
+const LOD_THRESHOLD_SELECTED = 60;
 
 function DeviceLayer({ devices, selectedHallId, currentView, deviceTelemetry }) {
-  const [isZoomedOut, setIsZoomedOut] = useState(false);
-  const prevZoomedOut = useRef(false);
+  const [camDist, setCamDist] = useState(0);
+  const prevDist = useRef(0);
 
   useFrame(({ camera }) => {
     const d = camera.position.length();
-    const zoomedOut = d > LOD_THRESHOLD;
-    if (zoomedOut !== prevZoomedOut.current) {
-      prevZoomedOut.current = zoomedOut;
-      setIsZoomedOut(zoomedOut);
-    }
+    // Only trigger a re-render when crossing either threshold boundary.
+    const crossed =
+      (d > LOD_THRESHOLD)          !== (prevDist.current > LOD_THRESHOLD) ||
+      (d > LOD_THRESHOLD_SELECTED) !== (prevDist.current > LOD_THRESHOLD_SELECTED);
+    if (crossed) setCamDist(d);
+    prevDist.current = d;
   });
 
   // Group devices by hallId, respecting zone filter
@@ -36,7 +38,8 @@ function DeviceLayer({ devices, selectedHallId, currentView, deviceTelemetry }) 
   return (
     <group name="device-layer">
       {Object.entries(hallGroups).map(([hallId, group]) => {
-        const showIndividual = !isZoomedOut;
+        const threshold = hallId === selectedHallId ? LOD_THRESHOLD_SELECTED : LOD_THRESHOLD;
+        const showIndividual = camDist <= threshold;
 
         if (showIndividual) {
           return group.map(device => (
