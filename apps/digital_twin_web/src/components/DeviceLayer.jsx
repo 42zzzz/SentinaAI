@@ -9,7 +9,7 @@ const HALL_ZONE_MAP = {};
 HALLS_LAYOUT.forEach(h => { HALL_ZONE_MAP[h.id] = (h.zone || '').toLowerCase(); });
 
 // Camera distance beyond which individual icons collapse to count badges
-const LOD_THRESHOLD = 60;
+const LOD_THRESHOLD = 30;
 
 function DeviceLayer({ devices, selectedHallId, currentView, deviceTelemetry }) {
   const [isZoomedOut, setIsZoomedOut] = useState(false);
@@ -36,8 +36,7 @@ function DeviceLayer({ devices, selectedHallId, currentView, deviceTelemetry }) 
   return (
     <group name="device-layer">
       {Object.entries(hallGroups).map(([hallId, group]) => {
-        // Selected hall always shows individual icons regardless of zoom
-        const showIndividual = !isZoomedOut || selectedHallId === hallId;
+        const showIndividual = !isZoomedOut;
 
         if (showIndividual) {
           return group.map(device => (
