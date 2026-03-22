@@ -10,6 +10,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { useTelemetry } from './hooks/useTelemetry';
 import { useDeviceTelemetry } from './hooks/useDeviceTelemetry';
 import { DEVICES_LAYOUT } from './data/devicesLayout.jsx';
+import { HALLS_LAYOUT } from './data/hallsLayout';
 import './App.css';
 
 function AppContent() {
@@ -54,7 +55,7 @@ function AppContent() {
             devices={DEVICES_LAYOUT}
             deviceTelemetry={deviceTelemetry}
           />
-          <InfoPanel telemetryData={telemetryData} />
+          <InfoPanel telemetryData={telemetryData} totalHalls={HALLS_LAYOUT.length} totalDevices={DEVICES_LAYOUT.length} />
           <HallDetailsWrapper telemetryData={telemetryData} />
           <Legend currentLayer={currentLayer} />
         </>

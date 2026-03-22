@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 
 const ALL_HALLS = [
@@ -17,32 +17,91 @@ const ALL_HALLS = [
   { id: 'hall9', label: 'Central Hall 9' }, { id: 'hall10', label: 'Central Hall 10' }
 ];
 
-function Controls({ 
+function Controls({
   currentView, onViewChange, isEditMode, onToggleEdit,
   currentLayer, onLayerChange, simMode, setSimMode,
   timeIndex, setTimeIndex, injectData
 }) {
   const { theme, toggleTheme } = useTheme();
-  
+
   const views = [
-    { id: 'all', label: 'View All' }, 
-    { id: 'north', label: 'North' },
-    { id: 'east', label: 'East' },
-    { id: 'south', label: 'South' },
-    { id: 'central', label: 'Central' },
+    { id: 'all',     label: 'View All', title: 'Show all zones' },
+    { id: 'north',   label: 'North',    title: 'Filter to North zone' },
+    { id: 'east',    label: 'East',     title: 'Filter to East zone' },
+    { id: 'south',   label: 'South',    title: 'Filter to South zone' },
+    { id: 'central', label: 'Central',  title: 'Filter to Central zone' },
   ];
 
   const [injectHall, setInjectHall] = useState('hall1');
-  const [injectOcc, setInjectOcc] = useState(95);
-  const [injectCO2, setInjectCO2] = useState(800);
+  const [injectOcc,  setInjectOcc]  = useState(95);
+  const [injectCO2,  setInjectCO2]  = useState(800);
+
+  // Toast state
+  const [toast, setToast] = useState(null); // { msg, type }
+  const toastTimer = useRef(null);
+
+  const showToast = (msg, type = 'success') => {
+    clearTimeout(toastTimer.current);
+    setToast({ msg, type });
+    toastTimer.current = setTimeout(() => setToast(null), 2500);
+  };
+
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+  // History play/pause
+  const [playing, setPlaying] = useState(false);
+  const playInterval = useRef(null);
+
+  const togglePlay = () => {
+    if (playing) {
+      clearInterval(playInterval.current);
+      setPlaying(false);
+    } else {
+      setPlaying(true);
+      playInterval.current = setInterval(() => {
+        setTimeIndex(prev => {
+          if (prev >= 24) {
+            clearInterval(playInterval.current);
+            setPlaying(false);
+            return 24;
+          }
+          return prev + 1;
+        });
+      }, 600);
+    }
+  };
+
+  // Stop playback when mode changes away from history
+  useEffect(() => {
+    if (simMode !== 'history') {
+      clearInterval(playInterval.current);
+      setPlaying(false);
+    }
+  }, [simMode]);
+
+  useEffect(() => () => clearInterval(playInterval.current), []);
 
   const handleExportSnapshot = () => {
     const canvas = document.querySelector('canvas');
-    if (!canvas) return;
+    if (!canvas) { showToast('No canvas found', 'error'); return; }
     const link = document.createElement('a');
-    link.download = `SentinaAI-Snapshot-${new Date().getTime()}.png`;
+    link.download = `SentinaAI-Snapshot-${Date.now()}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
+    showToast('Snapshot saved!');
+  };
+
+  const handleInject = () => {
+    const occ = Math.min(100, Math.max(0, Number(injectOcc)));
+    const co2 = Math.max(0, Number(injectCO2));
+    injectData(injectHall, occ, co2);
+    showToast(`Injected into ${injectHall}`);
+  };
+
+  const formatHour = (h) => {
+    const suffix = h < 12 ? 'AM' : 'PM';
+    const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${display}:00 ${suffix}`;
   };
 
   return (
@@ -52,67 +111,121 @@ function Controls({
       background: 'var(--controls-bg)', padding: '20px', borderRadius: '12px',
       border: '1px solid var(--border-color)', backdropFilter: 'blur(15px)', width: 'fit-content'
     }}>
-      
+
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position: 'absolute', top: '-44px', left: '50%', transform: 'translateX(-50%)',
+          background: toast.type === 'error' ? '#ef4444' : '#10b981',
+          color: '#fff', padding: '8px 16px', borderRadius: '8px',
+          fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+          animation: 'slideInRight 0.18s ease-out both',
+          pointerEvents: 'none',
+        }}>
+          {toast.msg}
+        </div>
+      )}
+
       {/* Top Row: Navigation + Modes + Theme Toggle */}
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
         {views.map((v) => (
-          <button key={v.id} className={currentView === v.id && !isEditMode ? 'active' : ''}
-            onClick={() => onViewChange(v.id)} style={{ padding: '8px 12px', fontSize: '11px' }}>
+          <button key={v.id}
+            className={currentView === v.id && !isEditMode ? 'active' : ''}
+            onClick={() => onViewChange(v.id)}
+            title={v.title}
+            style={{ padding: '8px 12px', fontSize: '11px' }}>
             {v.label}
           </button>
         ))}
         <div style={{ width: '1px', height: '20px', background: 'var(--divider-color)', margin: '0 8px' }} />
-        <button onClick={() => setSimMode('live')} style={{ background: simMode === 'live' ? '#10b981' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>Live IoT</button>
-        <button onClick={() => setSimMode('history')} style={{ background: simMode === 'history' ? '#9333ea' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>History</button>
-        <button onClick={() => setSimMode('sandbox')} style={{ background: simMode === 'sandbox' ? '#ef4444' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>Sandbox</button>
+        <button
+          onClick={() => setSimMode('live')}
+          title="Live IoT — real-time sensor data"
+          style={{ background: simMode === 'live' ? '#10b981' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>
+          Live IoT
+        </button>
+        <button
+          onClick={() => setSimMode('history')}
+          title="History — scrub through the last 24 hours"
+          style={{ background: simMode === 'history' ? '#9333ea' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>
+          History
+        </button>
+        <button
+          onClick={() => setSimMode('sandbox')}
+          title="Sandbox — manually inject sensor data"
+          style={{ background: simMode === 'sandbox' ? '#ef4444' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>
+          Sandbox
+        </button>
         <div style={{ width: '1px', height: '20px', background: 'var(--divider-color)', margin: '0 8px' }} />
-        <button className={isEditMode ? 'active btn-edit' : 'btn-edit'} onClick={onToggleEdit} style={{ padding: '8px 14px', fontSize: '11px' }}>{isEditMode ? 'Exit Editor' : 'Edit Layout'}</button>
+        <button
+          className={isEditMode ? 'active btn-edit' : 'btn-edit'}
+          onClick={onToggleEdit}
+          title={isEditMode ? 'Exit the layout editor' : 'Open the layout editor'}
+          style={{ padding: '8px 14px', fontSize: '11px' }}>
+          {isEditMode ? 'Exit Editor' : 'Edit Layout'}
+        </button>
         <div style={{ width: '1px', height: '20px', background: 'var(--divider-color)', margin: '0 8px' }} />
-        {/* Theme Toggle Button */}
-        <button 
-          onClick={toggleTheme} 
+        <button
+          onClick={toggleTheme}
           className="theme-toggle"
-          style={{ 
-            padding: '8px 14px', 
-            fontSize: '16px',
-            background: 'var(--button-bg)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-        >
+          style={{ padding: '8px 14px', fontSize: '16px', background: 'var(--button-bg)', border: '1px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
       </div>
 
-      {/* 🕒 HISTORY SCRUBBER UI */}
+      {/* HISTORY SCRUBBER */}
       {simMode === 'history' && (
-        <div style={{ borderTop: '1px solid #9333ea', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#9333ea', fontSize: '10px', fontWeight: 'bold' }}>
-            <span>HISTORY LOG (24H)</span><span>TIMESTAMP: {timeIndex}:00:00</span>
+        <div style={{ borderTop: '1px solid #9333ea', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#9333ea', fontSize: '10px', fontWeight: 'bold' }}>
+            <span>HISTORY LOG (24H)</span>
+            <span>{formatHour(timeIndex)}</span>
           </div>
-          <input type="range" min="0" max="24" value={timeIndex} onChange={(e) => setTimeIndex(parseInt(e.target.value))} style={{ width: '100%', accentColor: '#9333ea', cursor: 'pointer' }} />
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              onClick={togglePlay}
+              title={playing ? 'Pause playback' : 'Auto-play through 24 hours'}
+              style={{ background: '#9333ea', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 10px', fontSize: '13px', cursor: 'pointer', flexShrink: 0 }}>
+              {playing ? '⏸' : '▶'}
+            </button>
+            <input
+              type="range" min="0" max="24" value={timeIndex}
+              onChange={(e) => { if (playing) { clearInterval(playInterval.current); setPlaying(false); } setTimeIndex(parseInt(e.target.value)); }}
+              style={{ width: '100%', accentColor: '#9333ea', cursor: 'pointer' }}
+            />
+          </div>
         </div>
       )}
 
-      {/* 🧪 THE INJECTION PANEL */}
+      {/* DATA INJECTOR */}
       {simMode === 'sandbox' && (
         <div style={{ borderTop: '1px solid #ef4444', paddingTop: '12px', display: 'flex', gap: '10px', alignItems: 'center' }}>
           <span style={{ color: '#ef4444', fontSize: '10px', fontWeight: 'bold', marginRight: '10px' }}>DATA INJECTOR:</span>
-          <select value={injectHall} onChange={(e) => setInjectHall(e.target.value)} style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', padding: '6px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '11px' }}>
+          <select value={injectHall} onChange={(e) => setInjectHall(e.target.value)}
+            style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', padding: '6px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '11px' }}>
             {ALL_HALLS.map((hall) => <option key={hall.id} value={hall.id}>{hall.label}</option>)}
           </select>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <label style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Occ %:</label>
-            <input type="number" value={injectOcc} onChange={(e) => setInjectOcc(e.target.value)} style={{ width: '50px', background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '4px', fontSize: '11px' }} />
+            <label style={{ color: 'var(--text-secondary)', fontSize: '10px' }} title="Occupancy percentage (0–100)">Occ %:</label>
+            <input
+              type="number" value={injectOcc} min="0" max="100"
+              onChange={(e) => setInjectOcc(Math.min(100, Math.max(0, Number(e.target.value))))}
+              style={{ width: '50px', background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '4px', fontSize: '11px' }}
+            />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <label style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>CO₂:</label>
-            <input type="number" value={injectCO2} onChange={(e) => setInjectCO2(e.target.value)} style={{ width: '60px', background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '4px', fontSize: '11px' }} />
+            <label style={{ color: 'var(--text-secondary)', fontSize: '10px' }} title="CO₂ level in ppm (≥ 0)">CO₂:</label>
+            <input
+              type="number" value={injectCO2} min="0"
+              onChange={(e) => setInjectCO2(Math.max(0, Number(e.target.value)))}
+              style={{ width: '60px', background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '4px', fontSize: '11px' }}
+            />
           </div>
-          <button onClick={() => injectData(injectHall, injectOcc, injectCO2)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', fontSize: '11px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>
+          <button
+            onClick={handleInject}
+            title="Inject these values into the selected hall"
+            style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', fontSize: '11px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>
             ⚡ Inject Ripple
           </button>
         </div>
@@ -121,16 +234,20 @@ function Controls({
       {/* Bottom Row: Layers & Export */}
       <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <label style={{ color: 'var(--text-secondary)', fontSize: '10px', fontWeight: 'bold' }}>DATA LAYER:</label>
+          <label style={{ color: 'var(--text-secondary)', fontSize: '10px', fontWeight: 'bold' }} title="Choose what metric to visualize on the 3D map">DATA LAYER:</label>
           <select value={currentLayer} onChange={(e) => onLayerChange(e.target.value)}
             style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', padding: '6px', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '11px' }}>
             <option value="occupancy">Occupancy (%)</option>
             <option value="co2">CO₂ Levels (ppm)</option>
             <option value="aiAction">AI Recommendations</option>
+            <option value="sustainability">Carbon Footprint</option>
           </select>
         </div>
-
-        <button onClick={handleExportSnapshot} style={{ background: '#2E86C1', color: 'white', border: 'none', padding: '8px 16px', fontSize: '11px', borderRadius: '4px', cursor: 'pointer' }}>Export Snapshot
+        <button
+          onClick={handleExportSnapshot}
+          title="Save the current 3D view as a PNG image"
+          style={{ background: '#2E86C1', color: 'white', border: 'none', padding: '8px 16px', fontSize: '11px', borderRadius: '4px', cursor: 'pointer' }}>
+          Export Snapshot
         </button>
       </div>
     </div>

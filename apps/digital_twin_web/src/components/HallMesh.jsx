@@ -137,34 +137,37 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
   }
 
   return (
-    <group ref={groupRef} position={[basePosition[0], basePosition[1], basePosition[2]]} rotation={rotation}>
-      <mesh
-        geometry={geometry}
-        castShadow
-        receiveShadow
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
-        onClick={onClick}
-        scale={hovered ? [1.03, 1.05, 1.03] : [1, 1, 1]}
-      >
-        <meshStandardMaterial
-          color={blockColor}
-          emissive={blockColor}
-          emissiveIntensity={glowIntensity}
-          roughness={0.7}
-          metalness={0.3}
-          transparent={isTransparent}
-          opacity={opacity}
-          depthWrite={!isTransparent}
-        />
-      </mesh>
+    <group position={[basePosition[0], 0, basePosition[2]]} rotation={rotation}>
+      {/* Animated mesh group — only this rises on hover/select */}
+      <group ref={groupRef} position={[0, basePosition[1], 0]}>
+        <mesh
+          geometry={geometry}
+          castShadow
+          receiveShadow
+          onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
+          onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}
+          onClick={(e) => { e.stopPropagation(); onClick?.(e); }}
+          scale={hovered ? [1.03, 1.05, 1.03] : [1, 1, 1]}
+        >
+          <meshStandardMaterial
+            color={blockColor}
+            emissive={blockColor}
+            emissiveIntensity={glowIntensity}
+            roughness={0.7}
+            metalness={0.3}
+            transparent={isTransparent}
+            opacity={opacity}
+            depthWrite={!isTransparent}
+          />
+        </mesh>
+      </group>
 
-      {/* The Map Label */}
+      {/* Label pinned at fixed world Y — never moves with the pop animation */}
       <Text
-        position={[0, (HALL_HEIGHT / 2) + 0.2, 0]}
+        position={[0, HALL_HEIGHT + 0.2, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         fontSize={0.8}
-        color="#1e293b" // Dark text for light mode
+        color="#1e293b"
         fontWeight="bold"
         anchorX="center"
         anchorY="middle"

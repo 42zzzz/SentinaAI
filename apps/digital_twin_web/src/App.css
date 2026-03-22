@@ -259,6 +259,11 @@ button.theme-toggle:hover {
 }
 
 /* Hall Details */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
 .hall-details {
   position: absolute;
   top: 20px;
@@ -271,7 +276,7 @@ button.theme-toggle:hover {
   max-width: 280px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   z-index: 100;
-  transition: all 0.3s ease;
+  animation: slideInRight 0.22s ease-out both;
 }
 
 .hall-details h1 {
@@ -283,19 +288,26 @@ button.theme-toggle:hover {
 
 .close-btn {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 8px;
+  right: 8px;
   background: transparent;
   border: none;
   color: var(--text-tertiary);
   cursor: pointer;
-  font-size: 20px;
-  padding: 4px 8px;
+  font-size: 18px;
+  /* 32×32 minimum touch target */
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 0;
 }
 
 .close-btn:hover {
   color: var(--text-primary);
-  background: transparent;
+  background: var(--button-bg);
   transform: none;
 }
 
