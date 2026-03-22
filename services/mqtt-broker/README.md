@@ -12,8 +12,15 @@ EMQX 5.8 broker with mTLS authentication and per-device topic ACLs for SentinaAI
 ## Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose)
-- Bash (WSL on Windows, or macOS/Linux terminal)
-- Python 3.9+ with `paho-mqtt` (`pip install paho-mqtt`)
+- Bash (WSL Ubuntu on Windows, or macOS/Linux terminal)
+- Python 3.9+ with `paho-mqtt`
+
+On a fresh Ubuntu WSL install, `pip` is not available by default. Install it first, then install the test dependency:
+
+```bash
+sudo apt update && sudo apt install python3-pip -y
+pip3 install paho-mqtt
+```
 
 ---
 
@@ -52,21 +59,63 @@ docker exec sentina-emqx emqx ping   # should print: pong
 ### 3. Run integration tests
 
 ```bash
-python scripts/test_emqx.py -v
+python3 scripts/test_emqx.py -v
 ```
 
 All 9 tests should pass:
 
 ```
-NFR-28 T1 — Port 1883 is closed (plain-text disabled)     PASS
-NFR-26 T2 — Anonymous TLS connection is rejected           PASS
-NFR-26 T3 — Device with valid cert connects                PASS
-NFR-27 T4 — Device publishes to own topic (allowed)        PASS
-NFR-27 T5 — Device publish to other device's topic denied  PASS
+NFR-28 T1 — Port 1883 is closed (plain-text disabled)      PASS
+NFR-26 T2 — Anonymous TLS connection is rejected            PASS
+NFR-26 T3 — Device with valid cert connects                 PASS
+NFR-27 T4 — Device publishes to own topic (allowed)         PASS
+NFR-27 T5 — Device publish to other device's topic denied   PASS
 NFR-27 T6 — Device subscribe to all-devices wildcard denied PASS
-NFR-27 T7 — Device subscribe to aggregated/# denied        PASS
-NFR-27 T8 — Edge-node subscribes to all device topics      PASS
-NFR-27 T9 — Edge-node publishes aggregated metrics         PASS
+NFR-27 T7 — Device subscribe to aggregated/# denied         PASS
+NFR-27 T8 — Edge-node subscribes to all device topics       PASS
+NFR-27 T9 — Edge-node publishes aggregated metrics          PASS
+```
+
+#### How the tests prove the broker is correctly configured
+
+These are real integration tests — every test opens an actual TCP/TLS connection to the live EMQX container. Nothing is mocked.
+
+| Test | What actually happens on the wire |
+|------|----------------------------------|
+| T1 | A raw TCP socket is opened to port 1883. The test passes only if the connection is **actively refused** by the OS. |
+| T2 | A TLS handshake is attempted with **no client certificate**. EMQX must reject the handshake — if it connects, the test fails. |
+| T3 | A TLS connection is made using the `sensor-HZA01-occ` cert. EMQX verifies it was signed by the project CA and admits the client. |
+| T4 | The sensor publishes a real MQTT message to its own topic. The test waits for a **PUBACK** from the broker confirming acceptance. |
+| T5 | The sensor tries to publish to **another device's topic**. EMQX sends back error code `0x87 Not Authorized` and forcibly disconnects the client. The test passes only if **no PUBACK arrives**. |
+| T6 | The sensor tries to subscribe to `sentina/devices/#` (all devices). EMQX denies with an error SUBACK or disconnects. The test passes only if the subscription is **not granted**. |
+| T7 | Same as T6, but for the privileged `sentina/aggregated/#` topic. |
+| T8 | The `edge-node` identity subscribes to `sentina/devices/#`. This time the broker **must grant** it — the test fails if denied. |
+| T9 | The `edge-node` publishes to `sentina/aggregated/HZA01/occupancy` and waits for a PUBACK. |
+
+The "deny" tests (T5, T6, T7) are the most important: they only pass when the broker **actively rejects** the operation. A misconfigured broker that allowed everything would flip all three to FAIL.
+
+**To verify the tests are real, watch the broker logs while they run:**
+
+```bash
+# Terminal 1 — live broker log
+docker logs -f sentina-emqx
+
+# Terminal 2 — run the tests
+python3 scripts/test_emqx.py -v
+```
+
+You will see each connection attempt, TLS handshake, and rejection appear in the broker log in real time.
+
+**To prove the deny tests catch misconfigurations**, you can temporarily break the ACL and watch them fail:
+
+```bash
+# Bring the broker down so you can safely edit authz/acl.conf,
+# then restart and re-run — T5/T6/T7 will flip to FAIL.
+docker compose down
+# (edit authz/acl.conf to allow everything)
+docker compose up -d
+python3 scripts/test_emqx.py -v
+# Restore acl.conf and restart when done
 ```
 
 ### 4. Change the dashboard password
