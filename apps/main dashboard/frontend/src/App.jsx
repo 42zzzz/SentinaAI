@@ -1,3 +1,4 @@
+import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -6,6 +7,8 @@ import Login from "./pages/Login";
 import Admin from "./pages/Admin";
 
 import AppLayout from "./layouts/AppLayout";
+import ExhibitorLayout from "./layouts/ExhibitorLayout";
+
 import DashboardPage from "./pages/DashboardPage";
 import DevicesPage from "./pages/DevicesPage";
 import EventsPage from "./pages/EventsPage";
@@ -15,6 +18,9 @@ import AlertsPage from "./pages/AlertsPage";
 import NavigationPage from "./pages/NavigationPage";
 import EventDetails from "./pages/EventDetails";
 import ExhibitorDashboard from "./pages/ExhibitorDashboard";
+import ExhibitorHeatMapPage from "./pages/ExhibitorHeatMapPage";
+import ExhibitorAnalyticsPage from "./pages/ExhibitorAnalyticsPage";
+import ExhibitorReportsPage from "./pages/ExhibitorReportsPage";
 import SustainabilityDashboard from "./pages/SustainabilityDashboard";
 import AlertDetailsPage from "./pages/AlertDetailsPage";
 import SustainabilityHallDetails from "./pages/SustainabilityHallDetails";
@@ -23,6 +29,7 @@ import EnvironmentalPage from "./pages/EnvironmentalPage";
 
 export default function App() {
   const role = sessionStorage.getItem("role");
+
   const redirectByRole = () => {
     switch (role) {
       case "super_admin":
@@ -43,18 +50,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-
-        {/* LOGIN ROOT */}
         <Route
           path="/"
-          element={
-            role
-              ? <Navigate to={redirectByRole()} replace />
-              : <Login />
-          }
+          element={role ? <Navigate to={redirectByRole()} replace /> : <Login />}
         />
 
-        {/* ADMIN */}
         <Route
           path="/admin"
           element={
@@ -64,7 +64,6 @@ export default function App() {
           }
         />
 
-        {/* OPERATIONS */}
         <Route
           path="/operations/*"
           element={
@@ -84,7 +83,6 @@ export default function App() {
           <Route path="alerts/:id" element={<AlertDetailsPage />} />
         </Route>
 
-        {/* FUTURE SOC */}
         <Route
           path="/soc/*"
           element={
@@ -94,7 +92,6 @@ export default function App() {
           }
         />
 
-        {/* SUSTAINABILITY */}
         <Route
           path="/sustainability/*"
           element={
@@ -107,31 +104,28 @@ export default function App() {
           <Route path="devices" element={<DevicesPage />} />
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="alerts/:id" element={<AlertDetailsPage />} />
-          <Route
-            path="hall/:id"
-            element={<SustainabilityHallDetails />}
-          />
-
-          {/* temporary placeholders */}
+          <Route path="hall/:id" element={<SustainabilityHallDetails />} />
           <Route path="energy" element={<EnergyPage />} />
           <Route path="environment" element={<EnvironmentalPage />} />
           <Route path="map" element={<div>Map Page</div>} />
           <Route path="reports" element={<div>Reports Page</div>} />
         </Route>
 
-        {/* EXHIBITOR */}
         <Route
-          path="/exhibitor"
+          path="/exhibitor/*"
           element={
             <ProtectedRoute allowedRoles={["exhibitor"]}>
-              <ExhibitorDashboard />
+              <ExhibitorLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<ExhibitorDashboard />} />
+          <Route path="heatmap" element={<ExhibitorHeatMapPage />} />
+          <Route path="analytics" element={<ExhibitorAnalyticsPage />} />
+          <Route path="reports" element={<ExhibitorReportsPage />} />
+        </Route>
 
-        {/* FALLBACK */}
         <Route path="*" element={<Navigate to="/" replace />} />
-
       </Routes>
     </BrowserRouter>
   );

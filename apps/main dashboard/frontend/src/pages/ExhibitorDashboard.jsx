@@ -1,332 +1,186 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 
-const DEFAULT_EXHIBITOR_ID = "EXH0240";
-
-function buildQuery(params) {
-  const qs = new URLSearchParams();
-  Object.entries(params).forEach(([k, v]) => {
-    if (v === undefined || v === null || v === "") return;
-    qs.set(k, String(v));
-  });
-  return qs.toString();
+function BoothIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 6h14v12H5V6Zm0 0 2-2h10l2 2M9 10h6M9 14h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
-function clamp01(x) {
-  return Math.max(0, Math.min(1, x));
+function ConfidenceIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 3 5 6v5c0 4.4 2.8 8.4 7 9.8 4.2-1.4 7-5.4 7-9.8V6l-7-3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="m9.5 12 1.7 1.7L15 10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
-function lerp(a, b, t) {
-  return a + (b - a) * t;
+function DensityIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 16.5 12 7l5 9.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7 16.5h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
 }
 
-// Simple blue->red scale (low=blue, high=red)
-function heatColor(t) {
-  const r = Math.round(lerp(40, 220, t));
-  const g = Math.round(lerp(120, 60, t));
-  const b = Math.round(lerp(220, 40, t));
-  return `rgb(${r}, ${g}, ${b})`;
+function EventsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 3v3M17 3v3M4.5 8h15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <rect x="4.5" y="5.5" width="15" height="15" rx="3" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M8.5 12h3M8.5 15.5h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function PurpleIcon({ children }) {
+  return <div className="exhIconCircle">{children}</div>;
+}
+
+function KpiCard({ title, value, sub, icon, tone = "default", valueClassName = "" }) {
+  return (
+    <div className="exhCard exhKpiCard">
+      <div className="exhCardInner">
+        <PurpleIcon>{icon}</PurpleIcon>
+        <p className="exhCardTitle">{title}</p>
+        <div className={`exhCardValue ${valueClassName}`.trim()}>{value}</div>
+        <div className="exhCardMetaRow">
+          {sub ? <p className="exhCardSub">{sub}</p> : null}
+          {tone !== "default" ? <span className={`exhBadge is${tone}`}>{tone}</span> : null}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function ExhibitorDashboard() {
-  const [exhibitorId, setExhibitorId] = useState(DEFAULT_EXHIBITOR_ID);
-  const [intervalMinutes, setIntervalMinutes] = useState(30);
-  const [catchmentK, setCatchmentK] = useState(6);
-  const [mcPasses, setMcPasses] = useState(15);
+  const {
+    exhibitorId,
+    profile,
+    events,
+    heatmap,
+    densityLatest,
+    confidencePct,
+    quickInsights,
+    avgCatchmentEngagement,
+    formatMetric,
+    formatPercent,
+  } = useOutletContext();
 
-  const [heatmap, setHeatmap] = useState(null);
-  const [density, setDensity] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
+  const boothText = heatmap?.meta?.boothId || "—";
+  const confidenceTone =
+    confidencePct === null ? "default" : confidencePct >= 70 ? "good" : confidencePct >= 45 ? "warning" : "critical";
 
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("full_name");
-    localStorage.removeItem("employee_id");
-    navigate("/");
-  };
-
-  const heatmapUrl = useMemo(() => {
-    const qs = buildQuery({ intervalMinutes, catchmentK, mcPasses, agg: "mean" });
-    return `/api/exhibitor-ai/api/exhibitor/${encodeURIComponent(
-      exhibitorId
-    )}/catchment/heatmap?${qs}`;
-  }, [exhibitorId, intervalMinutes, catchmentK, mcPasses]);
-
-  const densityUrl = useMemo(() => {
-    const qs = buildQuery({ intervalMinutes, catchmentK, mcPasses });
-    return `/api/exhibitor-ai/api/exhibitor/${encodeURIComponent(
-      exhibitorId
-    )}/competition/density?${qs}`;
-  }, [exhibitorId, intervalMinutes, catchmentK, mcPasses]);
-
-  const downloadUrl = useMemo(() => {
-    const qs = buildQuery({ intervalMinutes, catchmentK, mcPasses });
-    return `/api/exhibitor-ai-download/api/exhibitor/${encodeURIComponent(
-      exhibitorId
-    )}/report/download?${qs}`;
-  }, [exhibitorId, intervalMinutes, catchmentK, mcPasses]);
-
-  async function loadAll() {
-    setErr("");
-    setLoading(true);
-    try {
-      const [hRes, dRes] = await Promise.all([fetch(heatmapUrl), fetch(densityUrl)]);
-
-      if (!hRes.ok) throw new Error(`Heatmap failed: ${hRes.status} ${await hRes.text()}`);
-      if (!dRes.ok) throw new Error(`Density failed: ${dRes.status} ${await dRes.text()}`);
-
-      const h = await hRes.json();
-      const d = await dRes.json();
-
-      setHeatmap(h);
-      setDensity(d);
-    } catch (e) {
-      setHeatmap(null);
-      setDensity(null);
-      setErr(String(e?.message || e));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const densityLatest = useMemo(() => {
-    if (!density?.series?.length) return null;
-    return density.series[density.series.length - 1];
-  }, [density]);
-
-  const confidence = heatmap?.meta?.aiConfidence?.score ?? null;
-
-  // Heatmap min/max (for colouring)
-  const heatStats = useMemo(() => {
-    if (!heatmap?.matrix?.length) return null;
-    const values = heatmap.matrix.flat().map((v) => Number(v));
-    const minV = Math.min(...values);
-    const maxV = Math.max(...values);
-    const range = Math.max(1e-9, maxV - minV);
-    return { minV, maxV, range };
-  }, [heatmap]);
+  const densityTone = densityLatest
+    ? String(densityLatest.competitive_density_label || "").toLowerCase() === "high"
+      ? "critical"
+      : String(densityLatest.competitive_density_label || "").toLowerCase() === "medium"
+      ? "warning"
+      : "good"
+    : "default";
 
   return (
-    <div style={{ padding: 16, fontFamily: "system-ui, Arial" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>Exhibitor Dashboard</h2>
+    <div className="exhPageWrap">
+      <div className="exhTopRow">
+        <KpiCard
+          title="Assigned Booth"
+          value={boothText}
+          valueClassName="isBoothCode"
+          sub={
+            heatmap?.meta?.hallName
+              ? `${heatmap.meta.hallName} · ${profile?.exhibitor_name || heatmap?.meta?.exhibitorId || exhibitorId}`
+              : profile?.exhibitor_name || exhibitorId
+          }
+          icon={<BoothIcon />}
+        />
 
-        <button
-          onClick={handleLogout}
-          style={{
-            padding: "6px 14px",
-            borderRadius: 8,
-            border: "none",
-            background: "#e11d48",
-            color: "white",
-            cursor: "pointer",
-            fontWeight: 600
-          }}
-        >
-          Logout
-        </button>
-      </div>
-      <p style={{ marginTop: 6, opacity: 0.8 }}>
-        Live AI metrics for booth engagement (catchment) and competitive density.
-      </p>
+        <KpiCard
+          title="AI Confidence"
+          value={confidencePct === null ? "—" : formatPercent(confidencePct, 0)}
+          sub={
+            heatmap?.meta?.aiConfidence?.avgStd !== undefined
+              ? `Avg uncertainty ${formatMetric(heatmap.meta.aiConfidence.avgStd, 4)}`
+              : "Model uncertainty overview"
+          }
+          icon={<ConfidenceIcon />}
+          tone={confidenceTone}
+        />
 
-      {/* Controls */}
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "end", marginTop: 12 }}>
-        <div>
-          <label style={{ fontSize: 12, opacity: 0.8 }}>Exhibitor ID</label>
-          <input
-            value={exhibitorId}
-            onChange={(e) => setExhibitorId(e.target.value)}
-            style={{ display: "block", padding: 8, minWidth: 160 }}
-          />
-        </div>
+        <KpiCard
+          title="Competition Density"
+          value={densityLatest?.competitive_density_label || "—"}
+          sub={densityLatest ? `Score ${formatMetric(densityLatest.competitive_density_score, 3)}` : "Latest catchment comparison"}
+          icon={<DensityIcon />}
+          tone={densityTone}
+        />
 
-        <div>
-          <label style={{ fontSize: 12, opacity: 0.8 }}>Interval (minutes)</label>
-          <select
-            value={intervalMinutes}
-            onChange={(e) => setIntervalMinutes(Number(e.target.value))}
-            style={{ display: "block", padding: 8 }}
-          >
-            {[15, 30, 60, 120].map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label style={{ fontSize: 12, opacity: 0.8 }}>Catchment K</label>
-          <input
-            type="number"
-            min={1}
-            max={26}
-            value={catchmentK}
-            onChange={(e) => setCatchmentK(Number(e.target.value))}
-            style={{ display: "block", padding: 8, width: 120 }}
-          />
-        </div>
-
-        <div>
-          <label style={{ fontSize: 12, opacity: 0.8 }}>MC passes</label>
-          <input
-            type="number"
-            min={5}
-            max={50}
-            value={mcPasses}
-            onChange={(e) => setMcPasses(Number(e.target.value))}
-            style={{ display: "block", padding: 8, width: 120 }}
-          />
-        </div>
-
-        <button onClick={loadAll} disabled={loading} style={{ padding: "10px 14px", cursor: "pointer" }}>
-          {loading ? "Loading..." : "Refresh"}
-        </button>
-
-        <a href={downloadUrl} style={{ padding: "10px 14px", border: "1px solid #ccc", textDecoration: "none" }}>
-          Download XLSX Report
-        </a>
+        <KpiCard
+          title="Events Linked"
+          value={String(events.length || 0)}
+          sub={events.length ? `Latest ${events[0]?.event_name || events[0]?.event_id}` : "No linked event records"}
+          icon={<EventsIcon />}
+        />
       </div>
 
-      {err && (
-        <div style={{ marginTop: 12, padding: 12, border: "1px solid #f5c2c7", background: "#f8d7da" }}>
-          <b>Error:</b> {err}
-        </div>
-      )}
-
-      {/* KPI cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 12,
-          marginTop: 16,
-        }}
-      >
-        <div style={{ border: "1px solid #ddd", padding: 12 }}>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>Booth / Hall</div>
-          <div style={{ fontSize: 16, marginTop: 6 }}>
-            {heatmap?.meta?.boothId || "—"} · {heatmap?.meta?.hallName || "—"}
-          </div>
-          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>Event: {heatmap?.meta?.eventId || "—"}</div>
-        </div>
-
-        <div style={{ border: "1px solid #ddd", padding: 12 }}>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>AI Confidence</div>
-          <div style={{ fontSize: 22, marginTop: 6 }}>{confidence === null ? "—" : `${Math.round(confidence * 100)}%`}</div>
-          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
-            Avg std: {heatmap?.meta?.aiConfidence?.avgStd?.toFixed?.(4) ?? "—"}
-          </div>
-        </div>
-
-        <div style={{ border: "1px solid #ddd", padding: 12 }}>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>Competitive Density (latest)</div>
-          <div style={{ fontSize: 22, marginTop: 6 }}>{densityLatest ? densityLatest.competitive_density_label : "—"}</div>
-          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
-            Score: {densityLatest ? densityLatest.competitive_density_score : "—"} · {densityLatest ? densityLatest.bucket_ts : ""}
-          </div>
-        </div>
-      </div>
-
-      {/* Heatmap */}
-      <div style={{ marginTop: 16 }}>
-        <h3 style={{ marginBottom: 8 }}>Catchment Engagement Heatmap</h3>
-
-        {!heatmap ? (
-          <div style={{ opacity: 0.7 }}>No data loaded.</div>
-        ) : (
-          <div style={{ overflowX: "auto", border: "1px solid #ddd" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-              <thead>
-                <tr>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: 8,
-                      borderBottom: "1px solid #ddd",
-                      background: "#fafafa",
-                    }}
-                  >
-                    Time
-                  </th>
-                  {heatmap.xLabels.map((x) => (
-                    <th
-                      key={x}
-                      style={{
-                        textAlign: "left",
-                        padding: 8,
-                        borderBottom: "1px solid #ddd",
-                        background: "#fafafa",
-                      }}
-                    >
-                      {x}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-
-              <tbody>
-                {heatmap.yLabels.map((t, rowIdx) => (
-                  <tr key={t}>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eee", whiteSpace: "nowrap" }}>{t}</td>
-
-                    {heatmap.matrix[rowIdx].map((val, colIdx) => {
-                      const num = Number(val);
-                      const { minV, range } = heatStats || { minV: 0, range: 1 };
-                      const norm = clamp01((num - minV) / range);
-                      const bg = heatColor(norm);
-                      const textColor = norm > 0.6 ? "#fff" : "#111";
-
-                      return (
-                        <td
-                          key={`${t}-${colIdx}`}
-                          title={`Value: ${num.toFixed(4)}`}
-                          style={{
-                            padding: 8,
-                            borderBottom: "1px solid #eee",
-                            background: bg,
-                            color: textColor,
-                            fontVariantNumeric: "tabular-nums",
-                          }}
-                        >
-                          {num.toFixed(3)}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Legend */}
-            {heatStats && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 10, borderTop: "1px solid #ddd" }}>
-                <span style={{ fontSize: 12, opacity: 0.8 }}>Low</span>
-                <div
-                  style={{
-                    height: 10,
-                    width: 180,
-                    background: `linear-gradient(to right, ${heatColor(0)}, ${heatColor(1)})`,
-                  }}
-                />
-                <span style={{ fontSize: 12, opacity: 0.8 }}>High</span>
-                <span style={{ marginLeft: 10, fontSize: 12, opacity: 0.75 }}>
-                  min {heatStats.minV.toFixed(4)} · max {heatStats.maxV.toFixed(4)}
-                </span>
+      <div className="exhBottomGrid">
+        <section className="exhCard">
+          <div className="exhCardHeaderRow">
+            <div className="exhCardHeaderLeft">
+              <div>
+                <h3>Overview</h3>
+                <p>High-level exhibitor performance snapshot.</p>
               </div>
-            )}
+            </div>
           </div>
-        )}
+          <div className="exhCardBody">
+            <div className="exhInsightList">
+              {quickInsights.length ? (
+                quickInsights.map((item) => (
+                  <div key={item} className="exhInsightItem">
+                    <span className="exhInsightBullet" />
+                    <p>{item}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="exhEmptyInline">Insights will populate once the exhibitor endpoints return data.</div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="exhCard">
+          <div className="exhCardHeaderRow">
+            <div className="exhCardHeaderLeft">
+              <div>
+                <h3>Profile</h3>
+                <p>Current exhibitor summary.</p>
+              </div>
+            </div>
+          </div>
+          <div className="exhCardBody">
+            <div className="exhContactList">
+              <div>
+                <label>Exhibitor</label>
+                <strong>{profile?.exhibitor_name || "—"}</strong>
+              </div>
+              <div>
+                <label>Industry</label>
+                <strong>{profile?.industry || "—"}</strong>
+              </div>
+              <div>
+                <label>Country</label>
+                <strong>{profile?.hq_country || "—"}</strong>
+              </div>
+              <div>
+                <label>Average engagement</label>
+                <strong>{avgCatchmentEngagement !== null ? formatMetric(avgCatchmentEngagement, 3) : "—"}</strong>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );

@@ -1,10 +1,6 @@
 // frontend/src/layout/AppLayout.jsx
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
-/* (optional) remove these if unused to avoid lint warnings */
-// import homeIcon from "../assets/icons/home.svg";
-// import devicesIcon from "../assets/icons/devices.svg";
-
 const rolePrefixMap = {
   operations_manager: "/operations",
   sustainability_manager: "/sustainability",
@@ -14,27 +10,33 @@ const rolePrefixMap = {
 
 const IconSize = 20;
 
-function PageTitle() {
-  const { pathname } = useLocation();
-  const role = localStorage.getItem("role");
+function getSectionFromPath(pathname) {
+  if (pathname.startsWith("/sustainability")) return "sustainability";
+  if (pathname.startsWith("/operations")) return "operations";
+  if (pathname.startsWith("/soc")) return "soc";
+  if (pathname.startsWith("/exhibitor")) return "exhibitor";
+  return null;
+}
 
-  if (role === "sustainability_manager") {
-    if (pathname === "/sustainability" || pathname === "/sustainability/") return "Dashboard";
-    if (pathname.startsWith("/sustainability/devices")) return "Devices";
-    if (pathname.startsWith("/sustainability/alerts")) return "Alerts";
-    if (pathname.startsWith("/sustainability/energy")) return "Energy";
-    if (pathname.startsWith("/sustainability/environment")) return "Environmental";
-    if (pathname.startsWith("/sustainability/map")) return "Map";
-    if (pathname.startsWith("/sustainability/reports")) return "Reports";
-  }
+function getPageTitle(pathname) {
+  if (pathname === "/sustainability" || pathname === "/sustainability/") return "Dashboard";
+  if (pathname.startsWith("/sustainability/devices")) return "Devices";
+  if (pathname.startsWith("/sustainability/alerts")) return "Alerts";
+  if (pathname.startsWith("/sustainability/energy")) return "Energy";
+  if (pathname.startsWith("/sustainability/environment")) return "Environmental";
+  if (pathname.startsWith("/sustainability/map")) return "Map";
+  if (pathname.startsWith("/sustainability/reports")) return "Reports";
 
   if (pathname === "/operations" || pathname === "/operations/") return "Dashboard";
   if (pathname.startsWith("/operations/devices")) return "Devices";
   if (pathname.startsWith("/operations/events")) return "Events";
   if (pathname.startsWith("/operations/exhibitors")) return "Exhibitors";
-  if (pathname.startsWith("/operations/booths")) return "Booths & Assignments";
+  if (pathname.startsWith("/operations/booths")) return "Booths";
   if (pathname.startsWith("/operations/alerts")) return "Alerts";
   if (pathname.startsWith("/operations/navigation")) return "Navigation";
+
+  if (pathname.startsWith("/soc")) return "SOC";
+  if (pathname.startsWith("/exhibitor")) return "Exhibitor Portal";
 
   return "SentinaAI";
 }
@@ -64,7 +66,7 @@ function SvgIcon({ children }) {
   );
 }
 
-/* ===== Sustainability nav icons (from your SVG list) ===== */
+/* ===== Sustainability nav icons ===== */
 function EnergyNavIcon() {
   return (
     <svg width={IconSize} height={IconSize} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -121,11 +123,22 @@ function ReportsNavIcon() {
 
 export default function AppLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const role = localStorage.getItem("role") || "operations_manager";
-  const rolePrefix = rolePrefixMap[role] || "/operations";
+  const pathname = location.pathname;
+  const section = getSectionFromPath(pathname);
 
-  const isSust = role === "sustainability_manager";
+  const storedRole = localStorage.getItem("role") || "operations_manager";
+
+  const rolePrefix =
+    section === "sustainability"
+      ? "/sustainability"
+      : section === "operations"
+      ? "/operations"
+      : rolePrefixMap[storedRole] || "/operations";
+
+  const isSust = section === "sustainability";
+  const isOperations = section === "operations";
 
   const ACCENT = isSust ? "#00802B" : "#E8486F";
   const ACCENT_BG = isSust ? "rgba(0,128,43,0.08)" : "rgba(232,72,111,0.08)";
@@ -149,10 +162,34 @@ export default function AppLayout() {
   };
 
   const styles = {
-    shell: { display: "grid", gridTemplateColumns: "260px 1fr", height: "100vh", background: "#f6f7fb", color: "#111827" },
-    sidebar: { padding: 18, background: "#ffffff", borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: 6 },
-    brand: { fontSize: 28, fontWeight: 900, letterSpacing: "-0.5px", marginBottom: 18 },
-    sectionLabel: { fontSize: 12, fontWeight: 800, opacity: 0.55, marginTop: 6, marginBottom: 8 },
+    shell: {
+      display: "grid",
+      gridTemplateColumns: "260px 1fr",
+      height: "100vh",
+      background: "#f6f7fb",
+      color: "#111827",
+    },
+    sidebar: {
+      padding: 18,
+      background: "#ffffff",
+      borderRight: "1px solid #e5e7eb",
+      display: "flex",
+      flexDirection: "column",
+      gap: 6,
+    },
+    brand: {
+      fontSize: 28,
+      fontWeight: 900,
+      letterSpacing: "-0.5px",
+      marginBottom: 18,
+    },
+    sectionLabel: {
+      fontSize: 12,
+      fontWeight: 800,
+      opacity: 0.55,
+      marginTop: 6,
+      marginBottom: 8,
+    },
     logoutBtn: {
       marginTop: 10,
       padding: "10px 12px",
@@ -167,15 +204,45 @@ export default function AppLayout() {
       gap: 10,
     },
     main: { display: "flex", flexDirection: "column", overflow: "hidden" },
-    header: { padding: "18px 22px", display: "flex", justifyContent: "space-between", alignItems: "center" },
+    header: {
+      padding: "18px 22px",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
     pageTitle: { fontSize: 20, fontWeight: 900, color: ACCENT },
     subTitle: { marginTop: 4, fontSize: 12, opacity: 0.65 },
     headerRight: { display: "flex", alignItems: "center", gap: 14 },
     searchWrap: { position: "relative", width: 320 },
-    searchInput: { width: "100%", padding: "10px 36px 10px 12px", borderRadius: 12, border: "1px solid #e5e7eb", outline: "none", background: "#ffffff" },
+    searchInput: {
+      width: "100%",
+      padding: "10px 36px 10px 12px",
+      borderRadius: 12,
+      border: "1px solid #e5e7eb",
+      outline: "none",
+      background: "#ffffff",
+    },
     searchIcon: { position: "absolute", right: 10, top: 8, opacity: 0.6 },
-    userCard: { display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", borderRadius: 14, background: "#ffffff", border: "1px solid #e5e7eb" },
-    avatar: { width: 40, height: 40, borderRadius: 999, background: "#111827", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 },
+    userCard: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      padding: "8px 10px",
+      borderRadius: 14,
+      background: "#ffffff",
+      border: "1px solid #e5e7eb",
+    },
+    avatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 999,
+      background: "#111827",
+      color: "white",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontWeight: 900,
+    },
     content: { padding: "0 22px 22px 22px", overflow: "auto" },
   };
 
@@ -237,8 +304,7 @@ export default function AppLayout() {
           Alerts
         </NavLink>
 
-        {/* ✅ FIX: restore missing Operations links */}
-        {role === "operations_manager" && (
+        {isOperations && (
           <>
             <NavLink to={`${rolePrefix}/events`} style={navItemStyle}>
               <SvgIcon>
@@ -309,33 +375,10 @@ export default function AppLayout() {
                   xmlns="http://www.w3.org/2000/svg"
                   style={{ display: "block", color: "inherit" }}
                 >
-                  <rect
-                    x="3"
-                    y="2.5"
-                    width="18"
-                    height="19"
-                    rx="4.5"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  />
-                  <path
-                    d="M8 8H13"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M8 12H16"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M8 16H16"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
+                  <rect x="3" y="2.5" width="18" height="19" rx="4.5" stroke="currentColor" strokeWidth="2" />
+                  <path d="M8 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M8 16H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </SvgIcon>
               Booths
@@ -358,7 +401,7 @@ export default function AppLayout() {
           </>
         )}
 
-        {role === "sustainability_manager" && (
+        {isSust && (
           <>
             <NavLink to={`${rolePrefix}/energy`} style={navItemStyle}>
               <SvgIcon><EnergyNavIcon /></SvgIcon>
@@ -388,7 +431,6 @@ export default function AppLayout() {
 
         <NavLink to={`${rolePrefix}/settings`} style={navItemStyle}>
           <SvgIcon>
-            {/* (settings icon unchanged) */}
             <svg width="100%" height="100%" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
               <g clipPath="url(#clip0)">
                 <path
@@ -450,13 +492,13 @@ export default function AppLayout() {
       <main style={styles.main}>
         <header style={styles.header}>
           <div>
-            <div style={styles.pageTitle}>{PageTitle()}</div>
+            <div style={styles.pageTitle}>{getPageTitle(pathname)}</div>
             <div style={styles.subTitle}>
-              {role === "sustainability_manager"
+              {isSust
                 ? "Sustainability Dashboard"
-                : role === "soc_analyst"
+                : section === "soc"
                 ? "SOC Dashboard"
-                : role === "exhibitor"
+                : section === "exhibitor"
                 ? "Exhibitor Portal"
                 : "Operations Dashboard"}
             </div>
@@ -481,11 +523,19 @@ export default function AppLayout() {
 
             <div style={styles.userCard}>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 13 }}>{localStorage.getItem("full_name") || "User"}</div>
-                <div style={{ fontSize: 12, opacity: 0.75 }}>Role: {localStorage.getItem("role")}</div>
-                <div style={{ fontSize: 12, opacity: 0.75 }}>Employee ID: {localStorage.getItem("employee_id")}</div>
+                <div style={{ fontWeight: 800, fontSize: 13 }}>
+                  {localStorage.getItem("full_name") || "User"}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>
+                  Role: {localStorage.getItem("role")}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>
+                  Employee ID: {localStorage.getItem("employee_id")}
+                </div>
               </div>
-              <div style={styles.avatar}>{(localStorage.getItem("full_name") || "U").charAt(0).toUpperCase()}</div>
+              <div style={styles.avatar}>
+                {(localStorage.getItem("full_name") || "U").charAt(0).toUpperCase()}
+              </div>
             </div>
           </div>
         </header>
