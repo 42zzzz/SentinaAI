@@ -15,7 +15,8 @@ const formatDate = (date) =>
     date ? new Date(date).toLocaleString() : "—";
 
 export default function Admin() {
-    const token = localStorage.getItem("token");
+    const token =
+        localStorage.getItem("token") || sessionStorage.getItem("token");
 
     const [users, setUsers] = useState([]);
     const [roles, setRoles] = useState([]);
@@ -31,6 +32,9 @@ export default function Admin() {
         password: "",
         role_id: "",
     });
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     const handleChange = (field, value) => {
         setForm((prev) => ({
             ...prev,
@@ -69,6 +73,8 @@ export default function Admin() {
                 delete updatedErrors.role_id;
             }
 
+            delete updatedErrors.api;
+
             return updatedErrors;
         });
     };
@@ -76,21 +82,90 @@ export default function Admin() {
     useEffect(() => {
         fetchUsers();
         fetchRoles();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-    const fetchUsers = async () => {
-        const res = await fetch("http://localhost:8080/users", {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        setUsers(Array.isArray(data) ? data : []);
-    };
-    const fetchRoles = async () => {
-        const res = await fetch("http://localhost:8080/users/roles", {
-            headers: { Authorization: `Bearer ${token}` },
-        });
 
-        const data = await res.json();
-        setRoles(Array.isArray(data) ? data : []);
+    const fetchUsers = async () => {
+        try {
+            if (!token) {
+                setUsers([]);
+                setErrors((prev) => ({
+                    ...prev,
+                    api: "No auth token found. Please log in again.",
+                }));
+                return;
+            }
+
+            const res = await fetch("http://localhost:8080/users", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                console.error("Failed to fetch users:", data);
+                setUsers([]);
+                setErrors((prev) => ({
+                    ...prev,
+                    api: data?.error || "Failed to load users",
+                }));
+                return;
+            }
+
+            setUsers(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error("Failed to fetch users:", err);
+            setUsers([]);
+            setErrors((prev) => ({
+                ...prev,
+                api: "Failed to load users",
+            }));
+        }
+    };
+
+    const fetchRoles = async () => {
+        try {
+            if (!token) {
+                setRoles([]);
+                setErrors((prev) => ({
+                    ...prev,
+                    api: "No auth token found. Please log in again.",
+                }));
+                return;
+            }
+
+            const res = await fetch("http://localhost:8080/users/roles", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                console.error("Failed to fetch roles:", data);
+                setRoles([]);
+                setErrors((prev) => ({
+                    ...prev,
+                    api: data?.error || "Failed to load roles",
+                }));
+                return;
+            }
+
+            setRoles(Array.isArray(data) ? data : []);
+
+            if (Array.isArray(data) && data.length === 0) {
+                setErrors((prev) => ({
+                    ...prev,
+                    api: "No assignable roles were returned by the backend.",
+                }));
+            }
+        } catch (err) {
+            console.error("Failed to fetch roles:", err);
+            setRoles([]);
+            setErrors((prev) => ({
+                ...prev,
+                api: "Failed to load roles",
+            }));
+        }
     };
 
     const passwordRules = {
@@ -98,10 +173,9 @@ export default function Admin() {
         upper: /[A-Z]/.test(form.password),
         lower: /[a-z]/.test(form.password),
         number: /\d/.test(form.password),
-        special: /[^A-Za-z0-9]/.test(form.password), // any symbol
+        special: /[^A-Za-z0-9]/.test(form.password),
     };
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const isPasswordValid = Object.values(passwordRules).every(Boolean);
 
     const handleCreateUser = async () => {
@@ -130,62 +204,105 @@ export default function Admin() {
         setErrors(newErrors);
         if (Object.keys(newErrors).length > 0) return;
 
-        const res = await fetch("http://localhost:8080/users", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(form),
-        });
+        try {
+            const res = await fetch("http://localhost:8080/users", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(form),
+            });
 
-        const data = await res.json();
+            const data = await res.json();
 
-        if (!res.ok) {
-            const apiMsg = Array.isArray(data.error)
-                ? data.error.join(" | ")
-                : (data.error || "Failed to create user");
+            if (!res.ok) {
+                const apiMsg = Array.isArray(data.error)
+                    ? data.error.join(" | ")
+                    : (data.error || "Failed to create user");
 
-            setErrors({ api: apiMsg });
-            return;
+                setErrors({ api: apiMsg });
+                return;
+            }
+
+            setShowAddModal(false);
+            setForm({ full_name: "", email: "", password: "", role_id: "" });
+            setShowPassword(false);
+            setErrors({});
+            fetchUsers();
+        } catch (err) {
+            console.error("Failed to create user:", err);
+            setErrors({ api: "Failed to create user" });
         }
-
-        setShowAddModal(false);
-        setForm({ full_name: "", email: "", password: "", role_id: "" });
-        setShowPassword(false);
-        setErrors({});
-        fetchUsers();
     };
 
     const handleUpdateUser = async () => {
-        await fetch(`http://localhost:8080/users/${selectedUser.user_id}`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-                full_name: selectedUser.full_name,
-                email: selectedUser.email,
-                role_id: selectedUser.role_id,
-            }),
-        });
+        try {
+            const res = await fetch(`http://localhost:8080/users/${selectedUser.user_id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    full_name: selectedUser.full_name,
+                    email: selectedUser.email,
+                    role_id: selectedUser.role_id,
+                }),
+            });
 
-        setShowEditModal(false);
-        fetchUsers();
+            const data = await res.json();
+
+            if (!res.ok) {
+                setErrors((prev) => ({
+                    ...prev,
+                    api: data?.error || "Failed to update user",
+                }));
+                return;
+            }
+
+            setShowEditModal(false);
+            setSelectedUser(null);
+            fetchUsers();
+        } catch (err) {
+            console.error("Failed to update user:", err);
+            setErrors((prev) => ({
+                ...prev,
+                api: "Failed to update user",
+            }));
+        }
     };
 
     const handleDeleteUser = async () => {
-        await fetch(
-            `http://localhost:8080/users/${selectedUser.user_id}`,
-            {
-                method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
-            }
-        );
+        try {
+            const res = await fetch(
+                `http://localhost:8080/users/${selectedUser.user_id}`,
+                {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
 
-        setShowEditModal(false);
-        fetchUsers();
+            const data = await res.json();
+
+            if (!res.ok) {
+                setErrors((prev) => ({
+                    ...prev,
+                    api: data?.error || "Failed to delete user",
+                }));
+                return;
+            }
+
+            setShowEditModal(false);
+            setSelectedUser(null);
+            fetchUsers();
+        } catch (err) {
+            console.error("Failed to delete user:", err);
+            setErrors((prev) => ({
+                ...prev,
+                api: "Failed to delete user",
+            }));
+        }
     };
 
     return (
@@ -196,6 +313,10 @@ export default function Admin() {
                     + Add User
                 </button>
             </div>
+
+            {errors.api && !showAddModal && !showEditModal && (
+                <div style={styles.errorBanner}>{errors.api}</div>
+            )}
 
             <table style={styles.table}>
                 <thead>
@@ -228,6 +349,7 @@ export default function Admin() {
                                         onClick={() => {
                                             setSelectedUser(user);
                                             setShowEditModal(true);
+                                            setErrors({});
                                         }}
                                     >
                                         Edit
@@ -281,6 +403,12 @@ export default function Admin() {
                             <div style={styles.errorText}>{errors.password}</div>
                         )}
 
+                        {roles.length === 0 && (
+                            <div style={styles.errorText}>
+                                No roles loaded from backend. Check /users/roles response.
+                            </div>
+                        )}
+
                         <select
                             value={form.role_id}
                             onChange={(e) => handleChange("role_id", e.target.value)}
@@ -301,7 +429,7 @@ export default function Admin() {
                         )}
 
                         <div style={styles.passwordRulesBox}>
-                            <div style={rule(passwordRules.length)}>Minimum 8 characters</div>
+                            <div style={rule(passwordRules.length)}>Minimum 12 characters</div>
                             <div style={rule(passwordRules.upper)}>1 uppercase letter</div>
                             <div style={rule(passwordRules.lower)}>1 lowercase letter</div>
                             <div style={rule(passwordRules.number)}>1 number</div>
@@ -312,7 +440,10 @@ export default function Admin() {
 
                         <div style={styles.modalActions}>
                             <button
-                                onClick={() => setShowAddModal(false)}
+                                onClick={() => {
+                                    setShowAddModal(false);
+                                    setErrors({});
+                                }}
                                 style={styles.cancelBtn}
                             >
                                 Cancel
@@ -369,6 +500,10 @@ export default function Admin() {
                             ))}
                         </select>
 
+                        {errors.api && (
+                            <div style={styles.errorText}>{errors.api}</div>
+                        )}
+
                         <div style={styles.modalActionsBetween}>
                             <button style={styles.deleteBtn} onClick={handleDeleteUser}>
                                 Delete
@@ -376,7 +511,11 @@ export default function Admin() {
 
                             <div style={{ display: "flex", gap: 10 }}>
                                 <button
-                                    onClick={() => setShowEditModal(false)}
+                                    onClick={() => {
+                                        setShowEditModal(false);
+                                        setSelectedUser(null);
+                                        setErrors({});
+                                    }}
                                     style={styles.cancelBtn}
                                 >
                                     Cancel
@@ -491,5 +630,13 @@ const styles = {
         color: "#dc2626",
         fontSize: 13,
         marginTop: 4,
+    },
+    errorBanner: {
+        background: "#fee2e2",
+        color: "#991b1b",
+        border: "1px solid #fecaca",
+        padding: "10px 14px",
+        borderRadius: 10,
+        marginBottom: 16,
     },
 };

@@ -8,6 +8,12 @@ const { validatePassword } = require("../security/passwordPolicy");
 const router = express.Router();
 
 /* ===============================
+   LOCKOUT CONFIG
+================================= */
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
+
+/* ===============================
    LOGIN
 ================================= */
 router.post("/login", async (req, res) => {
@@ -31,6 +37,9 @@ router.post("/login", async (req, res) => {
         u.email,
         u.password_hash,
         u.employee_id,
+        u.failed_login_attempts,
+        u.locked_until,
+        u.last_failed_login_at,
         r.role_name
       FROM users u
       JOIN user_roles ur ON ur.user_id = u.user_id
@@ -49,20 +58,79 @@ router.post("/login", async (req, res) => {
 
     const user = result.rows[0];
 
+    // Check if account is currently locked
+    if (user.locked_until && new Date(user.locked_until) > new Date()) {
+      req.audit.authResult = "FAILED";
+      req.audit.userId = user.user_id;
+      req.audit.role = user.role_name;
+      req.audit.failureReason = "ACCOUNT_LOCKED";
+
+      return res.status(401).json({
+        error: `Account locked. Try again after ${new Date(user.locked_until).toLocaleString()}`,
+      });
+    }
+
     const match = await bcrypt.compare(password, user.password_hash);
 
     if (!match) {
+      const currentFailedAttempts = Number(user.failed_login_attempts || 0);
+      const newFailedAttempts = currentFailedAttempts + 1;
+
+      let newLockedUntil = null;
+
+      if (newFailedAttempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+        newLockedUntil = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000);
+
+        await core.query(
+          `
+          UPDATE users
+          SET 
+            failed_login_attempts = $1,
+            locked_until = $2,
+            last_failed_login_at = CURRENT_TIMESTAMP
+          WHERE user_id = $3
+          `,
+          [newFailedAttempts, newLockedUntil, user.user_id]
+        );
+
+        req.audit.authResult = "FAILED";
+        req.audit.userId = user.user_id;
+        req.audit.role = user.role_name;
+        req.audit.failureReason = "ACCOUNT_LOCKED_AFTER_FAILED_ATTEMPTS";
+
+        return res.status(401).json({
+          error: `Account locked after too many failed attempts. Try again after ${newLockedUntil.toLocaleString()}`,
+        });
+      }
+
+      await core.query(
+        `
+        UPDATE users
+        SET 
+          failed_login_attempts = $1,
+          last_failed_login_at = CURRENT_TIMESTAMP
+        WHERE user_id = $2
+        `,
+        [newFailedAttempts, user.user_id]
+      );
+
       req.audit.authResult = "FAILED";
       req.audit.userId = user.user_id;
       req.audit.role = user.role_name;
       req.audit.failureReason = "PASSWORD_MISMATCH";
+
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
+    // Successful login: reset lockout fields
     await core.query(
       `
       UPDATE users 
-      SET last_active_at = CURRENT_TIMESTAMP 
+      SET 
+        last_active_at = CURRENT_TIMESTAMP,
+        failed_login_attempts = 0,
+        locked_until = NULL,
+        last_failed_login_at = NULL
       WHERE user_id = $1
       `,
       [user.user_id]

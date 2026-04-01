@@ -18,16 +18,15 @@ export default function Login() {
   const [flash, setFlash] = useState("");
 
   useEffect(() => {
-  const msg = sessionStorage.getItem("loginFlash");
-  if (msg) {
-    setFlash(msg);
-    sessionStorage.removeItem("loginFlash");
-  }
-}, []);
+    const msg = sessionStorage.getItem("loginFlash");
+    if (msg) {
+      setFlash(msg);
+      sessionStorage.removeItem("loginFlash");
+    }
+  }, []);
 
   const validateEmail = (value) => {
-    const emailRegex =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(value);
   };
 
@@ -85,9 +84,17 @@ export default function Login() {
         default:
           navigate("/");
       }
-
     } catch (err) {
-      setError("Invalid email or password.");
+      const backendMessage =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        "Invalid email or password.";
+
+      if (Array.isArray(backendMessage)) {
+        setError(backendMessage.join(" "));
+      } else {
+        setError(backendMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -106,26 +113,24 @@ export default function Login() {
   return (
     <div className="login-wrapper">
       <div className="login-card">
-
         <div className="login-title">SentinaAI</div>
 
         {flash && (
-  <div
-    style={{
-      padding: "10px",
-      marginBottom: "12px",
-      borderRadius: "10px",
-      background: "#fff7ed",
-      border: "1px solid #fdba74",
-      fontWeight: 700,
-    }}
-  >
-    {flash}
-  </div>
-)}
+          <div
+            style={{
+              padding: "10px",
+              marginBottom: "12px",
+              borderRadius: "10px",
+              background: "#fff7ed",
+              border: "1px solid #fdba74",
+              fontWeight: 700,
+            }}
+          >
+            {flash}
+          </div>
+        )}
 
         <form onSubmit={handleLogin}>
-
           <input
             type="email"
             placeholder="Email"
@@ -158,11 +163,9 @@ export default function Login() {
           >
             {loading ? "Logging in..." : "Login"}
           </button>
-
         </form>
 
         {error && <div className="login-error">{error}</div>}
-
       </div>
     </div>
   );
