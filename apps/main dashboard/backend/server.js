@@ -1,4 +1,3 @@
-// backend/server.js (CommonJS)
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -11,28 +10,31 @@ if (typeof global.fetch !== "function") {
     global.fetch = require("node-fetch");
   } catch (e) {
     console.warn(
-      "❌ fetch() is not available. Install node-fetch@2 or upgrade Node to 18+."
+      "fetch() is not available. Install node-fetch@2 or upgrade Node to 18+."
     );
   }
 }
 
 const app = express();
 
-//Flexible CORS
+// Flexible CORS
 app.use(cors({ origin: true, credentials: true }));
 
-//Cookies (needed for inactivity logout)
+// Cookies (needed for inactivity logout)
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 
 app.use(express.json());
 
-//Inactivity auto-logout middleware
+// Inactivity auto-logout middleware
 const idleTimeout = require("./middleware/idleTimeout.middleware");
 app.use(idleTimeout);
 
-const environmentRoutes = require("./routes/environment.routes");
+// NEW: passive access/auth audit middleware
+const accessAudit = require("./middleware/accessAudit.middleware");
+app.use(accessAudit);
 
+const environmentRoutes = require("./routes/environment.routes");
 
 app.get("/health", (req, res) =>
   res.json({ ok: true, service: "backend", time: new Date().toISOString() })
@@ -40,14 +42,18 @@ app.get("/health", (req, res) =>
 
 // --- Exhibitor AI proxy (FastAPI) ---
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
-const EXHIBITOR_AI_SERVICE_URL = process.env.EXHIBITOR_AI_SERVICE_URL || "http://127.0.0.1:8001";
+const EXHIBITOR_AI_SERVICE_URL =
+  process.env.EXHIBITOR_AI_SERVICE_URL || "http://127.0.0.1:8001";
 
 app.get("/api/exhibitor-ai/health", async (req, res) => {
   try {
     const r = await fetch(`${EXHIBITOR_AI_SERVICE_URL}/health`);
     res.status(r.status).send(await r.text());
   } catch (e) {
-    res.status(502).json({ error: "Exhibitor AI service unreachable", detail: String(e) });
+    res.status(502).json({
+      error: "Exhibitor AI service unreachable",
+      detail: String(e),
+    });
   }
 });
 
@@ -63,7 +69,10 @@ app.get("/api/exhibitor-ai/*path", async (req, res) => {
       res.status(r.status).send(await r.text());
     }
   } catch (e) {
-    res.status(502).json({ error: "Exhibitor AI proxy failed", detail: String(e) });
+    res.status(502).json({
+      error: "Exhibitor AI proxy failed",
+      detail: String(e),
+    });
   }
 });
 
@@ -81,11 +90,12 @@ app.get("/api/exhibitor-ai-download/*path", async (req, res) => {
     const buf = Buffer.from(await r.arrayBuffer());
     res.send(buf);
   } catch (e) {
-    res.status(502).json({ error: "Exhibitor AI download proxy failed", detail: String(e) });
+    res.status(502).json({
+      error: "Exhibitor AI download proxy failed",
+      detail: String(e),
+    });
   }
 });
-
-
 
 // ----------------------
 // Mount routes
@@ -102,25 +112,28 @@ app.use("/alerts", require("./routes/alerts.routes.js"));
 app.use("/environment", environmentRoutes);
 app.use("/sustainability", require("./routes/sustainability.routes.js"));
 
-
-
-// 🔐 AUTH LAYER (ADDED BACK)
+//AUTH LAYER
 app.use("/auth", require("./routes/auth"));
 app.use("/users", require("./routes/users.routes.js"));
 
-
-
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log(`✅ API running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
 
 try {
-  const enabled = String(process.env.ALERT_ENGINE_ENABLED ?? "true").toLowerCase() !== "false";
+  const enabled =
+    String(process.env.ALERT_ENGINE_ENABLED ?? "true").toLowerCase() !== "false";
+
   if (enabled) {
     const { runOnce } = require("./utils/alertEngine");
 
-    runOnce().catch((e) => console.warn("[alertEngine] first run failed:", e.message));
+    runOnce().catch((e) =>
+      console.warn("[alertEngine] first run failed:", e.message)
+    );
+
     setInterval(() => {
-      runOnce().catch((e) => console.warn("[alertEngine] run failed:", e.message));
+      runOnce().catch((e) =>
+        console.warn("[alertEngine] run failed:", e.message)
+      );
     }, 15000);
   }
 } catch (e) {

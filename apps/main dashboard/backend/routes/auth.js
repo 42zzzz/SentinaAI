@@ -8,14 +8,19 @@ const { validatePassword } = require("../security/passwordPolicy");
 const router = express.Router();
 
 /* ===============================
-   LOGIN (DEBUG)
+   LOGIN
 ================================= */
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
-  console.log("========== LOGIN ATTEMPT ==========");
-  console.log("Raw email received:", JSON.stringify(email));
-  console.log("Raw password received:", JSON.stringify(password));
+  req.audit = {
+    eventType: "AUTH_ATTEMPT",
+    action: "LOGIN",
+    attemptedEmail: email || null,
+    extra: {
+      route: "/auth/login",
+    },
+  };
 
   try {
     const result = await core.query(
@@ -36,24 +41,21 @@ router.post("/login", async (req, res) => {
       [email]
     );
 
-    console.log("Rows returned from DB:", result.rows.length);
-
     if (result.rows.length === 0) {
-      console.log("No user found with that email + active status");
+      req.audit.authResult = "FAILED";
+      req.audit.failureReason = "USER_NOT_FOUND_OR_INACTIVE";
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const user = result.rows[0];
 
-    console.log("DB email:", user.email);
-    console.log("Stored hash:", user.password_hash);
-
     const match = await bcrypt.compare(password, user.password_hash);
 
-    console.log("Password match result:", match);
-
     if (!match) {
-      console.log("Password mismatch");
+      req.audit.authResult = "FAILED";
+      req.audit.userId = user.user_id;
+      req.audit.role = user.role_name;
+      req.audit.failureReason = "PASSWORD_MISMATCH";
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -75,7 +77,9 @@ router.post("/login", async (req, res) => {
       { expiresIn: "8h" }
     );
 
-    console.log("Login successful for:", user.email);
+    req.audit.authResult = "SUCCESS";
+    req.audit.userId = user.user_id;
+    req.audit.role = user.role_name;
 
     res.json({
       token,
@@ -85,6 +89,8 @@ router.post("/login", async (req, res) => {
     });
   } catch (err) {
     console.error("Login error:", err);
+    req.audit.authResult = "FAILED";
+    req.audit.failureReason = "SERVER_ERROR";
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -96,7 +102,20 @@ router.post("/change-password", authenticate, async (req, res) => {
   const userId = req.user.user_id;
   const { currentPassword, newPassword } = req.body;
 
+  req.audit = {
+    ...(req.audit || {}),
+    eventType: "AUTH_ATTEMPT",
+    action: "CHANGE_PASSWORD",
+    userId,
+    role: req.user.role,
+    extra: {
+      route: "/auth/change-password",
+    },
+  };
+
   if (!currentPassword || !newPassword) {
+    req.audit.authResult = "FAILED";
+    req.audit.failureReason = "MISSING_REQUIRED_FIELDS";
     return res.status(400).json({ error: "currentPassword and newPassword are required" });
   }
 
@@ -109,6 +128,8 @@ router.post("/change-password", authenticate, async (req, res) => {
     );
 
     if (!result.rows.length) {
+      req.audit.authResult = "FAILED";
+      req.audit.failureReason = "USER_NOT_FOUND";
       return res.status(404).json({ error: "User not found" });
     }
 
@@ -116,18 +137,26 @@ router.post("/change-password", authenticate, async (req, res) => {
 
     const match = await bcrypt.compare(currentPassword, user.password_hash);
     if (!match) {
+      req.audit.authResult = "FAILED";
+      req.audit.failureReason = "INVALID_CURRENT_PASSWORD";
       return res.status(401).json({ error: "Invalid current password" });
     }
 
-    // Enforce strong policy
     const v = validatePassword(newPassword, { email: user.email, name: user.full_name });
     if (!v.ok) {
+      req.audit.authResult = "FAILED";
+      req.audit.failureReason = "PASSWORD_POLICY_FAILED";
+      req.audit.extra = {
+        ...(req.audit.extra || {}),
+        passwordPolicyErrors: v.errors,
+      };
       return res.status(400).json({ error: v.errors });
     }
 
-    // Prevent reusing same password
     const same = await bcrypt.compare(newPassword, user.password_hash);
     if (same) {
+      req.audit.authResult = "FAILED";
+      req.audit.failureReason = "PASSWORD_REUSE";
       return res.status(400).json({ error: ["New password must be different from the old password."] });
     }
 
@@ -138,13 +167,16 @@ router.post("/change-password", authenticate, async (req, res) => {
       [hashed, userId]
     );
 
+    req.audit.authResult = "SUCCESS";
+
     return res.json({ message: "Password changed successfully" });
   } catch (err) {
     console.error("Change password error:", err);
+    req.audit.authResult = "FAILED";
+    req.audit.failureReason = "SERVER_ERROR";
     return res.status(500).json({ error: "Server error" });
   }
 });
-
 
 /* ===============================
    TEST ROUTE

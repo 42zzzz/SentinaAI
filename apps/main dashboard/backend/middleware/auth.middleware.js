@@ -4,6 +4,15 @@ module.exports = function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    req.audit = {
+      ...(req.audit || {}),
+      eventType: "AUTH_ATTEMPT",
+      action: "TOKEN_VALIDATION",
+      authResult: "FAILED",
+      tokenStatus: "MISSING",
+      failureReason: "MISSING_BEARER_TOKEN",
+    };
+
     return res.status(401).json({ error: "Unauthorized" });
   }
 
@@ -11,9 +20,29 @@ module.exports = function authenticate(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
     req.user = decoded;
+    req.audit = {
+      ...(req.audit || {}),
+      eventType: "ACCESS_ATTEMPT",
+      action: "TOKEN_VALIDATION",
+      userId: decoded.user_id,
+      role: decoded.role,
+      authResult: "SUCCESS",
+      tokenStatus: "VALID",
+    };
+
     next();
   } catch (err) {
+    req.audit = {
+      ...(req.audit || {}),
+      eventType: "AUTH_ATTEMPT",
+      action: "TOKEN_VALIDATION",
+      authResult: "FAILED",
+      tokenStatus: "INVALID",
+      failureReason: "INVALID_TOKEN",
+    };
+
     return res.status(401).json({ error: "Invalid token" });
   }
 };
