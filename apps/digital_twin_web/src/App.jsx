@@ -18,12 +18,13 @@ function AppContent() {
   const [currentLayer, setCurrentLayer] = useState('occupancy');
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // The 3 Modes: 'live', 'history', 'sandbox'
+  // The 4 Modes: 'live', 'history', 'sandbox', 'forecast'
   const [simMode, setSimMode] = useState('live');
-  const [timeIndex, setTimeIndex] = useState(12); // Default history to noon (surge)
+  const [timeIndex, setTimeIndex] = useState(12);
+  const [forecastHours, setForecastHours] = useState(1);
 
-  // Pulling the new data engine
-  const { telemetryData, injectData, activeAnomalies } = useTelemetry(simMode, timeIndex);
+  // Pulling the new data engine (forecast branch built into useTelemetry)
+  const { telemetryData, injectData, activeAnomalies } = useTelemetry(simMode, timeIndex, forecastHours);
 
   // IoT device telemetry (live status per device)
   const { deviceTelemetry } = useDeviceTelemetry(simMode === 'live');
@@ -54,10 +55,11 @@ function AppContent() {
             currentLayer={currentLayer}
             devices={DEVICES_LAYOUT}
             deviceTelemetry={deviceTelemetry}
+            simMode={simMode}
           />
           <InfoPanel telemetryData={telemetryData} totalHalls={HALLS_LAYOUT.length} totalDevices={DEVICES_LAYOUT.length} />
-          <HallDetailsWrapper telemetryData={telemetryData} />
-          <Legend currentLayer={currentLayer} />
+          <HallDetailsWrapper telemetryData={telemetryData} simMode={simMode} />
+          <Legend currentLayer={currentLayer} simMode={simMode} />
         </>
       )}
 
@@ -67,21 +69,20 @@ function AppContent() {
         currentView={currentView} onViewChange={setCurrentView}
         currentLayer={currentLayer} onLayerChange={setCurrentLayer}
         isEditMode={isEditMode} onToggleEdit={() => setIsEditMode(!isEditMode)}
-
-        // Pass the new mode states to the Controls!
         simMode={simMode} setSimMode={setSimMode}
         timeIndex={timeIndex} setTimeIndex={setTimeIndex}
+        forecastHours={forecastHours} setForecastHours={setForecastHours}
         injectData={injectData}
       />
     </div>
   );
 }
 
-function HallDetailsWrapper({ telemetryData }) {
+function HallDetailsWrapper({ telemetryData, simMode }) {
   const { halls, selectedHallId, setSelectedHallId } = useHalls();
   const selectedHall = halls.find(h => h.id === selectedHallId);
   if (!selectedHall) return null;
-  return <HallDetails hall={selectedHall} telemetryData={telemetryData} onClose={() => setSelectedHallId(null)} />;
+  return <HallDetails hall={selectedHall} telemetryData={telemetryData} onClose={() => setSelectedHallId(null)} simMode={simMode} />;
 }
 
 export default function App() {

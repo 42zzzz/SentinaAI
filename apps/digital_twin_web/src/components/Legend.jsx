@@ -1,6 +1,6 @@
 import React from 'react';
 
-function Legend({ currentLayer = 'occupancy' }) {
+function Legend({ currentLayer = 'occupancy', simMode }) {
   const legendConfigs = {
     occupancy: {
       title: 'OCCUPANCY LEVELS',
@@ -25,6 +25,7 @@ function Legend({ currentLayer = 'occupancy' }) {
       levels: [
         { color: '#1f2937', label: 'Safe',    range: 'Normal' },
         { color: '#ff0000', label: 'Anomaly', range: 'Detected' },
+        { color: '#10b981', label: 'Reroute', range: 'Redirect Path' },
       ]
     },
     sustainability: {
@@ -34,6 +35,7 @@ function Legend({ currentLayer = 'occupancy' }) {
         { color: '#94a3b8', label: 'Moderate',  range: '500 – 700' },
         { color: '#475569', label: 'High',      range: '700 – 900' },
         { color: '#0f172a', label: 'Critical',  range: '900+' },
+        { color: '#2563eb', label: 'HVAC On',   range: 'CO₂ > 800' },
       ]
     }
   };
@@ -47,7 +49,6 @@ function Legend({ currentLayer = 'occupancy' }) {
       </div>
       {config.levels.map((level, i) => (
         <div key={i} className="legend-item" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-          {/* Color swatch with short text tag for colorblind accessibility */}
           <div
             className="legend-color"
             style={{
@@ -69,6 +70,12 @@ function Legend({ currentLayer = 'occupancy' }) {
           <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{level.range}</span>
         </div>
       ))}
+      {simMode === 'forecast' && (
+        <div className="legend-item" style={{ display: 'flex', alignItems: 'center', marginTop: '4px', paddingTop: '8px', borderTop: '1px solid var(--border-color)' }}>
+          <div style={{ width: 42, height: 18, borderRadius: 4, marginRight: 10, border: '2px dashed #f59e0b', flexShrink: 0 }} />
+          <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 600 }}>Forecasted</span>
+        </div>
+      )}
     </div>
   );
 }

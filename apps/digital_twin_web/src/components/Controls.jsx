@@ -20,7 +20,7 @@ const ALL_HALLS = [
 function Controls({
   currentView, onViewChange, isEditMode, onToggleEdit,
   currentLayer, onLayerChange, simMode, setSimMode,
-  timeIndex, setTimeIndex, injectData
+  timeIndex, setTimeIndex, forecastHours, setForecastHours, injectData
 }) {
   const { theme, toggleTheme } = useTheme();
 
@@ -157,6 +157,12 @@ function Controls({
           style={{ background: simMode === 'sandbox' ? '#ef4444' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>
           Sandbox
         </button>
+        <button
+          onClick={() => setSimMode('forecast')}
+          title="Forecast — predict occupancy 1-4 hours ahead"
+          style={{ background: simMode === 'forecast' ? '#f59e0b' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>
+          Forecast
+        </button>
         <div style={{ width: '1px', height: '20px', background: 'var(--divider-color)', margin: '0 8px' }} />
         <button
           className={isEditMode ? 'active btn-edit' : 'btn-edit'}
@@ -228,6 +234,37 @@ function Controls({
             style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', fontSize: '11px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>
             ⚡ Inject Ripple
           </button>
+        </div>
+      )}
+
+      {/* FORECAST SCRUBBER */}
+      {simMode === 'forecast' && (
+        <div style={{ borderTop: '1px solid #f59e0b', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f59e0b', fontSize: '10px', fontWeight: 'bold' }}>
+            <span>BASELINE: {formatHour(timeIndex)}</span>
+            <span>FORECAST: +{forecastHours}h ahead</span>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '9px', marginBottom: 2 }}>Current Time</div>
+              <input
+                type="range" min="0" max="24" value={timeIndex}
+                onChange={(e) => setTimeIndex(parseInt(e.target.value))}
+                style={{ width: '100%', accentColor: '#f59e0b', cursor: 'pointer' }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '9px', marginBottom: 2 }}>Horizon</div>
+              <input
+                type="range" min="1" max="4" value={forecastHours}
+                onChange={(e) => setForecastHours(parseInt(e.target.value))}
+                style={{ width: '100%', accentColor: '#f59e0b', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: 'var(--text-tertiary)', marginTop: 1 }}>
+                <span>1h</span><span>2h</span><span>3h</span><span>4h</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

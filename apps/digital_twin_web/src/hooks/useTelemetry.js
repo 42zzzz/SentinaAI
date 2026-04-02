@@ -34,7 +34,7 @@ const generateSimulationHistory = () => {
   return history;
 };
 
-export function useTelemetry(simMode = 'live', timeIndex = 24) {
+export function useTelemetry(simMode = 'live', timeIndex = 24, forecastHours = 1) {
   const [liveData, setLiveData] = useState({});
   const [sandboxData, setSandboxData] = useState({}); 
   const [isRetraining, setIsRetraining] = useState(false);
@@ -127,10 +127,35 @@ export function useTelemetry(simMode = 'live', timeIndex = 24) {
     }
   };
 
-  // 3. AUTOMATIC RETRAINING TRIGGER (No Button Required)
+  // 3. MODE-BASED DATA SELECTION
   let currentData = liveData;
   if (simMode === 'history') currentData = historyData[timeIndex];
   if (simMode === 'sandbox') currentData = sandboxData;
+  if (simMode === 'forecast') {
+    const baseSnap = historyData[timeIndex] || {};
+    const targetIdx = Math.min(timeIndex + forecastHours, 24);
+    const futureSnap = historyData[targetIdx] || {};
+    const forecast = {};
+    for (const hallId in baseSnap) {
+      const c = baseSnap[hallId];
+      const f = futureSnap[hallId] || c;
+      const occ = Math.min(f.occupancyRatio * 0.6 + c.occupancyRatio * 0.4, 1.1);
+      const co2 = Math.round(f.co2 * 0.6 + c.co2 * 0.4);
+      const temp = (parseFloat(f.temperature) * 0.6 + parseFloat(c.temperature) * 0.4).toFixed(1);
+      forecast[hallId] = {
+        occupancyRatio: occ,
+        co2,
+        temperature: temp,
+        isAnomaly: occ > 0.92,
+        aiAction: occ > 0.92 ? 'dispatchSecurityAndOpenRoutes' : 'monitor',
+        hallName: c.hallName,
+        isForecast: true,
+      };
+    }
+    currentData = forecast;
+  }
+
+  // 4. AUTOMATIC RETRAINING TRIGGER (No Button Required)
 
   const activeAnomalies = Object.values(currentData || {}).filter(hall => hall.isAnomaly);
 
