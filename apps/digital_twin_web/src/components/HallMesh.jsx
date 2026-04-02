@@ -33,7 +33,7 @@ const findMatchingTelemetry = (hall, telemetryData) => {
   return {};
 };
 
-function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView, isSelected, anyHallSelected, currentLayer = 'occupancy' }) {
+function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView, isSelected, anyHallSelected, currentLayer = 'occupancy', simMode }) {
   const [hovered, setHovered] = useState(false);
 
   // 🔥 Use the new smart matcher to grab the data!
@@ -67,13 +67,14 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
       glowIntensity = 0.05;
     }
   } else if (currentLayer === 'sustainability') {
-    // 🔥 The ESG Carbon Layer logic
     const co2Footprint = data.co2 || 400;
-    if (co2Footprint < 500) blockColor = '#22c55e'; // Efficient Green
-    else if (co2Footprint < 700) blockColor = '#94a3b8'; // Moderate Gray
-    else if (co2Footprint < 900) blockColor = '#475569'; // High Smog
-    else blockColor = '#0f172a'; // Critical Emissions (Near Black)
-    glowIntensity = 0.1;
+    if (co2Footprint > 800) {
+      blockColor = '#2563eb'; // HVAC Active — blue tint
+      glowIntensity = 0.4;
+    } else if (co2Footprint < 500) { blockColor = '#22c55e'; glowIntensity = 0.1; }
+    else if (co2Footprint < 700) { blockColor = '#94a3b8'; glowIntensity = 0.1; }
+    else if (co2Footprint < 900) { blockColor = '#475569'; glowIntensity = 0.1; }
+    else { blockColor = '#0f172a'; glowIntensity = 0.1; }
   }
 
   if (isSelected) {
@@ -118,10 +119,16 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
     return [0, (hall.rotation || 0) * Math.PI / 180, 0];
   }, [hall]);
 
-  // Animated pop-out: selected hall rises 2 units above its base Y.
-  // We imperatively mutate the group's position in useFrame (R3F pattern).
   const groupRef = useRef();
+  const meshRef = useRef();
   const targetY = isSelected ? basePosition[1] + 2 : basePosition[1];
+  const isForecast = simMode === 'forecast' && data.isForecast;
+
+  // Edges geometry for forecast dashed outline
+  const edgesGeo = useMemo(() => {
+    if (!isForecast) return null;
+    return new THREE.EdgesGeometry(geometry);
+  }, [geometry, isForecast]);
 
   useFrame(() => {
     if (!groupRef.current) return;
@@ -130,6 +137,11 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
       targetY,
       0.1
     );
+    // Forecast pulsing opacity
+    if (isForecast && meshRef.current) {
+      const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.003);
+      meshRef.current.material.opacity = 0.4 + pulse * 0.4;
+    }
   });
 
   if (currentView !== 'all' && (!hall.zone || !hall.zone.toLowerCase().includes(currentView))) {
@@ -141,6 +153,7 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
       {/* Animated mesh group — only this rises on hover/select */}
       <group ref={groupRef} position={[0, basePosition[1], 0]}>
         <mesh
+          ref={meshRef}
           geometry={geometry}
           castShadow
           receiveShadow
@@ -155,11 +168,17 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
             emissiveIntensity={glowIntensity}
             roughness={0.7}
             metalness={0.3}
-            transparent={isTransparent}
-            opacity={opacity}
-            depthWrite={!isTransparent}
+            transparent={isTransparent || isForecast}
+            opacity={isForecast ? 0.6 : opacity}
+            depthWrite={!(isTransparent || isForecast)}
           />
         </mesh>
+        {/* Forecast dashed outline */}
+        {isForecast && edgesGeo && (
+          <lineSegments geometry={edgesGeo}>
+            <lineDashedMaterial color="#f59e0b" dashSize={0.4} gapSize={0.25} linewidth={1} />
+          </lineSegments>
+        )}
       </group>
 
       {/* Label pinned at fixed world Y — never moves with the pop animation */}

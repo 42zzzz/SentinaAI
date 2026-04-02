@@ -1,8 +1,10 @@
 import React from 'react';
+import { isHVACActive } from '../utils/hvacEnergy';
 
 function InfoPanel({ telemetryData, totalHalls, totalDevices }) {
   const stats = calculateStats(telemetryData);
   const zones = 4;
+  const hvacActive = Object.values(telemetryData).filter(d => isHVACActive(d.co2 || 400)).length;
 
   return (
     <div className="info-panel">
@@ -22,6 +24,10 @@ function InfoPanel({ telemetryData, totalHalls, totalDevices }) {
       <div className="stat"><span className="stat-label">Avg Occupancy</span><span className="stat-value">{stats.avgOccupancy}%</span></div>
       <div className="stat"><span className="stat-label">Avg Temp</span><span className="stat-value">{stats.avgTemp}°C</span></div>
       <div className="stat"><span className="stat-label">Avg CO₂</span><span className="stat-value">{stats.avgCO2} ppm</span></div>
+      <div className="stat">
+        <span className="stat-label" style={{ color: hvacActive > 0 ? '#3b82f6' : undefined }}>Active HVAC</span>
+        <span className="stat-value">{hvacActive}/{totalHalls}</span>
+      </div>
     </div>
   );
 }

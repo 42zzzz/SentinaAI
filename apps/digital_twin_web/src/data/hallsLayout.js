@@ -336,3 +336,10 @@ export function getHallCenter(hall) {
     y: bounds.y + bounds.height / 2
   };
 }
+
+export function getHallWorldPosition(hall) {
+  const c = getHallCenter(hall);
+  const cx = (DWTC_OUTLINE.minX + DWTC_OUTLINE.maxX) / 2;
+  const cy = (DWTC_OUTLINE.minY + DWTC_OUTLINE.maxY) / 2;
+  return { x: (c.x - cx) * SCALE, z: (c.y - cy) * SCALE };
+}

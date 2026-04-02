@@ -1,21 +1,44 @@
 import React from 'react';
+import EventsWidget from './EventsWidget';
+import { calculateHVACEnergy, getHVACStatus } from '../utils/hvacEnergy';
 
-export default function HallDetails({ hall, telemetryData, onClose }) {
+export default function HallDetails({ hall, telemetryData, onClose, simMode }) {
   if (!hall) return null;
   const data = telemetryData[hall.id] || telemetryData[hall.telemetryId] || {};
   const occupancyPercent = data.occupancyRatio ? Math.round(data.occupancyRatio * 100) : (data.occupancy || 0);
+  const co2 = data.co2 || 400;
+  const isForecast = simMode === 'forecast';
+
+  const PredBadge = () => isForecast
+    ? <span style={{ color: '#f59e0b', fontSize: '9px', fontWeight: 700, marginRight: 4 }}>PREDICTED</span>
+    : null;
 
   return (
     <div className="hall-details">
       <button className="close-btn" onClick={onClose}>×</button>
       <h2 style={{ borderBottom: '1px solid #333', paddingBottom: '10px', marginBottom: '15px' }}>{hall.id}</h2>
-      
-      <div className="stat"><span className="stat-label">Occupancy</span><span className="stat-value">{occupancyPercent}%</span></div>
-      <div className="stat"><span className="stat-label">CO₂ Level</span><span className="stat-value">{data.co2 || 400} ppm</span></div>
-      <div className="stat"><span className="stat-label">Ambient Temp</span><span className="stat-value">{data.temperature || 22.5}°C</span></div>
-      
-      <div style={{ 
-        marginTop: '20px', padding: '12px', borderRadius: '6px', 
+
+      <div className="stat"><span className="stat-label">Occupancy</span><span className="stat-value"><PredBadge />{occupancyPercent}%</span></div>
+      <div className="stat"><span className="stat-label">CO₂ Level</span><span className="stat-value"><PredBadge />{co2} ppm</span></div>
+      <div className="stat"><span className="stat-label">Ambient Temp</span><span className="stat-value"><PredBadge />{data.temperature || 22.5}°C</span></div>
+
+      {/* HVAC status (Feature 2) */}
+      {co2 > 800 && (
+        <>
+          <div className="stat">
+            <span className="stat-label">HVAC Status</span>
+            <span className="stat-value" style={{ color: '#3b82f6' }}>{getHVACStatus(co2).toUpperCase()}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-label">Energy Cost</span>
+            <span className="stat-value">{calculateHVACEnergy(co2)} kWh</span>
+          </div>
+        </>
+      )}
+
+      {/* Anomaly status */}
+      <div style={{
+        marginTop: '20px', padding: '12px', borderRadius: '6px',
         border: `1px solid ${data.isAnomaly ? '#ef4444' : '#4ade80'}`,
         background: data.isAnomaly ? 'rgba(239, 68, 68, 0.1)' : 'rgba(74, 222, 128, 0.05)'
       }}>
@@ -26,6 +49,9 @@ export default function HallDetails({ hall, telemetryData, onClose }) {
           {data.aiAction ? data.aiAction.toUpperCase().replace(/([A-Z])/g, ' $1') : 'MONITORING'}
         </p>
       </div>
+
+      {/* Event schedule (Feature 3) */}
+      <EventsWidget hallId={hall.id} />
     </div>
   );
 }
