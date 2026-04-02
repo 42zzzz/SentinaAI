@@ -1,5 +1,7 @@
 ﻿// frontend/src/pages/DevicesPage.jsx
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
+
 import axios from "axios";
 import "./DevicesPage.css";
 
@@ -134,8 +136,9 @@ export default function DevicesPage() {
   const [error, setError] = useState("");
   const [openSelect, setOpenSelect] = useState(null); // "zone" | "hall" | "type" | "status" | "sort" | "rows"
 
-  const role = localStorage.getItem("role") || "operations_manager";
-  const themeClass = role === "sustainability_manager" ? "sustTheme" : "opsTheme";
+  const location = useLocation();
+  const isSustainability = location.pathname.startsWith("/sustainability");
+  const themeClass = isSustainability ? "sustTheme" : "opsTheme";
 
   // Debounce search a little
   const [qLive, setQLive] = useState("");

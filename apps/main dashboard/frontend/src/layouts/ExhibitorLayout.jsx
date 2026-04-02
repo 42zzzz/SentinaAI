@@ -415,6 +415,7 @@ export default function ExhibitorLayout() {
     if (location.pathname.startsWith("/exhibitor/heatmap")) return "Heat Map";
     if (location.pathname.startsWith("/exhibitor/analytics")) return "Analytics";
     if (location.pathname.startsWith("/exhibitor/reports")) return "Reports";
+    if (location.pathname.startsWith("/exhibitor/navigation")) return "Navigation";
     return "Exhibitor Portal";
   }, [location.pathname]);
 
@@ -460,6 +461,14 @@ export default function ExhibitorLayout() {
             <NavLink to="/exhibitor/reports" className={({ isActive }) => `exhSideLink${isActive ? " isActive" : ""}`}>
               <span className="exhSideIcon"><ReportsIcon /></span>
               <span>Reports</span>
+            </NavLink>
+
+            <NavLink
+              to="/exhibitor/navigation"
+              className={({ isActive }) => `exhSideLink${isActive ? " isActive" : ""}`}
+            >
+              <span className="exhSideIcon"><HeatMapIcon /></span>
+              <span>Navigation</span>
             </NavLink>
           </nav>
 

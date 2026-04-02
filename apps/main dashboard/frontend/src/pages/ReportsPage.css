@@ -1,0 +1,471 @@
+.reportsPage {
+  min-width: 0;
+}
+
+.reportsPage .pageInner {
+  width: 100%;
+}
+
+.reportsHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.reportsCountTop {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.reportsPage.opsTheme .reportsCountTop {
+  color: #E8486F;
+}
+
+.reportsPage.sustTheme .reportsCountTop {
+  color: #00802B;
+}
+
+.reportsPage.exhTheme .reportsCountTop {
+  color: #35005C;
+}
+
+.reportsControlsCard,
+.reportsTableCard {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+}
+
+.reportsControlsCard {
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.reportsFiltersRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.reportsPage .filterPill {
+  height: 38px;
+  min-width: 140px;
+  border-radius: 12px;
+  background: #d9d9d9;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  position: relative;
+}
+
+.reportsPage .pillSearch {
+  min-width: 230px;
+}
+
+.reportsPage .pillSelectWrap {
+  min-width: 140px;
+}
+
+.reportsPage .pillLeftIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.reportsPage.opsTheme .pillLeftIcon,
+.reportsPage.opsTheme .newReportBtn,
+.reportsPage.opsTheme .reportsTable thead th,
+.reportsPage.opsTheme .reportModalHeader h3,
+.reportsPage.opsTheme .reportModalPrimary {
+  color: #E8486F;
+}
+
+.reportsPage.sustTheme .pillLeftIcon,
+.reportsPage.sustTheme .newReportBtn,
+.reportsPage.sustTheme .reportsTable thead th,
+.reportsPage.sustTheme .reportModalHeader h3,
+.reportsPage.sustTheme .reportModalPrimary {
+  color: #00802B;
+}
+
+.reportsPage.exhTheme .pillLeftIcon,
+.reportsPage.exhTheme .newReportBtn,
+.reportsPage.exhTheme .reportsTable thead th,
+.reportsPage.exhTheme .reportModalHeader h3,
+.reportsPage.exhTheme .reportModalPrimary {
+  color: #35005C;
+}
+
+.reportsPage .pillInput {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  width: 100%;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.reportsPage .pillInput::placeholder {
+  color: #6b7280;
+}
+
+.reportsPage .pillSelect {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  appearance: none;
+  width: 100%;
+  font-size: 13px;
+  color: #111827;
+  cursor: pointer;
+  padding-right: 20px;
+}
+
+.reportsPage .pillRightCaret {
+  position: absolute;
+  right: 12px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #425b76;
+  pointer-events: none;
+}
+
+.newReportBtn {
+  height: 38px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 24px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff !important;
+  cursor: pointer;
+}
+
+.reportsPage.opsTheme .newReportBtn {
+  background: #E8486F;
+}
+
+.reportsPage.sustTheme .newReportBtn {
+  background: #00802B;
+}
+
+.reportsPage.exhTheme .newReportBtn {
+  background: #35005C;
+}
+
+.reportsTableCard {
+  overflow: hidden;
+}
+
+.reportsTableScroll {
+  overflow-x: auto;
+}
+
+.reportsTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1050px;
+}
+
+.reportsTable thead th {
+  text-align: left;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 800;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.reportsTable tbody td {
+  padding: 14px 16px;
+  font-size: 13px;
+  color: #111827;
+  border-bottom: 1px solid #ececec;
+  vertical-align: middle;
+}
+
+.reportsTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.reportsTable .tdStrong {
+  font-weight: 800;
+}
+
+.reportsDesc {
+  max-width: 260px;
+  color: #374151;
+}
+
+.reportsTableEmpty {
+  text-align: center;
+  color: #6b7280;
+  padding: 24px 16px;
+}
+
+.reportsActionBtns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionIconBtn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #8b8b8b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.actionIconBtn.isPrimary {
+  color: #fff;
+}
+
+.reportsPage.opsTheme .actionIconBtn.isPrimary {
+  background: #E8486F;
+  border-color: #E8486F;
+}
+
+.reportsPage.sustTheme .actionIconBtn.isPrimary {
+  background: #00802B;
+  border-color: #00802B;
+}
+
+.reportsPage.exhTheme .actionIconBtn.isPrimary {
+  background: #35005C;
+  border-color: #35005C;
+}
+
+.reportsPager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.reportsPagerNums {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reportsPageBtn {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.reportsPageBtn.isActive {
+  background: #d9d9d9;
+  font-weight: 700;
+}
+
+.reportsDots {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.reportsNextBtn {
+  border: 0;
+  background: transparent;
+  color: #4b5563;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.reportsNextBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reportModalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.reportModalCard {
+  width: 100%;
+  max-width: 560px;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+
+.reportModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.reportModalHeader h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.reportModalClose {
+  border: 0;
+  background: transparent;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.reportModalForm {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.reportModalGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.reportModalField {
+  display: grid;
+  gap: 8px;
+}
+
+.reportModalField label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.reportModalField input,
+.reportModalField select,
+.reportModalField textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+}
+
+.reportModalField textarea {
+  resize: vertical;
+}
+
+.reportModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.reportModalSecondary,
+.reportModalPrimary {
+  height: 40px;
+  border-radius: 10px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reportModalSecondary {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  color: #334155;
+}
+
+.reportModalPrimary {
+  color: #fff !important;
+  border: 0;
+}
+
+.reportsPage.opsTheme .reportModalPrimary {
+  background: #E8486F;
+}
+
+.reportsPage.sustTheme .reportModalPrimary {
+  background: #00802B;
+}
+
+.reportsPage.exhTheme .reportModalPrimary {
+  background: #35005C;
+}
+
+@media (max-width: 900px) {
+  .reportsFiltersRow {
+    gap: 10px;
+  }
+
+  .reportsPage .filterPill,
+  .reportsPage .pillSearch,
+  .reportsPage .pillSelectWrap,
+  .newReportBtn {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  .reportModalGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .reportsPager {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+}   
+
+.reportsFiltersRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.newReportBtn {
+  height: 38px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 24px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff !important;
+  cursor: pointer;
+}
+
+.reportsPage.opsTheme .newReportBtn {
+  background: #E8486F;
+}
+
+.reportsPage.sustTheme .newReportBtn {
+  background: #00802B;
+}
+
+.reportsPage.exhTheme .newReportBtn {
+  background: #35005C;
+}

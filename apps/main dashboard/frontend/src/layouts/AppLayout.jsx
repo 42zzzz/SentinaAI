@@ -24,7 +24,7 @@ function getPageTitle(pathname) {
   if (pathname.startsWith("/sustainability/alerts")) return "Alerts";
   if (pathname.startsWith("/sustainability/energy")) return "Energy";
   if (pathname.startsWith("/sustainability/environment")) return "Environmental";
-  if (pathname.startsWith("/sustainability/map")) return "Map";
+  if (pathname.startsWith("/sustainability/map")) return "Navigation";
   if (pathname.startsWith("/sustainability/reports")) return "Reports";
 
   if (pathname === "/operations" || pathname === "/operations/") return "Dashboard";
@@ -37,6 +37,8 @@ function getPageTitle(pathname) {
 
   if (pathname.startsWith("/soc")) return "SOC";
   if (pathname.startsWith("/exhibitor")) return "Exhibitor Portal";
+
+  if (pathname.startsWith("/operations/reports")) return "Reports";
 
   return "SentinaAI";
 }
@@ -398,6 +400,12 @@ export default function AppLayout() {
               </SvgIcon>
               Navigation
             </NavLink>
+            <NavLink to={`${rolePrefix}/reports`} style={navItemStyle}>
+              <SvgIcon>
+                <ReportsNavIcon />
+              </SvgIcon>
+              Reports
+            </NavLink>
           </>
         )}
 
@@ -415,7 +423,7 @@ export default function AppLayout() {
 
             <NavLink to={`${rolePrefix}/map`} style={navItemStyle}>
               <SvgIcon><MapNavIcon /></SvgIcon>
-              Map
+              Navigation
             </NavLink>
 
             <NavLink to={`${rolePrefix}/reports`} style={navItemStyle}>

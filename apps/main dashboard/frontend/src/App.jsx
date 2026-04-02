@@ -27,6 +27,10 @@ import SustainabilityHallDetails from "./pages/SustainabilityHallDetails";
 import EnergyPage from "./pages/EnergyPage";
 import EnvironmentalPage from "./pages/EnvironmentalPage";
 
+
+import ReportsPage from "./pages/ReportsPage";
+
+
 export default function App() {
   const role = sessionStorage.getItem("role");
 
@@ -81,6 +85,7 @@ export default function App() {
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="navigation" element={<NavigationPage />} />
           <Route path="alerts/:id" element={<AlertDetailsPage />} />
+          <Route path="reports" element={<ReportsPage />} />
         </Route>
 
         <Route
@@ -107,8 +112,8 @@ export default function App() {
           <Route path="hall/:id" element={<SustainabilityHallDetails />} />
           <Route path="energy" element={<EnergyPage />} />
           <Route path="environment" element={<EnvironmentalPage />} />
-          <Route path="map" element={<div>Map Page</div>} />
-          <Route path="reports" element={<div>Reports Page</div>} />
+          <Route path="map" element={<NavigationPage />} />
+          <Route path="reports" element={<ReportsPage />} />
         </Route>
 
         <Route
@@ -122,7 +127,8 @@ export default function App() {
           <Route index element={<ExhibitorDashboard />} />
           <Route path="heatmap" element={<ExhibitorHeatMapPage />} />
           <Route path="analytics" element={<ExhibitorAnalyticsPage />} />
-          <Route path="reports" element={<ExhibitorReportsPage />} />
+          <Route path="navigation" element={<NavigationPage />} />
+          <Route path="reports" element={<ReportsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

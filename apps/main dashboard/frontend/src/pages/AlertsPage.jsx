@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./AlertsPage.css";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -96,11 +96,23 @@ const IconRule = IconStatus;
 export default function AlertsPage() {
   const navigate = useNavigate();
 
+  const location = useLocation();
   const role = localStorage.getItem("role") || "operations_manager";
-  const domain = roleDomainMap[role] || "OPERATIONS";
 
-  // ✅ theme wrapper like DevicesPage
-  const themeClass = role === "sustainability_manager" ? "sustTheme" : "opsTheme";
+  const isSustainability = location.pathname.startsWith("/sustainability");
+  const isOperations = location.pathname.startsWith("/operations");
+  const isSoc = location.pathname.startsWith("/soc");
+  const isExhibitor = location.pathname.startsWith("/exhibitor");
+
+  const domain = isSustainability
+    ? "SUSTAINABILITY"
+    : isSoc
+    ? "SOC"
+    : isExhibitor
+    ? "EXHIBITOR"
+    : "OPERATIONS";
+
+  const themeClass = isSustainability ? "sustTheme" : "opsTheme";
 
   const [filters, setFilters] = useState(null);
 
@@ -513,14 +525,14 @@ export default function AlertsPage() {
                             key={r.alert_id}
                             className="alertsRow"
                             onClick={() => {
-                              const rolePathMap = {
-                                operations_manager: "operations",
-                                sustainability_manager: "sustainability",
-                                soc_analyst: "soc",
-                                exhibitor: "exhibitor",
-                              };
+                              const basePath = isSustainability
+                                ? "sustainability"
+                                : isSoc
+                                ? "soc"
+                                : isExhibitor
+                                ? "exhibitor"
+                                : "operations";
 
-                              const basePath = rolePathMap[role] || "operations";
                               navigate(`/${basePath}/alerts/${r.alert_id}`);
                             }}
                           >

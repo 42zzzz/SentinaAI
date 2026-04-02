@@ -1,81 +1,130 @@
 ﻿// frontend/src/pages/NavigationPage.jsx
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import NavigationMap from "../components/NavigationMap.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 function toRoomOption(r) {
-  const id    = r?.id || r?.room_id || r?.name || r?.label;
+  const id = r?.id || r?.room_id || r?.name || r?.label;
   const label = r?.name || r?.label || r?.id || r?.room_id;
   return id ? { id, label } : null;
 }
 
 function normalizePoint(p) {
   if (Array.isArray(p) && p.length >= 2) {
-    const x = Number(p[0]), y = Number(p[1]);
+    const x = Number(p[0]);
+    const y = Number(p[1]);
     return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
   }
+
   if (p && typeof p === "object") {
     const x = Number(p.x ?? p.X ?? p.cx ?? p.left ?? p[0]);
     const y = Number(p.y ?? p.Y ?? p.cy ?? p.top ?? p[1]);
     return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
   }
+
   return null;
 }
 
+function getTheme(pathname) {
+  if (pathname.startsWith("/sustainability")) {
+    return {
+      accent: "#00802B",
+      accentSoft: "rgba(0,128,43,0.12)",
+      accentShadow: "rgba(0,128,43,0.30)",
+      title: "Navigation",
+    };
+  }
+
+  if (pathname.startsWith("/exhibitor")) {
+    return {
+      accent: "#35005C",
+      accentSoft: "rgba(53,0,92,0.12)",
+      accentShadow: "rgba(53,0,92,0.28)",
+      title: "Navigation",
+    };
+  }
+
+  return {
+    accent: "#E8486F",
+    accentSoft: "rgba(232,72,111,0.12)",
+    accentShadow: "rgba(232,72,111,0.30)",
+    title: "Navigation",
+  };
+}
+
 export default function NavigationPage() {
-  const [roomsRaw,    setRoomsRaw]    = useState([]);
-  const [start,       setStart]       = useState("");
-  const [end,         setEnd]         = useState("");
-  const [pathPts,     setPathPts]     = useState([]);
-  const [error,       setError]       = useState("");
-  const [loading,     setLoading]     = useState(true);
+  const location = useLocation();
+  const theme = getTheme(location.pathname);
+
+  const [roomsRaw, setRoomsRaw] = useState([]);
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [pathPts, setPathPts] = useState([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [avoidCrowds, setAvoidCrowds] = useState(true);
-  const [demoMode,    setDemoMode]    = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
     let alive = true;
+
     async function load() {
       setLoading(true);
       setError("");
+
       try {
-        const res  = await fetch(`${API_BASE}/nav/rooms`);
+        const res = await fetch(`${API_BASE}/nav/rooms`);
         const data = await res.json();
         if (!alive) return;
+
         if (!res.ok) throw new Error(data?.error || "Failed to load rooms");
+
         const list = Array.isArray(data) ? data : data.rooms || [];
         setRoomsRaw(Array.isArray(list) ? list : []);
+
         const opts = (Array.isArray(list) ? list : []).map(toRoomOption).filter(Boolean);
         if (!start && opts[0]) setStart(opts[0].id);
-        if (!end   && opts[1]) setEnd(opts[1].id);
+        if (!end && opts[1]) setEnd(opts[1].id);
       } catch (e) {
         setError(e.message || "Failed to load navigation data");
       } finally {
         if (alive) setLoading(false);
       }
     }
+
     load();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const options = useMemo(
     () => (Array.isArray(roomsRaw) ? roomsRaw : []).map(toRoomOption).filter(Boolean),
-    [roomsRaw],
+    [roomsRaw]
   );
 
   async function findPath() {
     setError("");
     setPathPts([]);
+
     try {
-      const r    = await fetch(`${API_BASE}/nav/pathfind`, {
-        method:  "POST",
+      const r = await fetch(`${API_BASE}/nav/pathfind`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ start, end, avoid_crowds: avoidCrowds }),
+        body: JSON.stringify({
+          start,
+          end,
+          avoid_crowds: avoidCrowds,
+        }),
       });
+
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || "Pathfind failed");
+
       const raw = data.path_coordinates_smooth || data.path_coordinates || [];
       setPathPts((Array.isArray(raw) ? raw : []).map(normalizePoint).filter(Boolean));
     } catch (e) {
@@ -83,44 +132,65 @@ export default function NavigationPage() {
     }
   }
 
+  const btnStyle = {
+    ...btnBase,
+    background: theme.accent,
+    boxShadow: `0 4px 10px ${theme.accentShadow}`,
+  };
+
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      {/* ── Controls card ── */}
       <div style={card}>
-        <div style={{ fontWeight: 900, marginBottom: 10 }}>Navigation</div>
+        <div style={{ ...titleStyle, color: theme.accent }}>{theme.title}</div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <select value={start} onChange={(e) => setStart(e.target.value)} style={sel} disabled={loading}>
             <option value="">{loading ? "Loading..." : "Start"}</option>
-            {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            {options.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
           </select>
 
           <select value={end} onChange={(e) => setEnd(e.target.value)} style={sel} disabled={loading}>
             <option value="">{loading ? "Loading..." : "End"}</option>
-            {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            {options.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
           </select>
 
-          <button onClick={findPath} disabled={!start || !end || loading} style={btn}>
+          <button onClick={findPath} disabled={!start || !end || loading} style={btnStyle}>
             Find Path
           </button>
 
-          {/* ── Toggles ── */}
           <label style={toggleWrap}>
-            <span style={toggleTrack(showHeatmap)} onClick={() => setShowHeatmap(v => !v)}>
+            <span
+              style={toggleTrack(showHeatmap, theme.accent)}
+              onClick={() => setShowHeatmap((v) => !v)}
+            >
               <span style={toggleThumb(showHeatmap)} />
             </span>
             <span style={toggleLabel}>Heatmap</span>
           </label>
 
           <label style={toggleWrap}>
-            <span style={toggleTrack(avoidCrowds)} onClick={() => setAvoidCrowds(v => !v)}>
+            <span
+              style={toggleTrack(avoidCrowds, theme.accent)}
+              onClick={() => setAvoidCrowds((v) => !v)}
+            >
               <span style={toggleThumb(avoidCrowds)} />
             </span>
             <span style={toggleLabel}>Avoid Crowds</span>
           </label>
 
           <label style={toggleWrap}>
-            <span style={toggleTrack(demoMode)} onClick={() => setDemoMode(v => !v)}>
+            <span
+              style={toggleTrack(demoMode, theme.accent)}
+              onClick={() => setDemoMode((v) => !v)}
+            >
               <span style={toggleThumb(demoMode)} />
             </span>
             <span style={toggleLabel}>Demo IoT</span>
@@ -130,8 +200,15 @@ export default function NavigationPage() {
         </div>
       </div>
 
-      {/* ── Map card ── */}
-      <div style={{ ...card, padding: 0, overflow: "hidden", height: 520 }}>
+      <div
+        style={{
+          ...card,
+          padding: 0,
+          overflow: "hidden",
+          height: 520,
+          borderColor: theme.accentSoft,
+        }}
+      >
         <NavigationMap
           apiBase={API_BASE}
           pathPoints={pathPts}
@@ -148,7 +225,7 @@ export default function NavigationPage() {
   );
 }
 
-// ─── styles ────────────────────────────────────────────────────────────────
+// styles
 
 const card = {
   padding: 16,
@@ -156,6 +233,12 @@ const card = {
   border: "1px solid #e5e7eb",
   background: "white",
   boxShadow: "0 6px 18px rgba(15, 23, 42, 0.05)",
+};
+
+const titleStyle = {
+  fontWeight: 900,
+  marginBottom: 10,
+  fontSize: 18,
 };
 
 const sel = {
@@ -168,15 +251,13 @@ const sel = {
   boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
 };
 
-const btn = {
+const btnBase = {
   padding: "10px 18px",
   borderRadius: 10,
   border: "none",
-  background: "#E8486F",
   color: "white",
   fontWeight: 800,
   cursor: "pointer",
-  boxShadow: "0 4px 10px rgba(232, 72, 111, 0.35)",
 };
 
 const toggleWrap = {
@@ -193,13 +274,13 @@ const toggleLabel = {
   color: "#374151",
 };
 
-const toggleTrack = (on) => ({
+const toggleTrack = (on, accent) => ({
   display: "inline-flex",
   alignItems: "center",
   width: 40,
   height: 22,
   borderRadius: 11,
-  background: on ? "#E8486F" : "#d1d5db",
+  background: on ? accent : "#d1d5db",
   position: "relative",
   transition: "background 0.2s",
   cursor: "pointer",
