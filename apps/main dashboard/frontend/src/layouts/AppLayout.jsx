@@ -1,5 +1,6 @@
 // frontend/src/layout/AppLayout.jsx
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 const rolePrefixMap = {
   operations_manager: "/operations",
@@ -9,6 +10,7 @@ const rolePrefixMap = {
 };
 
 const IconSize = 20;
+const SIDEBAR_STORAGE_KEY = "sentina.sidebarCollapsed";
 
 function getSectionFromPath(pathname) {
   if (pathname.startsWith("/sustainability")) return "sustainability";
@@ -34,11 +36,10 @@ function getPageTitle(pathname) {
   if (pathname.startsWith("/operations/booths")) return "Booths";
   if (pathname.startsWith("/operations/alerts")) return "Alerts";
   if (pathname.startsWith("/operations/navigation")) return "Navigation";
+  if (pathname.startsWith("/operations/reports")) return "Reports";
 
   if (pathname.startsWith("/soc")) return "SOC";
   if (pathname.startsWith("/exhibitor")) return "Exhibitor Portal";
-
-  if (pathname.startsWith("/operations/reports")) return "Reports";
 
   return "SentinaAI";
 }
@@ -98,16 +99,15 @@ function EnvironmentalNavIcon() {
   );
 }
 
-function MapNavIcon() {
+function NavigationNavIcon() {
   return (
-    <svg width={IconSize} height={IconSize} viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg width={IconSize} height={IconSize} viewBox="0 0 34 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path
-        d="M658.461676 324.594173V95.397443h-270.868862v41.672133h229.19673V512.118771h-83.344266v41.672132h208.360664v-41.672132h-83.344266v-145.852465h229.19673v520.901659h-229.19673v-187.524597h-41.672132v187.524597h-479.229527v-333.377062h145.852465v-41.672132h-145.852465v-375.049195h145.852465v-41.672133h-187.524597v833.442655h833.442654v-604.245925z"
-        fill="currentColor"
-      />
-      <path
-        d="M825.150207 407.938439v416.721327h-166.688531v62.508199H887.658406v-479.229526zM554.281344 824.659766h-416.721327v62.508199h479.229527v-145.852464h-62.5082zM554.281344 178.741709h62.5082v333.377062h-62.5082z"
-        fill="currentColor"
+        d="M11.3332 18L1.4165 22V6L11.3332 2M11.3332 18L22.6665 22M11.3332 18V2M22.6665 22L32.5832 18V2L22.6665 6M22.6665 22V6M22.6665 6L11.3332 2"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
@@ -115,11 +115,96 @@ function MapNavIcon() {
 
 function ReportsNavIcon() {
   return (
-    <svg width={IconSize} height={IconSize} viewBox="0 0 302.444 302.444" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M100.455,59.658c-6.128-1.312-13.782-2.242-22.546-2.242C34.722,57.416,0,84.514,0,133.21 c0,40.648,25.405,71.351,74.735,71.351c9.354,0,17.539-0.925,24.03-2.237c7.111-1.442,11.735-8.341,10.361-15.468 c-1.349-6.971-8.025-11.555-14.997-10.314c-4.661,0.827-9.72,1.345-14.526,1.345c-28.794,0-45.728-18-45.728-46.582 c0-31.756,19.901-47.213,45.517-47.213c5.446,0,10.361,0.579,14.723,1.479c7.095,1.462,14.097-2.898,15.895-9.917l0.104-0.413 c0.862-3.354,0.315-6.91-1.509-9.85C106.781,62.449,103.839,60.381,100.455,59.658z" />
-      <path d="M189.034,57.416c-42.132,0-69.443,31.973-69.443,74.735c0,40.649,24.768,72.62,67.113,72.62 c41.708,0,70.08-28.369,70.08-75.157C256.783,90.235,232.855,57.416,189.034,57.416z M188.399,179.15 c-21.597,0-34.722-19.688-34.722-47.636c0-27.73,12.702-48.478,34.509-48.478c22.232,0,34.511,22.015,34.511,47.636 C222.697,158.403,210.206,179.15,188.399,179.15z" />
-      <path d="M295.83,231.804h-19.301v-0.212l6.346-5.286c9.943-8.884,18.299-18.087,18.299-29.617c0-12.484-8.567-21.579-24.118-21.579 c-6.744,0-12.821,1.663-17.626,4.071c-2.879,1.442-4.186,4.843-3.003,7.835l0.15,0.377c0.583,1.479,1.757,2.641,3.24,3.214 c1.483,0.568,3.137,0.485,4.559-0.222c2.775-1.374,5.963-2.372,9.404-2.372c7.933,0,11.318,4.444,11.318,10.051 c-0.212,8.041-7.509,15.762-22.531,29.192l-6.708,6.073c-1.385,1.255-2.176,3.033-2.176,4.902c0,3.753,3.044,6.796,6.796,6.796 h35.352c3.654,0,6.614-2.961,6.614-6.609C302.444,234.765,299.484,231.804,295.83,231.804z" />
+    <svg width={IconSize} height={IconSize} viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path
+        d="M20.1667 6.41667V20.5H2.91667V6.41667M9.625 10.75H13.4583M1 1H22.0833V6.41667H1V1Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
+  );
+}
+
+function ToggleChevronIcon({ collapsed }) {
+  return collapsed ? (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ display: "block" }}>
+      <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ) : (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ display: "block" }}>
+      <path d="m15 6-6 6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SidebarText({ collapsed, children }) {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        maxWidth: collapsed ? 0 : 180,
+        opacity: collapsed ? 0 : 1,
+        overflow: "hidden",
+        whiteSpace: "nowrap",
+        transform: `translateX(${collapsed ? "-6px" : "0"})`,
+        transition: "max-width 280ms ease, opacity 180ms ease, transform 280ms ease",
+        pointerEvents: collapsed ? "none" : "auto",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function SidebarBrand({ collapsed }) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        height: 34,
+        marginBottom: 18,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: collapsed ? "center" : "flex-start",
+        overflow: "hidden",
+        fontSize: 28,
+        fontWeight: 900,
+        letterSpacing: "-0.5px",
+        lineHeight: 1,
+      }}
+    >
+      <span
+        style={{
+          display: "inline-block",
+          maxWidth: collapsed ? 0 : 220,
+          opacity: collapsed ? 0 : 1,
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+          transform: `translateY(${collapsed ? "-4px" : "0"})`,
+          transition: "max-width 280ms ease, opacity 180ms ease, transform 280ms ease",
+        }}
+      >
+        SentinaAI
+      </span>
+
+      <span
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: collapsed ? "center" : "flex-start",
+          opacity: collapsed ? 1 : 0,
+          transform: `translateY(${collapsed ? "0" : "4px"})`,
+          transition: "opacity 180ms ease, transform 280ms ease",
+          pointerEvents: "none",
+        }}
+      >
+        sAI
+      </span>
+    </div>
   );
 }
 
@@ -129,8 +214,23 @@ export default function AppLayout() {
 
   const pathname = location.pathname;
   const section = getSectionFromPath(pathname);
-
   const storedRole = localStorage.getItem("role") || "operations_manager";
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? "1" : "0");
+    } catch {
+      // ignore storage errors
+    }
+  }, [sidebarCollapsed]);
 
   const rolePrefix =
     section === "sustainability"
@@ -148,36 +248,57 @@ export default function AppLayout() {
   const navItemStyle = ({ isActive }) => ({
     display: "flex",
     alignItems: "center",
-    gap: 10,
-    padding: "10px 12px",
+    justifyContent: sidebarCollapsed ? "center" : "flex-start",
+    gap: sidebarCollapsed ? 0 : 10,
+    minHeight: 48,
+    padding: sidebarCollapsed ? "10px 0" : "10px 12px",
     borderRadius: 10,
     textDecoration: "none",
     color: isActive ? ACCENT : "#111827",
     background: isActive ? ACCENT_BG : "transparent",
     fontWeight: isActive ? 700 : 600,
     marginBottom: 6,
+    overflow: "hidden",
+    transition:
+      "background 220ms ease, color 220ms ease, padding 280ms ease, gap 280ms ease, transform 180ms ease",
   });
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/", { replace: true });
-  };
+const handleLogout = (e) => {
+  e?.preventDefault?.();
+  e?.stopPropagation?.();
+
+  const preservedSidebar = localStorage.getItem("sentina.sidebarCollapsed");
+
+  localStorage.clear();
+  sessionStorage.clear();
+
+  if (preservedSidebar !== null) {
+    localStorage.setItem("sentina.sidebarCollapsed", preservedSidebar);
+  }
+
+  window.location.replace("/");
+};
 
   const styles = {
     shell: {
       display: "grid",
-      gridTemplateColumns: "260px 1fr",
+      gridTemplateColumns: sidebarCollapsed ? "96px 1fr" : "260px 1fr",
       height: "100vh",
       background: "#f6f7fb",
       color: "#111827",
+      transition: "grid-template-columns 280ms ease",
     },
     sidebar: {
-      padding: 18,
+      position: "relative",
+      padding: sidebarCollapsed ? "22px 12px 18px" : "22px 18px 18px",
       background: "#ffffff",
       borderRight: "1px solid #e5e7eb",
       display: "flex",
       flexDirection: "column",
       gap: 6,
+      transition: "padding 280ms ease",
+      overflow: "visible",
+      zIndex: 3,
     },
     brand: {
       fontSize: 28,
@@ -191,26 +312,48 @@ export default function AppLayout() {
       opacity: 0.55,
       marginTop: 6,
       marginBottom: 8,
+      textAlign: sidebarCollapsed ? "center" : "left",
+      transition: "text-align 280ms ease, opacity 180ms ease",
     },
-    logoutBtn: {
-      marginTop: 10,
-      padding: "10px 12px",
-      borderRadius: 10,
-      border: "1px solid #fee2e2",
-      background: "#fff1f2",
-      color: "#D55F5A",
-      fontWeight: 800,
-      cursor: "pointer",
+    toggleBtn: {
+      position: "absolute",
+      top: 22,
+      right: -14,
+      width: 28,
+      height: 28,
+      padding: 0,
+      borderRadius: 9,
+      border: "1.5px solid #2563eb",
+      background: "#ffffff",
+      color: "#0f172a",
+      boxShadow: "0 6px 16px rgba(15, 23, 42, 0.10)",
       display: "flex",
       alignItems: "center",
-      gap: 10,
+      justifyContent: "center",
+      lineHeight: 0,
+      cursor: "pointer",
+      zIndex: 20,
     },
-    main: { display: "flex", flexDirection: "column", overflow: "hidden" },
+    main: {
+      display: "flex",
+      flexDirection: "column",
+      minWidth: 0,
+      minHeight: 0,
+      overflow: "hidden",
+    },
+    content: {
+      flex: 1,
+      minHeight: 0,
+      overflowY: "auto",
+      overflowX: "hidden",
+      padding: "0 22px 22px",
+    },
     header: {
       padding: "18px 22px",
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
+      flexShrink: 0,
     },
     pageTitle: { fontSize: 20, fontWeight: 900, color: ACCENT },
     subTitle: { marginTop: 4, fontSize: 12, opacity: 0.65 },
@@ -245,17 +388,43 @@ export default function AppLayout() {
       justifyContent: "center",
       fontWeight: 900,
     },
-    content: { padding: "0 22px 22px 22px", overflow: "auto" },
+    logoutBtn: {
+      marginTop: 10,
+      minHeight: 48,
+      padding: sidebarCollapsed ? "10px 0" : "10px 12px",
+      borderRadius: 10,
+      border: "1px solid #f8c7c7",
+      background: "#fff5f5",
+      color: "#e0565b",
+      fontWeight: 800,
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: sidebarCollapsed ? "center" : "flex-start",
+      gap: sidebarCollapsed ? 0 : 10,
+      overflow: "hidden",
+      transition:
+        "background 220ms ease, color 220ms ease, padding 280ms ease, gap 280ms ease",
+    },
   };
 
   return (
     <div style={styles.shell}>
       <aside style={styles.sidebar}>
-        <div style={styles.brand}>SentinaAI</div>
+        <button
+          type="button"
+          style={styles.toggleBtn}
+          onClick={() => setSidebarCollapsed((prev) => !prev)}
+          aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <ToggleChevronIcon collapsed={sidebarCollapsed} />
+        </button>
+
+        <SidebarBrand collapsed={sidebarCollapsed} />
 
         <div style={styles.sectionLabel}>MAIN</div>
 
-        <NavLink to={rolePrefix} end style={navItemStyle}>
+        <NavLink to={rolePrefix} end style={navItemStyle} title={sidebarCollapsed ? "Dashboard" : undefined}>
           <SvgIcon>
             <svg width="18" height="18" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
@@ -267,10 +436,10 @@ export default function AppLayout() {
               />
             </svg>
           </SvgIcon>
-          Dashboard
+          <SidebarText collapsed={sidebarCollapsed}>Dashboard</SidebarText>
         </NavLink>
 
-        <NavLink to={`${rolePrefix}/devices`} style={navItemStyle}>
+        <NavLink to={`${rolePrefix}/devices`} style={navItemStyle} title={sidebarCollapsed ? "Devices" : undefined}>
           <SvgIcon>
             <svg width={IconSize} height={IconSize} viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
@@ -288,10 +457,10 @@ export default function AppLayout() {
               />
             </svg>
           </SvgIcon>
-          Devices
+          <SidebarText collapsed={sidebarCollapsed}>Devices</SidebarText>
         </NavLink>
 
-        <NavLink to={`${rolePrefix}/alerts`} style={navItemStyle}>
+        <NavLink to={`${rolePrefix}/alerts`} style={navItemStyle} title={sidebarCollapsed ? "Alerts" : undefined}>
           <SvgIcon>
             <svg width={IconSize} height={IconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
@@ -303,12 +472,12 @@ export default function AppLayout() {
               />
             </svg>
           </SvgIcon>
-          Alerts
+          <SidebarText collapsed={sidebarCollapsed}>Alerts</SidebarText>
         </NavLink>
 
         {isOperations && (
           <>
-            <NavLink to={`${rolePrefix}/events`} style={navItemStyle}>
+            <NavLink to={`${rolePrefix}/events`} style={navItemStyle} title={sidebarCollapsed ? "Events" : undefined}>
               <SvgIcon>
                 <svg width="100%" height="100%" viewBox="0 0 25 19" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path
@@ -320,73 +489,36 @@ export default function AppLayout() {
                   />
                 </svg>
               </SvgIcon>
-              Events
+              <SidebarText collapsed={sidebarCollapsed}>Events</SidebarText>
             </NavLink>
 
-            <NavLink to={`${rolePrefix}/exhibitors`} style={navItemStyle}>
+            <NavLink to={`${rolePrefix}/exhibitors`} style={navItemStyle} title={sidebarCollapsed ? "Exhibitors" : undefined}>
               <SvgIcon>
                 <svg width="100%" height="100%" viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M7.61909 8C8.88226 8 9.90481 6.6579 9.90481 5C9.90481 3.3421 8.88226 2 7.61909 2C6.35593 2 5.33338 3.3421 5.33338 5C5.33338 6.6579 6.35593 8 7.61909 8ZM7.61909 10C9.72386 10 11.4286 7.7625 11.4286 5C11.4286 2.2375 9.72386 0 7.61909 0C5.51433 0 3.80957 2.2375 3.80957 5C3.80957 7.7625 5.51433 10 7.61909 10Z"
-                    fill="currentColor"
-                  />
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M1.99734 15.7886C1.62706 16.2779 1.52381 16.6725 1.52381 17V20H15.2381V17C15.2381 16.6725 15.1349 16.2779 14.7646 15.7886C14.3803 15.2809 13.7821 14.7792 13.0101 14.3364C11.4581 13.4461 9.57067 13 8.38095 13C7.19124 13 5.30389 13.4461 3.75176 14.3364C2.97979 14.7792 2.38153 15.2809 1.99734 15.7886ZM8.38095 11C5.58377 11 0 13.01 0 17V22H16.7619V17C16.7619 13.01 11.1781 11 8.38095 11Z"
-                    fill="currentColor"
-                  />
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M24.3808 8C25.644 8 26.6665 6.6579 26.6665 5C26.6665 3.3421 25.644 2 24.3808 2C23.1177 2 22.0951 3.3421 22.0951 5C22.0951 6.6579 23.1177 8 24.3808 8ZM24.3808 10C26.4856 10 28.1903 7.7625 28.1903 5C28.1903 2.2375 26.4856 0 24.3808 0C22.2761 0 20.5713 2.2375 20.5713 5C20.5713 7.7625 22.2761 10 24.3808 10Z"
-                    fill="currentColor"
-                  />
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M15.9998 6C16.842 6 17.5236 5.1054 17.5236 4C17.5236 2.8946 16.842 2 15.9998 2C15.1576 2 14.476 2.8946 14.476 4C14.476 5.1054 15.1576 6 15.9998 6ZM15.9998 8C17.6836 8 19.0474 6.21 19.0474 4C19.0474 1.79 17.6836 0 15.9998 0C14.316 0 12.9521 1.79 12.9521 4C12.9521 6.21 14.316 8 15.9998 8Z"
-                    fill="currentColor"
-                  />
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M17.2356 15.7886C16.8653 16.2779 16.7621 16.6725 16.7621 17V20H30.4764V17C30.4764 16.6725 30.3731 16.2779 30.0029 15.7886C29.6186 15.2809 29.0204 14.7792 28.2484 14.3364C26.6963 13.4461 24.8089 13 23.6192 13C22.4295 13 20.5421 13.4461 18.9901 14.3364C18.2181 14.7792 17.6198 15.2809 17.2356 15.7886ZM23.6192 11C20.8221 11 15.2383 13.01 15.2383 17V22H32.0002V17C32.0002 13.01 26.4164 11 23.6192 11Z"
-                    fill="currentColor"
-                  />
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M16 11C13.4786 11 11.7119 12.5425 11.2054 13.2071L10.1279 11.7929C10.8914 10.7909 13.0357 9 16 9C18.9643 9 21.1087 10.7909 21.8721 11.7929L20.7946 13.2071C20.2882 12.5425 18.5214 11 16 11Z"
-                    fill="currentColor"
-                  />
+                  <path fillRule="evenodd" clipRule="evenodd" d="M7.61909 8C8.88226 8 9.90481 6.6579 9.90481 5C9.90481 3.3421 8.88226 2 7.61909 2C6.35593 2 5.33338 3.3421 5.33338 5C5.33338 6.6579 6.35593 8 7.61909 8ZM7.61909 10C9.72386 10 11.4286 7.7625 11.4286 5C11.4286 2.2375 9.72386 0 7.61909 0C5.51433 0 3.80957 2.2375 3.80957 5C3.80957 7.7625 5.51433 10 7.61909 10Z" fill="currentColor" />
+                  <path fillRule="evenodd" clipRule="evenodd" d="M1.99734 15.7886C1.62706 16.2779 1.52381 16.6725 1.52381 17V20H15.2381V17C15.2381 16.6725 15.1349 16.2779 14.7646 15.7886C14.3803 15.2809 13.7821 14.7792 13.0101 14.3364C11.4581 13.4461 9.57067 13 8.38095 13C7.19124 13 5.30389 13.4461 3.75176 14.3364C2.97979 14.7792 2.38153 15.2809 1.99734 15.7886ZM8.38095 11C5.58377 11 0 13.01 0 17V22H16.7619V17C16.7619 13.01 11.1781 11 8.38095 11Z" fill="currentColor" />
+                  <path fillRule="evenodd" clipRule="evenodd" d="M24.3808 8C25.644 8 26.6665 6.6579 26.6665 5C26.6665 3.3421 25.644 2 24.3808 2C23.1177 2 22.0951 3.3421 22.0951 5C22.0951 6.6579 23.1177 8 24.3808 8ZM24.3808 10C26.4856 10 28.1903 7.7625 28.1903 5C28.1903 2.2375 26.4856 0 24.3808 0C22.2761 0 20.5713 2.2375 20.5713 5C20.5713 7.7625 22.2761 10 24.3808 10Z" fill="currentColor" />
+                  <path fillRule="evenodd" clipRule="evenodd" d="M15.9998 6C16.842 6 17.5236 5.1054 17.5236 4C17.5236 2.8946 16.842 2 15.9998 2C15.1576 2 14.476 2.8946 14.476 4C14.476 5.1054 15.1576 6 15.9998 6ZM15.9998 8C17.6836 8 19.0474 6.21 19.0474 4C19.0474 1.79 17.6836 0 15.9998 0C14.316 0 12.9521 1.79 12.9521 4C12.9521 6.21 14.316 8 15.9998 8Z" fill="currentColor" />
+                  <path fillRule="evenodd" clipRule="evenodd" d="M17.2356 15.7886C16.8653 16.2779 16.7621 16.6725 16.7621 17V20H30.4764V17C30.4764 16.6725 30.3731 16.2779 30.0029 15.7886C29.6186 15.2809 29.0204 14.7792 28.2484 14.3364C26.6963 13.4461 24.8089 13 23.6192 13C22.4295 13 20.5421 13.4461 18.9901 14.3364C18.2181 14.7792 17.6198 15.2809 17.2356 15.7886ZM23.6192 11C20.8221 11 15.2383 13.01 15.2383 17V22H32.0002V17C32.0002 13.01 26.4164 11 23.6192 11Z" fill="currentColor" />
+                  <path fillRule="evenodd" clipRule="evenodd" d="M16 11C13.4786 11 11.7119 12.5425 11.2054 13.2071L10.1279 11.7929C10.8914 10.7909 13.0357 9 16 9C18.9643 9 21.1087 10.7909 21.8721 11.7929L20.7946 13.2071C20.2882 12.5425 18.5214 11 16 11Z" fill="currentColor" />
                 </svg>
               </SvgIcon>
-              Exhibitors
+              <SidebarText collapsed={sidebarCollapsed}>Exhibitors</SidebarText>
             </NavLink>
 
-            <NavLink to={`${rolePrefix}/booths`} style={navItemStyle}>
+            <NavLink to={`${rolePrefix}/booths`} style={navItemStyle} title={sidebarCollapsed ? "Booths" : undefined}>
               <SvgIcon>
-                <svg
-                  width="100%"
-                  height="100%"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  style={{ display: "block", color: "inherit" }}
-                >
+                <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: "block", color: "inherit" }}>
                   <rect x="3" y="2.5" width="18" height="19" rx="4.5" stroke="currentColor" strokeWidth="2" />
                   <path d="M8 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   <path d="M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   <path d="M8 16H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </SvgIcon>
-              Booths
+              <SidebarText collapsed={sidebarCollapsed}>Booths</SidebarText>
             </NavLink>
 
-            <NavLink to={`${rolePrefix}/navigation`} style={navItemStyle}>
+            <NavLink to={`${rolePrefix}/navigation`} style={navItemStyle} title={sidebarCollapsed ? "Navigation" : undefined}>
               <SvgIcon>
                 <svg width="100%" height="100%" viewBox="0 0 34 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path
@@ -398,37 +530,36 @@ export default function AppLayout() {
                   />
                 </svg>
               </SvgIcon>
-              Navigation
+              <SidebarText collapsed={sidebarCollapsed}>Navigation</SidebarText>
             </NavLink>
-            <NavLink to={`${rolePrefix}/reports`} style={navItemStyle}>
-              <SvgIcon>
-                <ReportsNavIcon />
-              </SvgIcon>
-              Reports
+
+            <NavLink to={`${rolePrefix}/reports`} style={navItemStyle} title={sidebarCollapsed ? "Reports" : undefined}>
+              <SvgIcon><ReportsNavIcon /></SvgIcon>
+              <SidebarText collapsed={sidebarCollapsed}>Reports</SidebarText>
             </NavLink>
           </>
         )}
 
         {isSust && (
           <>
-            <NavLink to={`${rolePrefix}/energy`} style={navItemStyle}>
+            <NavLink to={`${rolePrefix}/energy`} style={navItemStyle} title={sidebarCollapsed ? "Energy" : undefined}>
               <SvgIcon><EnergyNavIcon /></SvgIcon>
-              Energy
+              <SidebarText collapsed={sidebarCollapsed}>Energy</SidebarText>
             </NavLink>
 
-            <NavLink to={`${rolePrefix}/environment`} style={navItemStyle}>
+            <NavLink to={`${rolePrefix}/environment`} style={navItemStyle} title={sidebarCollapsed ? "Environmental" : undefined}>
               <SvgIcon><EnvironmentalNavIcon /></SvgIcon>
-              Environmental
+              <SidebarText collapsed={sidebarCollapsed}>Environmental</SidebarText>
             </NavLink>
 
-            <NavLink to={`${rolePrefix}/map`} style={navItemStyle}>
-              <SvgIcon><MapNavIcon /></SvgIcon>
-              Navigation
+            <NavLink to={`${rolePrefix}/map`} style={navItemStyle} title={sidebarCollapsed ? "Navigation" : undefined}>
+              <SvgIcon><NavigationNavIcon /></SvgIcon>
+              <SidebarText collapsed={sidebarCollapsed}>Navigation</SidebarText>
             </NavLink>
 
-            <NavLink to={`${rolePrefix}/reports`} style={navItemStyle}>
+            <NavLink to={`${rolePrefix}/reports`} style={navItemStyle} title={sidebarCollapsed ? "Reports" : undefined}>
               <SvgIcon><ReportsNavIcon /></SvgIcon>
-              Reports
+              <SidebarText collapsed={sidebarCollapsed}>Reports</SidebarText>
             </NavLink>
           </>
         )}
@@ -437,10 +568,10 @@ export default function AppLayout() {
 
         <div style={styles.sectionLabel}>SETTINGS</div>
 
-        <NavLink to={`${rolePrefix}/settings`} style={navItemStyle}>
+        <NavLink to={`${rolePrefix}/settings`} style={navItemStyle} title={sidebarCollapsed ? "Settings" : undefined}>
           <SvgIcon>
             <svg width="100%" height="100%" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <g clipPath="url(#clip0)">
+              <g clipPath="url(#clip0-settings)">
                 <path
                   d="M13.9998 17.5003C15.9328 17.5003 17.4998 15.9333 17.4998 14.0003C17.4998 12.0673 15.9328 10.5003 13.9998 10.5003C12.0668 10.5003 10.4998 12.0673 10.4998 14.0003C10.4998 15.9333 12.0668 17.5003 13.9998 17.5003Z"
                   stroke="currentColor"
@@ -457,16 +588,16 @@ export default function AppLayout() {
                 />
               </g>
               <defs>
-                <clipPath id="clip0">
+                <clipPath id="clip0-settings">
                   <rect width="28" height="28" fill="white" />
                 </clipPath>
               </defs>
             </svg>
           </SvgIcon>
-          Settings
+          <SidebarText collapsed={sidebarCollapsed}>Settings</SidebarText>
         </NavLink>
 
-        <NavLink to={`${rolePrefix}/help`} style={navItemStyle}>
+        <NavLink to={`${rolePrefix}/help`} style={navItemStyle} title={sidebarCollapsed ? "Help" : undefined}>
           <SvgIcon>
             <svg width="100%" height="100%" viewBox="0 0 28 26" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
@@ -478,11 +609,16 @@ export default function AppLayout() {
               />
             </svg>
           </SvgIcon>
-          Help
+          <SidebarText collapsed={sidebarCollapsed}>Help</SidebarText>
         </NavLink>
 
-        <button style={styles.logoutBtn} onClick={handleLogout}>
-          <span style={iconStyle}>
+        <button
+          type="button"
+          style={styles.logoutBtn}
+          onClick={handleLogout}
+          title={sidebarCollapsed ? "Logout" : undefined}
+        >
+          <span style={{ ...iconStyle, color: "#e0565b" }}>
             <svg width="100%" height="100%" viewBox="0 0 27 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M10.125 21H5.625C5.02826 21 4.45597 20.7893 4.03401 20.4142C3.61205 20.0391 3.375 19.5304 3.375 19V5C3.375 4.46957 3.61205 3.96086 4.03401 3.58579C4.45597 3.21071 5.02826 3 5.625 3H10.125M18 17L23.625 12M23.625 12L18 7M23.625 12H10.125"
@@ -493,7 +629,7 @@ export default function AppLayout() {
               />
             </svg>
           </span>
-          Logout
+          <SidebarText collapsed={sidebarCollapsed}>Logout</SidebarText>
         </button>
       </aside>
 

@@ -117,19 +117,7 @@
   color: #111827;
 }
 
-.exhSideIcon {
-  width: 20px;
-  height: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
 
-.exhSideIcon svg {
-  width: 100%;
-  height: 100%;
-}
 
 .exhLogoutBtn {
   margin-top: 12px;
@@ -964,13 +952,12 @@
 .exhSideIcon {
   width: 18px;
   height: 18px;
+  min-width: 18px;
+  min-height: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border-radius: 6px;
-  background: #f3f4f6;
-  color: inherit;
 }
 
 .exhSideIcon svg {
@@ -1237,3 +1224,224 @@
     align-items: flex-start;
   }
 }
+
+.exhSideIcon {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: transparent;
+  border-radius: 0;
+  color: inherit;
+}
+
+.exhSideIcon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.exhShell {
+  display: grid;
+  grid-template-columns: var(--exh-sidebar-width, 292px) 1fr;
+  min-height: 100vh;
+  transition: grid-template-columns 280ms ease;
+}
+
+.exhSidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow: visible;
+  background: #fff;
+  border-right: 1px solid var(--exh-line);
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: padding 280ms ease;
+  z-index: 3;
+}
+
+.exhBrand {
+  position: relative;
+  height: 34px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.6px;
+  line-height: 1;
+}
+
+.exhBrandLong {
+  display: inline-block;
+  max-width: 240px;
+  opacity: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  transform: translateY(0);
+  transition: max-width 280ms ease, opacity 180ms ease, transform 280ms ease;
+}
+
+.exhBrandShort {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 180ms ease, transform 280ms ease;
+  pointer-events: none;
+}
+
+.sidebarCollapsed {
+  --exh-sidebar-width: 96px;
+}
+
+.sidebarCollapsed .exhSidebar {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.sidebarCollapsed .exhBrand {
+  justify-content: center;
+}
+
+.sidebarCollapsed .exhBrandLong {
+  max-width: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.sidebarCollapsed .exhBrandShort {
+  opacity: 1;
+  transform: translateY(0);
+  justify-content: center;
+}
+
+.sidebarCollapsed .exhSidebarLabel {
+  text-align: center;
+}
+
+.sidebarCollapsed .exhSideLink,
+.sidebarCollapsed .exhLogoutBtn {
+  justify-content: center;
+  gap: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.exhLinkText {
+  display: inline-block;
+  max-width: 180px;
+  opacity: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  transform: translateX(0);
+  transition: max-width 280ms ease, opacity 180ms ease, transform 280ms ease;
+}
+
+.sidebarCollapsed .exhLinkText {
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(-6px);
+  pointer-events: none;
+}
+
+.exhSidebarToggle {
+  position: absolute;
+  top: 22px;
+  right: -14px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 9px;
+  border: 1.5px solid #2563eb;
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  cursor: pointer;
+  z-index: 20;
+}
+
+.exhSidebarToggle svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.exhSidebarLabel {
+  font-size: 13px;
+  font-weight: 800;
+  opacity: 0.55;
+  margin: 10px 0 10px;
+  letter-spacing: 0.02em;
+  text-align: left;
+  transition: text-align 280ms ease, opacity 180ms ease;
+}
+
+.exhSideLink {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 0;
+  background: transparent;
+  color: #111827;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.2;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    gap 0.28s ease,
+    padding 0.28s ease,
+    justify-content 0.28s ease;
+}
+
+.exhLogoutBtn {
+  margin-top: 12px;
+  min-height: 46px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid #f3d8ea;
+  background: #fdf5fb;
+  color: #9b3a7a;
+  font-weight: 800;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  overflow: hidden;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    gap 0.28s ease,
+    padding 0.28s ease,
+    justify-content 0.28s ease;
+}
+

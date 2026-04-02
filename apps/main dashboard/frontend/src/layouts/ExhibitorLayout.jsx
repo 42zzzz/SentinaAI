@@ -6,6 +6,7 @@ import "./../pages/ExhibitorDashboard.css";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const DEFAULT_EXHIBITOR_ID = "EXH0240";
 const ACCENT = "#35005C";
+const SIDEBAR_STORAGE_KEY = "sentina.sidebarCollapsed";
 
 function buildQuery(params) {
   const qs = new URLSearchParams();
@@ -110,13 +111,16 @@ function SearchIcon() {
   );
 }
 
+
+
 function DashboardIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 20 21" fill="none" aria-hidden="true">
       <path
-        d="M4 12.5h6v7H4v-7Zm10-8h6v15h-6v-15ZM4 4.5h6v5H4v-5Zm10 8h6v7h-6v-7Z"
+        d="M7 19.3333V10.1667H13V19.3333M1 7.41667L10 1L19 7.41667V17.5C19 17.9862 18.7893 18.4525 18.4142 18.7964C18.0391 19.1402 17.5304 19.3333 17 19.3333H3C2.46957 19.3333 1.96086 19.1402 1.58579 18.7964C1.21071 18.4525 1 17.9862 1 17.5V7.41667Z"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="2"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
     </svg>
@@ -125,13 +129,10 @@ function DashboardIcon() {
 
 function HeatMapIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
       <path
-        d="M6 4h5v5H6V4Zm7 0h5v5h-5V4ZM6 11h5v5H6v-5Zm7 0h5v5h-5v-5ZM6 18h12"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        d="M44,42a2,2,0,0,1-2,2H4V6A2,2,0,0,1,8,6V40H42A2,2,0,0,1,44,42ZM12,30a.9.9,0,0,0-1,1v4a.9.9,0,0,0,1,1h4a.9.9,0,0,0,1-1V31a.9.9,0,0,0-1-1Zm-1-4h6a.9.9,0,0,0,1-1V19a.9.9,0,0,0-1-1H11a.9.9,0,0,0-1,1v6A.9.9,0,0,0,11,26Zm24,0h6a.9.9,0,0,0,1-1V19a.9.9,0,0,0-1-1H35a.9.9,0,0,0-1,1v6A.9.9,0,0,0,35,26ZM23,15h6a.9.9,0,0,0,1-1V8a.9.9,0,0,0-1-1H23a.9.9,0,0,0-1,1v6A.9.9,0,0,0,23,15ZM22,38h8a.9.9,0,0,0,1-1V29a.9.9,0,0,0-1-1H22a.9.9,0,0,0-1,1v8A.9.9,0,0,0,22,38Zm2-19a.9.9,0,0,0-1,1v4a.9.9,0,0,0,1,1h4a.9.9,0,0,0,1-1V20a.9.9,0,0,0-1-1ZM37,31a.9.9,0,0,0-1,1v2a.9.9,0,0,0,1,1h2a.9.9,0,0,0,1-1V32a.9.9,0,0,0-1-1Zm0-18h2a.9.9,0,0,0,1-1V10a.9.9,0,0,0-1-1H37a.9.9,0,0,0-1,1v2A.9.9,0,0,0,37,13ZM13,13h2a.9.9,0,0,0,1-1V10a.9.9,0,0,0-1-1H13a.9.9,0,0,0-1,1v2A.9.9,0,0,0,13,13Z"
+        fill="currentColor"
       />
     </svg>
   );
@@ -139,26 +140,54 @@ function HeatMapIcon() {
 
 function AnalyticsIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 19h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M7 16V9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M12 16V5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M17 16v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <svg viewBox="0 0 25 19" fill="none" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M0.5 0.5H2V17.375H24.5V18.5H0.5V0.5ZM22.7255 4.00212C22.8018 4.04893 22.865 4.10656 22.9116 4.17171C22.9581 4.23686 22.9871 4.30825 22.9969 4.3818C23.0066 4.45536 22.9969 4.52963 22.9684 4.60038C22.9398 4.67113 22.893 4.73697 22.8305 4.79413L16.0805 10.9816C16.0142 11.0424 15.9316 11.092 15.8381 11.1274C15.7447 11.1627 15.6424 11.183 15.5378 11.1869C15.4332 11.1909 15.3288 11.1783 15.231 11.1501C15.1333 11.1219 15.0446 11.0787 14.9705 11.0233L11.09 8.11287L5.606 13.7682C5.48603 13.8827 5.31161 13.9577 5.11938 13.9777C4.92714 13.9977 4.73207 13.961 4.57516 13.8753C4.41824 13.7897 4.3117 13.6618 4.27792 13.5184C4.24413 13.3751 4.28574 13.2276 4.394 13.1068L10.394 6.91925C10.4577 6.85345 10.5396 6.79879 10.6342 6.75904C10.7288 6.71928 10.8337 6.69537 10.9418 6.68895C11.0498 6.68254 11.1585 6.69377 11.2602 6.72187C11.3619 6.74998 11.4543 6.79429 11.531 6.85175L15.4445 9.788L21.6695 4.08087C21.7319 4.02367 21.8087 3.97625 21.8956 3.94133C21.9825 3.9064 22.0777 3.88467 22.1757 3.87735C22.2738 3.87004 22.3728 3.87729 22.4672 3.8987C22.5615 3.92011 22.6493 3.95526 22.7255 4.00212Z"
+        fill="currentColor"
+        stroke="currentColor"
+      />
     </svg>
   );
 }
 
 function ReportsIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 24 22" fill="none" aria-hidden="true">
       <path
-        d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A2.5 2.5 0 0 1 5 18V6a2.5 2.5 0 0 1 2-2.45Z"
+        d="M20.1667 6.41667V20.5H2.91667V6.41667M9.625 10.75H13.4583M1 1H22.0833V6.41667H1V1Z"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="2"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d="M14 3.5V8h4" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M8 12h8M8 15.5h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ToggleChevronIcon({ collapsed }) {
+  return collapsed ? (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ width: 14, height: 14, display: "block" }}>
+      <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ width: 14, height: 14, display: "block" }}>
+      <path d="m15 6-6 6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function NavigationIcon() {
+  return (
+    <svg viewBox="0 0 34 24" fill="none" aria-hidden="true">
+      <path
+        d="M11.3332 18L1.4165 22V6L11.3332 2M11.3332 18L22.6665 22M11.3332 18V2M22.6665 22L32.5832 18V2L22.6665 6M22.6665 22V6M22.6665 6L11.3332 2"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -206,6 +235,22 @@ function LogoutIcon() {
 export default function ExhibitorLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+  try {
+    return localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+});
+
+  useEffect(() => {
+  try {
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? "1" : "0");
+  } catch {
+    // ignore storage errors
+  }
+}, [sidebarCollapsed]);
 
   const [now, setNow] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState("");
@@ -436,57 +481,87 @@ export default function ExhibitorLayout() {
     .toUpperCase();
 
   return (
-    <div className="exhibitorTheme">
+    <div className={`exhibitorTheme${sidebarCollapsed ? " sidebarCollapsed" : ""}`}>
       <div className="exhShell">
         <aside className="exhSidebar">
-          <div className="exhBrand">SentinaAI</div>
+          <button
+            type="button"
+            className="exhSidebarToggle"
+            onClick={() => setSidebarCollapsed((prev) => !prev)}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <ToggleChevronIcon collapsed={sidebarCollapsed} />
+          </button>
+
+          <div className="exhBrand">
+            <span className="exhBrandLong">SentinaAI</span>
+            <span className="exhBrandShort">sAI</span>
+          </div>
 
           <div className="exhSidebarLabel">MAIN</div>
           <nav className="exhSidebarNav">
-            <NavLink to="/exhibitor" end className={({ isActive }) => `exhSideLink${isActive ? " isActive" : ""}`}>
+            <NavLink
+              to="/exhibitor"
+              end
+              title={sidebarCollapsed ? "Dashboard" : undefined}
+              className={({ isActive }) => `exhSideLink${isActive ? " isActive" : ""}`}
+            >
               <span className="exhSideIcon"><DashboardIcon /></span>
-              <span>Dashboard</span>
+              <span className="exhLinkText">Dashboard</span>
             </NavLink>
 
-            <NavLink to="/exhibitor/heatmap" className={({ isActive }) => `exhSideLink${isActive ? " isActive" : ""}`}>
+            <NavLink
+              to="/exhibitor/heatmap"
+              title={sidebarCollapsed ? "Heat Map" : undefined}
+              className={({ isActive }) => `exhSideLink${isActive ? " isActive" : ""}`}
+            >
               <span className="exhSideIcon"><HeatMapIcon /></span>
-              <span>Heat Map</span>
+              <span className="exhLinkText">Heat Map</span>
             </NavLink>
 
-            <NavLink to="/exhibitor/analytics" className={({ isActive }) => `exhSideLink${isActive ? " isActive" : ""}`}>
+            <NavLink
+              to="/exhibitor/analytics"
+              title={sidebarCollapsed ? "Analytics" : undefined}
+              className={({ isActive }) => `exhSideLink${isActive ? " isActive" : ""}`}
+            >
               <span className="exhSideIcon"><AnalyticsIcon /></span>
-              <span>Analytics</span>
+              <span className="exhLinkText">Analytics</span>
             </NavLink>
 
-            <NavLink to="/exhibitor/reports" className={({ isActive }) => `exhSideLink${isActive ? " isActive" : ""}`}>
+            <NavLink
+              to="/exhibitor/reports"
+              title={sidebarCollapsed ? "Reports" : undefined}
+              className={({ isActive }) => `exhSideLink${isActive ? " isActive" : ""}`}
+            >
               <span className="exhSideIcon"><ReportsIcon /></span>
-              <span>Reports</span>
+              <span className="exhLinkText">Reports</span>
             </NavLink>
 
             <NavLink
               to="/exhibitor/navigation"
+              title={sidebarCollapsed ? "Navigation" : undefined}
               className={({ isActive }) => `exhSideLink${isActive ? " isActive" : ""}`}
             >
-              <span className="exhSideIcon"><HeatMapIcon /></span>
-              <span>Navigation</span>
+              <span className="exhSideIcon"><NavigationIcon /></span>
+              <span className="exhLinkText">Navigation</span>
             </NavLink>
           </nav>
 
           <div className="exhSidebarSpacer" />
 
           <div className="exhSidebarLabel">SETTINGS</div>
-          <button type="button" className="exhSideLink isGhost">
+          <button type="button" title={sidebarCollapsed ? "Settings" : undefined} className="exhSideLink isGhost">
             <span className="exhSideIcon"><SettingsIcon /></span>
-            <span>Settings</span>
+            <span className="exhLinkText">Settings</span>
           </button>
-          <button type="button" className="exhSideLink isGhost">
+          <button type="button" title={sidebarCollapsed ? "Help" : undefined} className="exhSideLink isGhost">
             <span className="exhSideIcon"><HelpIcon /></span>
-            <span>Help</span>
+            <span className="exhLinkText">Help</span>
           </button>
 
-          <button type="button" className="exhLogoutBtn" onClick={handleLogout}>
+          <button type="button" className="exhLogoutBtn" onClick={handleLogout} title={sidebarCollapsed ? "Logout" : undefined}>
             <span className="exhSideIcon"><LogoutIcon /></span>
-            <span>Logout</span>
+            <span className="exhLinkText">Logout</span>
           </button>
         </aside>
 
