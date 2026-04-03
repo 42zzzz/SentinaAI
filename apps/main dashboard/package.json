@@ -2,7 +2,7 @@
   "name": "sentina-main-dashboard",
   "private": true,
   "scripts": {
-    "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\""
+    "dev": "concurrently --names \"BACKEND,FRONTEND,TWIN\" --prefix-colors \"blue,green,magenta\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\" \"npm run dev --prefix ../digital_twin_web\""
   },
   "devDependencies": {
     "concurrently": "^9.2.1"
