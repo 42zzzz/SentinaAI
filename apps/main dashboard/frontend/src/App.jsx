@@ -28,7 +28,9 @@ import EnergyPage from "./pages/EnergyPage";
 import EnvironmentalPage from "./pages/EnvironmentalPage";
 
 
+
 import ReportsPage from "./pages/ReportsPage";
+import DigitalTwinPage from "./pages/DigitalTwinPage";
 
 
 export default function App() {
@@ -84,8 +86,10 @@ export default function App() {
           <Route path="booths" element={<BoothsPage />} />
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="navigation" element={<NavigationPage />} />
+          <Route path="digital-twin" element={<DigitalTwinPage />} />
           <Route path="alerts/:id" element={<AlertDetailsPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          
         </Route>
 
         <Route
@@ -113,6 +117,7 @@ export default function App() {
           <Route path="energy" element={<EnergyPage />} />
           <Route path="environment" element={<EnvironmentalPage />} />
           <Route path="map" element={<NavigationPage />} />
+          <Route path="digital-twin" element={<DigitalTwinPage />} />
           <Route path="reports" element={<ReportsPage />} />
         </Route>
 
