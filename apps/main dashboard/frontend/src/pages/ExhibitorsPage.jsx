@@ -1,6 +1,7 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./ExhibitorsPage.css";
+import MultiSelectPill from "../components/MultiSelectPill";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -19,11 +20,11 @@ export default function ExhibitorsPage() {
 
   // Query state
   const [q, setQ] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [hqCountry, setHqCountry] = useState("");
-  const [status, setStatus] = useState("");
-  const [eventId, setEventId] = useState("");
-  const [packageTier, setPackageTier] = useState("");
+  const [industries, setIndustries] = useState([]);
+  const [hqCountries, setHqCountries] = useState([]);
+  const [statuses, setStatuses] = useState([]);
+  const [eventIds, setEventIds] = useState([]);
+  const [packageTiers, setPackageTiers] = useState([]);
   const [sort, setSort] = useState("name_asc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -69,11 +70,11 @@ export default function ExhibitorsPage() {
         const res = await axios.get(`${API_BASE}/exhibitors`, {
           params: {
             q: qLive || undefined,
-            industry: industry || undefined,
-            hq_country: hqCountry || undefined,
-            status: status || undefined,
-            event_id: eventId || undefined,
-            package_tier: packageTier || undefined,
+            industry: industries.length ? industries.join(",") : undefined,
+            hq_country: hqCountries.length ? hqCountries.join(",") : undefined,
+            status: statuses.length ? statuses.join(",") : undefined,
+            event_id: eventIds.length ? eventIds.join(",") : undefined,
+            package_tier: packageTiers.length ? packageTiers.join(",") : undefined,
             sort,
             page,
             pageSize,
@@ -89,12 +90,12 @@ export default function ExhibitorsPage() {
     };
 
     fetchExhibitors();
-  }, [qLive, industry, hqCountry, status, eventId, packageTier, sort, page, pageSize]);
+  }, [qLive, industries, hqCountries, statuses, eventIds, packageTiers, sort, page, pageSize]);
 
-  useEffect(() => setPage(1), [industry, hqCountry, status, eventId, packageTier, sort, pageSize]);
+  useEffect(() => setPage(1), [industries, hqCountries, statuses, eventIds, packageTiers, sort, pageSize]);
   useEffect(() => {
-    if (!eventId) setPackageTier("");
-  }, [eventId]);
+    if (!eventIds.length) setPackageTiers([]);
+  }, [eventIds]);
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(total / pageSize)),
@@ -103,11 +104,11 @@ export default function ExhibitorsPage() {
 
   const clearFilters = () => {
     setQ("");
-    setIndustry("");
-    setHqCountry("");
-    setStatus("");
-    setEventId("");
-    setPackageTier("");
+    setIndustries([]);
+    setHqCountries([]);
+    setStatuses([]);
+    setEventIds([]);
+    setPackageTiers([]);
     setSort("name_asc");
     setPage(1);
     setPageSize(10);
@@ -140,80 +141,48 @@ export default function ExhibitorsPage() {
               />
             </div>
 
-            <div className="filterPill pillEvent pillSelectWrap">
-              <select
-                className="pillSelect"
-                value={eventId}
-                onChange={(e) => setEventId(e.target.value)}
-              >
-                <option value="">All Events (Global)</option>
-                {events.map(ev => (
-                  <option key={ev.event_id} value={ev.event_id}>
-                    {ev.event_id} — {ev.event_name}
-                  </option>
-                ))}
-              </select>
-              <div className="pillRightCaret"></div>
-            </div>
+            <MultiSelectPill
+              className="pillEvent"
+              label="Event"
+              options={events}
+              value={eventIds}
+              onChange={setEventIds}
+              getOptionValue={(option) => option.event_id}
+              getOptionLabel={(option) => `${option.event_id} — ${option.event_name}`}
+            />
 
-            <div className="filterPill pillTier pillSelectWrap">
-              <select
-                className="pillSelect"
-                value={packageTier}
-                onChange={(e) => setPackageTier(e.target.value)}
-                disabled={!eventId}
-              >
-                <option value="">
-                  {eventId ? "All Tiers" : "Select event first"}
-                </option>
-                {filters?.packageTiers?.map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-              <div className="pillRightCaret"></div>
-            </div>
+            <MultiSelectPill
+              className="pillTier"
+              label={eventIds.length ? "Tier" : "Select event first"}
+              options={filters?.packageTiers || []}
+              value={packageTiers}
+              onChange={setPackageTiers}
+              disabled={!eventIds.length}
+            />
 
-            <div className="filterPill pillIndustry pillSelectWrap">
-              <select
-                className="pillSelect"
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-              >
-                <option value="">All Industries</option>
-                {filters?.industries?.map(i => (
-                  <option key={i} value={i}>{i}</option>
-                ))}
-              </select>
-              <div className="pillRightCaret"></div>
-            </div>
+            <MultiSelectPill
+              className="pillIndustry"
+              label="Industry"
+              options={filters?.industries || []}
+              value={industries}
+              onChange={setIndustries}
+            />
 
-            <div className="filterPill pillCountry pillSelectWrap">
-              <select
-                className="pillSelect"
-                value={hqCountry}
-                onChange={(e) => setHqCountry(e.target.value)}
-              >
-                <option value="">All HQ Countries</option>
-                {filters?.hqCountries?.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-              <div className="pillRightCaret"></div>
-            </div>
+            <MultiSelectPill
+              className="pillCountry"
+              label="HQ Country"
+              options={filters?.hqCountries || []}
+              value={hqCountries}
+              onChange={setHqCountries}
+            />
 
-            <div className="filterPill pillStatus pillSelectWrap">
-              <select
-                className="pillSelect"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-              >
-                <option value="">All Status</option>
-                {filters?.statuses?.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-              <div className="pillRightCaret"></div>
-            </div>
+            <MultiSelectPill
+              className="pillStatus"
+              label="Status"
+              options={filters?.statuses || []}
+              value={statuses}
+              onChange={setStatuses}
+            />
 
           </div>
 

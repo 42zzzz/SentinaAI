@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import "./ReportsPage.css";
+import MultiSelectPill from "../components/MultiSelectPill";
 
 function IconSearch() {
   return (
@@ -149,10 +150,10 @@ export default function ReportsPage() {
   const themeClass = isSustainability ? "sustTheme" : isExhibitor ? "exhTheme" : "opsTheme";
 
   const [q, setQ] = useState("");
-  const [reportType, setReportType] = useState("");
+  const [reportTypes, setReportTypes] = useState([]);
   const [dateFilter, setDateFilter] = useState("");
   const [format, setFormat] = useState("");
-  const [status, setStatus] = useState("");
+  const [statuses, setStatuses] = useState([]);
   const [sort, setSort] = useState("timestamp_desc");
   const [page, setPage] = useState(1);
   const [showNewReport, setShowNewReport] = useState(false);
@@ -192,7 +193,7 @@ export default function ReportsPage() {
         description: "Tracks daily lead capture volume and conversion estimates.",
         timestamp: "2025-02-28T10:22:00",
         report_type: "Leads",
-        format: "CSV",
+        format: "XLSX",
         status: "Scheduled",
       },
       {
@@ -237,7 +238,7 @@ export default function ReportsPage() {
         description: "Categorizes visitors by buying intent and interest level.",
         timestamp: "2025-01-03T09:32:00",
         report_type: "Insights",
-        format: "CSV",
+        format: "XLSX",
         status: "Completed",
       },
       {
@@ -265,9 +266,9 @@ export default function ReportsPage() {
       );
     }
 
-    if (reportType) next = next.filter((r) => r.report_type === reportType);
+        if (reportTypes.length) next = next.filter((r) => reportTypes.includes(r.report_type));
     if (format) next = next.filter((r) => r.format === format);
-    if (status) next = next.filter((r) => r.status === status);
+    if (statuses.length) next = next.filter((r) => statuses.includes(r.status));
 
     if (dateFilter) {
       const now = new Date();
@@ -291,7 +292,7 @@ export default function ReportsPage() {
     }
 
     return next;
-  }, [rows, q, reportType, dateFilter, format, status, sort]);
+  }, [rows, q, reportTypes, dateFilter, format, statuses, sort]);
 
   const total = filteredRows.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -335,27 +336,16 @@ export default function ReportsPage() {
               />
             </div>
 
-            <div className="filterPill pillSelectWrap">
-              <span className="pillLeftIcon" aria-hidden>
-                <IconReportType />
-              </span>
-              <select
-                value={reportType}
-                className="pillSelect"
-                onChange={(e) => {
-                  setReportType(e.target.value);
-                  setPage(1);
-                }}
-              >
-                <option value="">Report Type</option>
-                {["Traffic", "Engagement", "Leads", "Heatmap", "Forecast", "Behavior", "Benchmark", "Insights", "Summary"].map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-              <span className="pillRightCaret" aria-hidden />
-            </div>
+            <MultiSelectPill
+              label="Report Type"
+              icon={<IconReportType />}
+              options={["Traffic", "Engagement", "Leads", "Heatmap", "Forecast", "Behavior", "Benchmark", "Insights", "Summary"]}
+              value={reportTypes}
+              onChange={(next) => {
+                setReportTypes(next);
+                setPage(1);
+              }}
+            />
 
             <div className="filterPill pillSelectWrap">
               <span className="pillLeftIcon" aria-hidden>
@@ -391,30 +381,21 @@ export default function ReportsPage() {
               >
                 <option value="">Format</option>
                 <option value="PDF">PDF</option>
-                <option value="CSV">CSV</option>
+                <option value="XLSX">CSV</option>
               </select>
               <span className="pillRightCaret" aria-hidden />
             </div>
 
-            <div className="filterPill pillSelectWrap">
-              <span className="pillLeftIcon" aria-hidden>
-                <IconStatus />
-              </span>
-              <select
-                value={status}
-                className="pillSelect"
-                onChange={(e) => {
-                  setStatus(e.target.value);
-                  setPage(1);
-                }}
-              >
-                <option value="">Status</option>
-                <option value="Scheduled">Scheduled</option>
-                <option value="Completed">Completed</option>
-                <option value="Processing">Processing</option>
-              </select>
-              <span className="pillRightCaret" aria-hidden />
-            </div>
+            <MultiSelectPill
+              label="Status"
+              icon={<IconStatus />}
+              options={["Scheduled", "Completed", "Processing"]}
+              value={statuses}
+              onChange={(next) => {
+                setStatuses(next);
+                setPage(1);
+              }}
+            />
 
             <div className="filterPill pillSelectWrap pillSort">
               <span className="pillLeftIcon" aria-hidden>
@@ -574,7 +555,7 @@ export default function ReportsPage() {
                     onChange={(e) => setNewReport((prev) => ({ ...prev, format: e.target.value }))}
                   >
                     <option value="PDF">PDF</option>
-                    <option value="CSV">CSV</option>
+                    <option value="XLSX">CSV</option>
                   </select>
                 </div>
               </div>

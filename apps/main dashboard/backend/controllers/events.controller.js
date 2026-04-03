@@ -5,20 +5,34 @@ function toInt(v, def) {
   return Number.isFinite(n) ? n : def;
 }
 
-/* =========================
-   GET FILTERS
-========================= */
+function parseMulti(value) {
+  if (!value) return [];
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 exports.getEventFilters = async (req, res) => {
   try {
-    const venues = await coreDb.query(`
-      SELECT venue_id, venue_name
-      FROM venues
-      ORDER BY venue_id;
-    `);
+    const [venues, statuses] = await Promise.all([
+      coreDb.query(`
+        SELECT venue_id, venue_name
+        FROM venues
+        ORDER BY venue_id;
+      `),
+      coreDb.query(`
+        SELECT DISTINCT status
+        FROM events
+        WHERE status IS NOT NULL
+        ORDER BY status;
+      `),
+    ]);
 
     res.json({
       ok: true,
       venues: venues.rows,
+      statuses: statuses.rows.map((row) => row.status),
       sortOptions: [
         "start_desc",
         "start_asc",
@@ -39,14 +53,11 @@ exports.getEventFilters = async (req, res) => {
   }
 };
 
-
-/* =========================
-   LIST EVENTS
-========================= */
 exports.listEvents = async (req, res) => {
   try {
     const q = (req.query.q || "").trim();
-    const venueId = req.query.venue_id || null;
+    const venueIds = parseMulti(req.query.venue_id);
+    const statuses = parseMulti(req.query.status);
     const from = req.query.from || null;
     const to = req.query.to || null;
 
@@ -57,17 +68,17 @@ exports.listEvents = async (req, res) => {
     const sort = (req.query.sort || "start_desc").toLowerCase();
     const sortSql = {
       start_desc: `e.start_datetime_utc DESC NULLS LAST`,
-      start_asc:  `e.start_datetime_utc ASC NULLS LAST`,
-      end_desc:   `e.end_datetime_utc DESC NULLS LAST`,
-      end_asc:    `e.end_datetime_utc ASC NULLS LAST`,
-      name_asc:   `e.event_name ASC`,
-      name_desc:  `e.event_name DESC`,
+      start_asc: `e.start_datetime_utc ASC NULLS LAST`,
+      end_desc: `e.end_datetime_utc DESC NULLS LAST`,
+      end_asc: `e.end_datetime_utc ASC NULLS LAST`,
+      name_asc: `e.event_name ASC`,
+      name_desc: `e.event_name DESC`,
       attendance_desc: `e.expected_attendance_total DESC NULLS LAST`,
-      attendance_asc:  `e.expected_attendance_total ASC NULLS LAST`,
+      attendance_asc: `e.expected_attendance_total ASC NULLS LAST`,
       exhibitors_desc: `exhibitors_joined DESC NULLS LAST`,
-      exhibitors_asc:  `exhibitors_joined ASC NULLS LAST`,
-      revenue_desc:    `revenue_aed DESC NULLS LAST`,
-      revenue_asc:     `revenue_aed ASC NULLS LAST`,
+      exhibitors_asc: `exhibitors_joined ASC NULLS LAST`,
+      revenue_desc: `revenue_aed DESC NULLS LAST`,
+      revenue_asc: `revenue_aed ASC NULLS LAST`,
     }[sort] || `e.start_datetime_utc DESC NULLS LAST`;
 
     const baseQuery = `
@@ -83,14 +94,15 @@ exports.listEvents = async (req, res) => {
         GROUP BY event_id
       ) ex ON ex.event_id = e.event_id
       WHERE 1=1
-        AND ($1::text IS NULL OR e.venue_id = $1)
+        AND (cardinality($1::text[]) = 0 OR e.venue_id = ANY($1::text[]))
+        AND (cardinality($2::text[]) = 0 OR e.status = ANY($2::text[]))
         AND (
-          $2::text = '' OR
-          e.event_id ILIKE '%' || $2 || '%' OR
-          e.event_name ILIKE '%' || $2 || '%'
+          $3::text = '' OR
+          e.event_id ILIKE '%' || $3 || '%' OR
+          e.event_name ILIKE '%' || $3 || '%'
         )
-        AND ($3::timestamptz IS NULL OR e.start_datetime_utc >= $3)
-        AND ($4::timestamptz IS NULL OR e.start_datetime_utc < $4)
+        AND ($4::timestamptz IS NULL OR e.start_datetime_utc >= $4)
+        AND ($5::timestamptz IS NULL OR e.start_datetime_utc < $5)
     `;
 
     const countSql = `SELECT COUNT(*)::int AS total ${baseQuery};`;
@@ -101,6 +113,7 @@ exports.listEvents = async (req, res) => {
         e.venue_id,
         v.venue_name,
         e.event_name,
+        e.status,
         e.start_datetime_utc,
         e.end_datetime_utc,
         e.expected_attendance_total,
@@ -113,13 +126,13 @@ exports.listEvents = async (req, res) => {
         COALESCE(ex.revenue_aed, 0) AS revenue_aed
       ${baseQuery}
       ORDER BY ${sortSql}, e.event_id ASC
-      LIMIT $5 OFFSET $6;
+      LIMIT $6 OFFSET $7;
     `;
 
-    const params = [venueId, q, from, to, pageSize, offset];
+    const params = [venueIds, statuses, q, from, to, pageSize, offset];
 
     const [countRes, dataRes] = await Promise.all([
-      coreDb.query(countSql, params.slice(0, 4)),
+      coreDb.query(countSql, params.slice(0, 5)),
       coreDb.query(dataSql, params),
     ]);
 
@@ -130,16 +143,11 @@ exports.listEvents = async (req, res) => {
       total: countRes.rows[0]?.total || 0,
       rows: dataRes.rows,
     });
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-
-/* =========================
-   GET EVENT BY ID
-========================= */
 exports.getEventById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -150,6 +158,7 @@ exports.getEventById = async (req, res) => {
         e.venue_id,
         v.venue_name,
         e.event_name,
+        e.status,
         e.start_datetime_utc,
         e.end_datetime_utc,
         e.expected_attendance_total,
@@ -176,20 +185,16 @@ exports.getEventById = async (req, res) => {
 
     const r = await coreDb.query(sql, [id]);
 
-    if (!r.rows.length)
+    if (!r.rows.length) {
       return res.status(404).json({ error: "Event not found" });
+    }
 
     res.json(r.rows[0]);
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-
-/* =========================
-   GET EVENT EXHIBITORS
-========================= */
 exports.getEventExhibitors = async (req, res) => {
   try {
     const id = String(req.params.id || "").trim();
@@ -214,15 +219,11 @@ exports.getEventExhibitors = async (req, res) => {
 
     const r = await coreDb.query(sql, [id]);
     res.json(r.rows);
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-/* =========================
-   GET EVENT BOOTHS
-========================= */
 exports.getEventBooths = async (req, res) => {
   try {
     const { id } = req.params;
@@ -239,7 +240,6 @@ exports.getEventBooths = async (req, res) => {
 
     const r = await coreDb.query(sql, [id]);
     res.json(r.rows);
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

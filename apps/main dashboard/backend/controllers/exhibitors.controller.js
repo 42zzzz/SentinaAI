@@ -6,6 +6,14 @@ function toInt(v, def) {
   return Number.isFinite(n) ? n : def;
 }
 
+function parseMulti(value) {
+  if (!value) return [];
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 exports.getExhibitorFilters = async (req, res) => {
   try {
     const [industries, countries, statuses, tiers] = await Promise.all([
@@ -17,10 +25,10 @@ exports.getExhibitorFilters = async (req, res) => {
 
     res.json({
       ok: true,
-      industries: industries.rows.map(r => r.industry),
-      hqCountries: countries.rows.map(r => r.hq_country),
-      statuses: statuses.rows.map(r => r.status),
-      packageTiers: tiers.rows.map(r => r.package_tier),
+      industries: industries.rows.map((r) => r.industry),
+      hqCountries: countries.rows.map((r) => r.hq_country),
+      statuses: statuses.rows.map((r) => r.status),
+      packageTiers: tiers.rows.map((r) => r.package_tier),
       sortOptions: [
         "name_asc",
         "name_desc",
@@ -38,13 +46,11 @@ exports.getExhibitorFilters = async (req, res) => {
 exports.listExhibitors = async (req, res) => {
   try {
     const q = (req.query.q || "").trim();
-    const industry = req.query.industry || null;
-    const hqCountry = req.query.hq_country || null;
-    const status = req.query.status || null;
-
-    // Optional: event-specific mode
-    const eventId = req.query.event_id || null;
-    const packageTier = req.query.package_tier || null;
+    const industries = parseMulti(req.query.industry);
+    const hqCountries = parseMulti(req.query.hq_country);
+    const statuses = parseMulti(req.query.status);
+    const eventIds = parseMulti(req.query.event_id);
+    const packageTiers = parseMulti(req.query.package_tier);
 
     const page = Math.max(toInt(req.query.page, 1), 1);
     const pageSize = Math.min(Math.max(toInt(req.query.pageSize, 10), 1), 100);
@@ -60,9 +66,6 @@ exports.listExhibitors = async (req, res) => {
       events_asc: `events_count ASC NULLS LAST`,
     }[sort] || `exhibitor_name ASC`;
 
-    // Aggregate participation/revenue.
-    // If eventId is provided, we restrict participation rows to that event only.
-    // Otherwise it’s global across all events.
     const sqlCTE = `
       WITH ex_agg AS (
         SELECT
@@ -71,8 +74,8 @@ exports.listExhibitors = async (req, res) => {
           COALESCE(SUM(ee.amount_paid_aed), 0)::float8 AS total_paid_aed,
           MAX(ee.package_tier) AS any_package_tier
         FROM event_exhibitors ee
-        WHERE ($5::text IS NULL OR ee.event_id = $5)
-          AND ($6::text IS NULL OR ee.package_tier = $6)
+        WHERE (cardinality($5::text[]) = 0 OR ee.event_id = ANY($5::text[]))
+          AND (cardinality($6::text[]) = 0 OR ee.package_tier = ANY($6::text[]))
         GROUP BY ee.exhibitor_id
       )
       SELECT
@@ -95,16 +98,15 @@ exports.listExhibitors = async (req, res) => {
       LEFT JOIN ex_agg a
         ON a.exhibitor_id = e.exhibitor_id
       WHERE 1=1
-        AND ($1::text IS NULL OR e.industry = $1)
-        AND ($2::text IS NULL OR e.hq_country = $2)
-        AND ($3::text IS NULL OR e.status = $3)
+        AND (cardinality($1::text[]) = 0 OR e.industry = ANY($1::text[]))
+        AND (cardinality($2::text[]) = 0 OR e.hq_country = ANY($2::text[]))
+        AND (cardinality($3::text[]) = 0 OR e.status = ANY($3::text[]))
         AND (
           $4::text = '' OR
           e.exhibitor_id ILIKE '%' || $4 || '%' OR
           e.exhibitor_name ILIKE '%' || $4 || '%'
         )
-        -- If event_id is provided, only show exhibitors who are actually in that event
-        AND ($5::text IS NULL OR a.exhibitor_id IS NOT NULL)
+        AND ((cardinality($5::text[]) = 0 AND cardinality($6::text[]) = 0) OR a.exhibitor_id IS NOT NULL)
       ORDER BY ${sortSql}, e.exhibitor_id ASC
       LIMIT $7 OFFSET $8;
     `;
@@ -113,26 +115,26 @@ exports.listExhibitors = async (req, res) => {
       WITH ex_agg AS (
         SELECT ee.exhibitor_id
         FROM event_exhibitors ee
-        WHERE ($5::text IS NULL OR ee.event_id = $5)
-          AND ($6::text IS NULL OR ee.package_tier = $6)
+        WHERE (cardinality($5::text[]) = 0 OR ee.event_id = ANY($5::text[]))
+          AND (cardinality($6::text[]) = 0 OR ee.package_tier = ANY($6::text[]))
         GROUP BY ee.exhibitor_id
       )
       SELECT COUNT(*)::int AS total
       FROM exhibitors e
       LEFT JOIN ex_agg a ON a.exhibitor_id = e.exhibitor_id
       WHERE 1=1
-        AND ($1::text IS NULL OR e.industry = $1)
-        AND ($2::text IS NULL OR e.hq_country = $2)
-        AND ($3::text IS NULL OR e.status = $3)
+        AND (cardinality($1::text[]) = 0 OR e.industry = ANY($1::text[]))
+        AND (cardinality($2::text[]) = 0 OR e.hq_country = ANY($2::text[]))
+        AND (cardinality($3::text[]) = 0 OR e.status = ANY($3::text[]))
         AND (
           $4::text = '' OR
           e.exhibitor_id ILIKE '%' || $4 || '%' OR
           e.exhibitor_name ILIKE '%' || $4 || '%'
         )
-        AND ($5::text IS NULL OR a.exhibitor_id IS NOT NULL);
+        AND ((cardinality($5::text[]) = 0 AND cardinality($6::text[]) = 0) OR a.exhibitor_id IS NOT NULL);
     `;
 
-    const params = [industry, hqCountry, status, q, eventId, packageTier, pageSize, offset];
+    const params = [industries, hqCountries, statuses, q, eventIds, packageTiers, pageSize, offset];
 
     const [countRes, dataRes] = await Promise.all([
       coreDb.query(countSql, params.slice(0, 6)),

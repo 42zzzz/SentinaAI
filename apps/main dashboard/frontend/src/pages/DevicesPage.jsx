@@ -1,9 +1,10 @@
-﻿// frontend/src/pages/DevicesPage.jsx
+// frontend/src/pages/DevicesPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import axios from "axios";
 import "./DevicesPage.css";
+import MultiSelectPill from "../components/MultiSelectPill";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -121,10 +122,10 @@ export default function DevicesPage() {
 
   // Query state
   const [q, setQ] = useState("");
-  const [zoneId, setZoneId] = useState("");
-  const [hallId, setHallId] = useState("");
-  const [deviceType, setDeviceType] = useState("");
-  const [status, setStatus] = useState("");
+  const [zoneIds, setZoneIds] = useState([]);
+  const [hallIds, setHallIds] = useState([]);
+  const [deviceTypes, setDeviceTypes] = useState([]);
+  const [statuses, setStatuses] = useState([]);
   const [sort, setSort] = useState("last_seen_desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -134,7 +135,7 @@ export default function DevicesPage() {
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
-  const [openSelect, setOpenSelect] = useState(null); // "zone" | "hall" | "type" | "status" | "sort" | "rows"
+  const [openSelect, setOpenSelect] = useState(null); // "sort" | "rows"
 
   const location = useLocation();
   const isSustainability = location.pathname.startsWith("/sustainability");
@@ -164,10 +165,10 @@ export default function DevicesPage() {
         const res = await axios.get(`${API_BASE}/devices`, {
           params: {
             q: qLive || undefined,
-            zone_id: zoneId || undefined,
-            hall_id: hallId || undefined,
-            device_type: deviceType || undefined,
-            status: status || undefined,
+            zone_id: zoneIds.length ? zoneIds.join(",") : undefined,
+            hall_id: hallIds.length ? hallIds.join(",") : undefined,
+            device_type: deviceTypes.length ? deviceTypes.join(",") : undefined,
+            status: statuses.length ? statuses.join(",") : undefined,
             sort,
             page,
             pageSize,
@@ -184,7 +185,7 @@ export default function DevicesPage() {
     };
 
     fetchDevices();
-  }, [qLive, zoneId, hallId, deviceType, status, sort, page, pageSize]);
+  }, [qLive, zoneIds, hallIds, deviceTypes, statuses, sort, page, pageSize]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
 
@@ -195,19 +196,29 @@ export default function DevicesPage() {
     return m;
   }, [filters]);
 
+  const hallOptions = useMemo(() => {
+    const allHalls = filters?.halls || [];
+    if (!zoneIds.length) return allHalls;
+    return allHalls.filter((hall) => zoneIds.includes(String(hall.zone_id || "")));
+  }, [filters, zoneIds]);
+
+  useEffect(() => {
+    setHallIds((prev) => prev.filter((hallId) => hallOptions.some((hall) => String(hall.hall_id) === String(hallId))));
+  }, [hallOptions]);
+
   const clearFilters = () => {
     setQ("");
-    setZoneId("");
-    setHallId("");
-    setDeviceType("");
-    setStatus("");
+    setZoneIds([]);
+    setHallIds([]);
+    setDeviceTypes([]);
+    setStatuses([]);
     setSort("last_seen_desc");
     setPage(1);
     setPageSize(10);
   };
 
   // If user changes a filter, go back to page 1
-  useEffect(() => setPage(1), [zoneId, hallId, deviceType, status, sort, pageSize]);
+  useEffect(() => setPage(1), [zoneIds, hallIds, deviceTypes, statuses, sort, pageSize]);
 
   return (
     <div className={`devicesPage ${themeClass}`}>
@@ -232,117 +243,45 @@ export default function DevicesPage() {
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search here" className="pillInput" />
             </div>
 
-            {/* Zone */}
-            <div className={`filterPill pillSelectWrap pillZone ${openSelect === "zone" ? "isOpen" : ""}`}>
-              <span className="pillLeftIcon" aria-hidden>
-                <IconZone />
-              </span>
+            <MultiSelectPill
+              className="pillZone"
+              icon={<IconZone />}
+              label="Zones"
+              options={filters?.zones || []}
+              value={zoneIds}
+              onChange={setZoneIds}
+            />
 
-              <select
-                value={zoneId}
-                className="pillSelect"
-                onFocus={() => setOpenSelect("zone")}
-                onBlur={() => setOpenSelect(null)}
-                onChange={(e) => {
-                  setZoneId(e.target.value);
-                  setOpenSelect(null);
-                  e.currentTarget.blur();
-                }}
-              >
-                <option value="">Zones</option>
-                {filters?.zones?.map((z) => (
-                  <option key={z} value={z}>
-                    {z}
-                  </option>
-                ))}
-              </select>
+            <MultiSelectPill
+              className="pillHall"
+              icon={<IconZone />}
+              label="Halls"
+              options={hallOptions}
+              value={hallIds}
+              onChange={setHallIds}
+              getOptionValue={(option) => option.hall_id}
+              getOptionLabel={(option) => option.hall_id}
+            />
 
-              <span className="pillRightCaret" aria-hidden />
-            </div>
+            <MultiSelectPill
+              className="pillDeviceType"
+              icon={<IconDeviceType />}
+              label="Types"
+              options={filters?.deviceTypes || []}
+              value={deviceTypes}
+              onChange={setDeviceTypes}
+              getOptionValue={(option) => option.device_type}
+              getOptionLabel={(option) => option.device_type}
+            />
 
-            {/* Hall (using Zone icon placeholder) */}
-            <div className={`filterPill pillSelectWrap pillHall ${openSelect === "hall" ? "isOpen" : ""}`}>
-              <span className="pillLeftIcon" aria-hidden>
-                <IconZone />
-              </span>
-
-              <select
-                value={hallId}
-                className="pillSelect"
-                onFocus={() => setOpenSelect("hall")}
-                onBlur={() => setOpenSelect(null)}
-                onChange={(e) => {
-                  setHallId(e.target.value);
-                  setOpenSelect(null);
-                  e.currentTarget.blur();
-                }}
-              >
-                <option value="">Halls</option>
-                {filters?.halls?.map((h) => (
-                  <option key={h} value={h}>
-                    {h}
-                  </option>
-                ))}
-              </select>
-
-              <span className="pillRightCaret" aria-hidden />
-            </div>
-
-            {/* Device Type */}
-            <div className={`filterPill pillSelectWrap pillDeviceType ${openSelect === "type" ? "isOpen" : ""}`}>
-              <span className="pillLeftIcon" aria-hidden>
-                <IconDeviceType />
-              </span>
-
-              <select
-                value={deviceType}
-                className="pillSelect"
-                onFocus={() => setOpenSelect("type")}
-                onBlur={() => setOpenSelect(null)}
-                onChange={(e) => {
-                  setDeviceType(e.target.value);
-                  setOpenSelect(null);
-                  e.currentTarget.blur();
-                }}
-              >
-                <option value="">Types</option>
-                {filters?.deviceTypes?.map((t) => (
-                  <option key={t.device_type} value={t.device_type}>
-                    {t.device_type}
-                  </option>
-                ))}
-              </select>
-
-              <span className="pillRightCaret" aria-hidden />
-            </div>
-
-            {/* Status */}
-            <div className={`filterPill pillSelectWrap pillStatus ${openSelect === "status" ? "isOpen" : ""}`}>
-              <span className="pillLeftIcon" aria-hidden>
-                <IconStatus />
-              </span>
-
-              <select
-                value={status}
-                className="pillSelect"
-                onFocus={() => setOpenSelect("status")}
-                onBlur={() => setOpenSelect(null)}
-                onChange={(e) => {
-                  setStatus(e.target.value);
-                  setOpenSelect(null);
-                  e.currentTarget.blur();
-                }}
-              >
-                <option value="">Status</option>
-                {filters?.statuses?.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-
-              <span className="pillRightCaret" aria-hidden />
-            </div>
+            <MultiSelectPill
+              className="pillStatus"
+              icon={<IconStatus />}
+              label="Status"
+              options={filters?.statuses || []}
+              value={statuses}
+              onChange={setStatuses}
+            />
 
             {/* Sort */}
             <div className={`filterPill pillSelectWrap pillSort ${openSelect === "sort" ? "isOpen" : ""}`}>

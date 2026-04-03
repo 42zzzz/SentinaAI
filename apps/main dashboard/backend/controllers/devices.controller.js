@@ -1,43 +1,46 @@
 // backend/controllers/devices.controller.js
 const coreDb = require("../dbs/core.db");
 
-// Helper: safe parse ints
 function toInt(v, def) {
   const n = parseInt(v, 10);
   return Number.isFinite(n) ? n : def;
 }
 
+function parseMulti(value) {
+  if (!value) return [];
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 exports.listDevices = async (req, res) => {
   try {
     const q = (req.query.q || "").trim();
-    const zoneId = req.query.zone_id || null;
-    const hallId = req.query.hall_id || null;
-    const deviceType = req.query.device_type || null;
-    const status = req.query.status || null;
+    const zoneIds = parseMulti(req.query.zone_id);
+    const hallIds = parseMulti(req.query.hall_id);
+    const deviceTypes = parseMulti(req.query.device_type);
+    const statuses = parseMulti(req.query.status);
 
-    const from = req.query.from || null; // ISO string
-    const to = req.query.to || null;     // ISO string
+    const from = req.query.from || null;
+    const to = req.query.to || null;
 
     const page = Math.max(toInt(req.query.page, 1), 1);
     const pageSize = Math.min(Math.max(toInt(req.query.pageSize, 10), 1), 100);
     const offset = (page - 1) * pageSize;
 
-    // Sorting (allow-list)
     const sort = (req.query.sort || "last_seen_desc").toLowerCase();
     const sortSql = {
-    "last_seen_desc": `last_seen_ts DESC NULLS LAST`,
-    "last_seen_asc":  `last_seen_ts ASC NULLS LAST`,
-    "deviceid_asc":   `device_id ASC`,
-    "deviceid_desc":  `device_id DESC`,
-    "status_asc":     `status ASC NULLS LAST`,
-    "status_desc":    `status DESC NULLS LAST`,
-    "type_asc":       `device_type ASC NULLS LAST`,
-    "type_desc":      `device_type DESC NULLS LAST`,
+      last_seen_desc: `last_seen_ts DESC NULLS LAST`,
+      last_seen_asc: `last_seen_ts ASC NULLS LAST`,
+      deviceid_asc: `device_id ASC`,
+      deviceid_desc: `device_id DESC`,
+      status_asc: `status ASC NULLS LAST`,
+      status_desc: `status DESC NULLS LAST`,
+      type_asc: `device_type ASC NULLS LAST`,
+      type_desc: `device_type DESC NULLS LAST`,
     }[sort] || `last_seen_ts DESC NULLS LAST`;
 
-    // We cast TEXT timestamps to timestamptz safely:
-    // NULLIF(field,'') turns empty string into NULL, then cast works.
-    // If you might have non-ISO garbage strings, we can harden further.
     const baseCTE = `
       WITH device_rows AS (
         SELECT
@@ -59,10 +62,10 @@ exports.listDevices = async (req, res) => {
         LEFT JOIN device_info di
           ON di.device_id = d.deviceid
         WHERE 1=1
-          AND ($1::text IS NULL OR d.zoneid = $1)
-          AND ($2::text IS NULL OR d.hallid = $2)
-          AND ($3::text IS NULL OR d.devicetype = $3)
-          AND ($4::text IS NULL OR d.status = $4)
+          AND (cardinality($1::text[]) = 0 OR d.zoneid = ANY($1::text[]))
+          AND (cardinality($2::text[]) = 0 OR d.hallid = ANY($2::text[]))
+          AND (cardinality($3::text[]) = 0 OR d.devicetype = ANY($3::text[]))
+          AND (cardinality($4::text[]) = 0 OR d.status = ANY($4::text[]))
           AND (
             $5::text = '' OR
             d.deviceid ILIKE '%' || $5 || '%' OR
@@ -70,7 +73,7 @@ exports.listDevices = async (req, res) => {
             d.connectededge ILIKE '%' || $5 || '%'
           )
           AND ($6::timestamptz IS NULL OR NULLIF(d.lastheartbeatat,'')::timestamptz >= $6)
-          AND ($7::timestamptz IS NULL OR NULLIF(d.lastheartbeatat,'')::timestamptz <  $7)
+          AND ($7::timestamptz IS NULL OR NULLIF(d.lastheartbeatat,'')::timestamptz < $7)
       )
     `;
 
@@ -100,17 +103,7 @@ exports.listDevices = async (req, res) => {
       LIMIT $8 OFFSET $9;
     `;
 
-    const params = [
-      zoneId,
-      hallId,
-      deviceType,
-      status,
-      q,
-      from,
-      to,
-      pageSize,
-      offset,
-    ];
+    const params = [zoneIds, hallIds, deviceTypes, statuses, q, from, to, pageSize, offset];
 
     const [countRes, dataRes] = await Promise.all([
       coreDb.query(countQuery, params.slice(0, 7)),
@@ -133,17 +126,24 @@ exports.getDeviceFilters = async (req, res) => {
   try {
     const [zones, halls, statuses, types] = await Promise.all([
       coreDb.query(`SELECT DISTINCT zoneid AS zone_id FROM devices WHERE zoneid IS NOT NULL ORDER BY zoneid;`),
-      coreDb.query(`SELECT DISTINCT hallid AS hall_id FROM devices WHERE hallid IS NOT NULL ORDER BY hallid;`),
+      coreDb.query(`
+        SELECT DISTINCT
+          hallid AS hall_id,
+          zoneid AS zone_id
+        FROM devices
+        WHERE hallid IS NOT NULL
+        ORDER BY zoneid, hallid;
+      `),
       coreDb.query(`SELECT DISTINCT status FROM devices WHERE status IS NOT NULL ORDER BY status;`),
       coreDb.query(`SELECT device_type, metric_type FROM device_types ORDER BY device_type;`),
     ]);
 
     res.json({
       ok: true,
-      zones: zones.rows.map(r => r.zone_id),
-      halls: halls.rows.map(r => r.hall_id),
-      statuses: statuses.rows.map(r => r.status),
-      deviceTypes: types.rows, // [{device_type, metric_type}]
+      zones: zones.rows.map((r) => r.zone_id),
+      halls: halls.rows,
+      statuses: statuses.rows.map((r) => r.status),
+      deviceTypes: types.rows,
       sortOptions: [
         "last_seen_desc",
         "last_seen_asc",

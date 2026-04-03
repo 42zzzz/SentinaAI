@@ -1,8 +1,9 @@
-﻿// frontend/src/pages/EventsPage.jsx
+// frontend/src/pages/EventsPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./EventsPage.css";
+import MultiSelectPill from "../components/MultiSelectPill";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -107,8 +108,8 @@ export default function EventsPage() {
   const [filters, setFilters] = useState(null);
 
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("");
-  const [venueId, setVenueId] = useState("");
+  const [statuses, setStatuses] = useState([]);
+  const [venueIds, setVenueIds] = useState([]);
   const [sort, setSort] = useState("start_desc");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -120,7 +121,7 @@ export default function EventsPage() {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
 
-  const [openSelect, setOpenSelect] = useState(null); // "status" | "venue" | "sort" | "rows"
+  const [openSelect, setOpenSelect] = useState(null); // "sort" | "rows"
 
   const [qLive, setQLive] = useState("");
   useEffect(() => {
@@ -133,7 +134,7 @@ export default function EventsPage() {
       .get(`${API_BASE}/events/filters`)
       .then((res) => {
         setFilters(res.data);
-        if (res.data?.venues?.length === 1) setVenueId(res.data.venues[0].venue_id);
+        if (res.data?.venues?.length === 1) setVenueIds([res.data.venues[0].venue_id]);
       })
       .catch((e) => setError(e?.response?.data?.error || e.message || "Failed to load filters"));
   }, []);
@@ -149,8 +150,8 @@ export default function EventsPage() {
         const res = await axios.get(`${API_BASE}/events`, {
           params: {
             q: qLive || undefined,
-            status: status || undefined,
-            venue_id: venueId || undefined,
+            status: statuses.length ? statuses.join(",") : undefined,
+            venue_id: venueIds.length ? venueIds.join(",") : undefined,
             sort,
             from: fromISO,
             to: toISO,
@@ -169,16 +170,16 @@ export default function EventsPage() {
     };
 
     fetchEvents();
-  }, [qLive, status, venueId, sort, fromISO, toISO, page, pageSize]);
+  }, [qLive, statuses, venueIds, sort, fromISO, toISO, page, pageSize]);
 
-  useEffect(() => setPage(1), [status, venueId, sort, fromISO, toISO, pageSize]);
+  useEffect(() => setPage(1), [statuses, venueIds, sort, fromISO, toISO, pageSize]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
 
   const clearFilters = () => {
     setQ("");
-    setStatus("");
-    if (!(filters?.venues?.length === 1)) setVenueId("");
+    setStatuses([]);
+    if (!(filters?.venues?.length === 1)) setVenueIds([]);
     setSort("start_desc");
     setFrom("");
     setTo("");
@@ -212,57 +213,25 @@ export default function EventsPage() {
               />
             </div>
 
-            {/* Status */}
-            <div className={`filterPill pillSelectWrap pillStatus ${openSelect === "status" ? "isOpen" : ""}`}>
-              <span className="pillLeftIcon" aria-hidden>
-                <IconStatus />
-              </span>
-              <select
-                value={status}
-                className="pillSelect"
-                onFocus={() => setOpenSelect("status")}
-                onBlur={() => setOpenSelect(null)}
-                onChange={(e) => {
-                  setStatus(e.target.value);
-                  setOpenSelect(null);
-                  e.currentTarget.blur();
-                }}
-              >
-                <option value="">All Statuses</option>
-                {filters?.statuses?.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <span className="pillRightCaret" aria-hidden />
-            </div>
+            <MultiSelectPill
+              className="pillStatus"
+              icon={<IconStatus />}
+              label="Status"
+              options={filters?.statuses || []}
+              value={statuses}
+              onChange={setStatuses}
+            />
 
-            {/* Venue */}
-            <div className={`filterPill pillSelectWrap pillVenue ${openSelect === "venue" ? "isOpen" : ""}`}>
-              <span className="pillLeftIcon" aria-hidden>
-                <IconVenue />
-              </span>
-              <select
-                value={venueId}
-                className="pillSelect"
-                onFocus={() => setOpenSelect("venue")}
-                onBlur={() => setOpenSelect(null)}
-                onChange={(e) => {
-                  setVenueId(e.target.value);
-                  setOpenSelect(null);
-                  e.currentTarget.blur();
-                }}
-              >
-                <option value="">All Venues</option>
-                {filters?.venues?.map((v) => (
-                  <option key={v.venue_id} value={v.venue_id}>
-                    {v.venue_name} ({v.venue_id})
-                  </option>
-                ))}
-              </select>
-              <span className="pillRightCaret" aria-hidden />
-            </div>
+            <MultiSelectPill
+              className="pillVenue"
+              icon={<IconVenue />}
+              label="Venue"
+              options={filters?.venues || []}
+              value={venueIds}
+              onChange={setVenueIds}
+              getOptionValue={(option) => option.venue_id}
+              getOptionLabel={(option) => `${option.venue_name} (${option.venue_id})`}
+            />
 
             {/* From */}
             <div className="filterPill pillDate pillFrom">

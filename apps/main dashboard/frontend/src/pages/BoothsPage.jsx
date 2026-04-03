@@ -1,6 +1,7 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./BoothsPage.css";
+import MultiSelectPill from "../components/MultiSelectPill";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -8,12 +9,12 @@ export default function BoothsPage() {
   const [events, setEvents] = useState([]);
   const [filters, setFilters] = useState(null);
 
-  const [eventId, setEventId] = useState("");
+  const [eventIds, setEventIds] = useState([]);
   const [q, setQ] = useState("");
-  const [zoneId, setZoneId] = useState("");
-  const [hallId, setHallId] = useState("");
-  const [sizeType, setSizeType] = useState("");
-  const [assigned, setAssigned] = useState("");
+  const [zoneIds, setZoneIds] = useState([]);
+  const [hallIds, setHallIds] = useState([]);
+  const [sizeTypes, setSizeTypes] = useState([]);
+  const [assignedValues, setAssignedValues] = useState([]);
   const [sort, setSort] = useState("booth_code_asc");
 
   const [page, setPage] = useState(1);
@@ -38,9 +39,6 @@ export default function BoothsPage() {
       })
       .then((res) => {
         setEvents(res.data.rows || []);
-        if (res.data.rows?.length) {
-          setEventId(res.data.rows[0].event_id);
-        }
       })
       .catch((e) =>
         setError(e?.response?.data?.error || e.message || "Failed to load events")
@@ -48,10 +46,10 @@ export default function BoothsPage() {
   }, []);
 
   useEffect(() => {
-    if (!eventId) return;
-
     axios
-      .get(`${API_BASE}/booths/filters`, { params: { event_id: eventId } })
+      .get(`${API_BASE}/booths/filters`, {
+        params: { event_id: eventIds.length ? eventIds.join(",") : undefined },
+      })
       .then((res) => setFilters(res.data))
       .catch((e) =>
         setError(
@@ -60,10 +58,10 @@ export default function BoothsPage() {
             "Failed to load booth filters"
         )
       );
-  }, [eventId]);
+  }, [eventIds]);
 
   useEffect(() => {
-    if (!eventId) return;
+    const selectedAssigned = assignedValues.length === 1 ? assignedValues[0] : undefined;
 
     const fetchBooths = async () => {
       setLoading(true);
@@ -72,12 +70,12 @@ export default function BoothsPage() {
       try {
         const res = await axios.get(`${API_BASE}/booths`, {
           params: {
-            event_id: eventId,
+            event_id: eventIds.length ? eventIds.join(",") : undefined,
             q: qLive || undefined,
-            zone_id: zoneId || undefined,
-            hall_id: hallId || undefined,
-            booth_size_type: sizeType || undefined,
-            assigned: assigned || undefined,
+            zone_id: zoneIds.length ? zoneIds.join(",") : undefined,
+            hall_id: hallIds.length ? hallIds.join(",") : undefined,
+            booth_size_type: sizeTypes.length ? sizeTypes.join(",") : undefined,
+            assigned: selectedAssigned || undefined,
             sort,
             page,
             pageSize,
@@ -96,15 +94,33 @@ export default function BoothsPage() {
     };
 
     fetchBooths();
-  }, [eventId, qLive, zoneId, hallId, sizeType, assigned, sort, page, pageSize]);
+  }, [eventIds, qLive, zoneIds, hallIds, sizeTypes, assignedValues, sort, page, pageSize]);
 
   useEffect(() => {
     setPage(1);
-  }, [eventId, zoneId, hallId, sizeType, assigned, sort, pageSize]);
+  }, [eventIds, zoneIds, hallIds, sizeTypes, assignedValues, sort, pageSize]);
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(total / pageSize)),
     [total, pageSize]
+  );
+
+  const hallOptions = useMemo(() => {
+    const allHalls = filters?.halls || [];
+    if (!zoneIds.length) return allHalls;
+    return allHalls.filter((hall) => zoneIds.includes(String(hall.zone_id || "")));
+  }, [filters, zoneIds]);
+
+  useEffect(() => {
+    setHallIds((prev) => prev.filter((hallId) => hallOptions.some((hall) => String(hall.hall_id) === String(hallId))));
+  }, [hallOptions]);
+
+  const assignedOptions = useMemo(
+    () => [
+      { value: "true", label: "Assigned" },
+      { value: "false", label: "Unassigned" },
+    ],
+    []
   );
 
   return (
@@ -125,20 +141,15 @@ export default function BoothsPage() {
 
           <div className="boothsFiltersRow">
 
-            <div className="filterPill pillEvent pillSelectWrap">
-              <select
-                className="pillSelect"
-                value={eventId}
-                onChange={(e) => setEventId(e.target.value)}
-              >
-                {events.map((ev) => (
-                  <option key={ev.event_id} value={ev.event_id}>
-                    {ev.event_id} — {ev.event_name}
-                  </option>
-                ))}
-              </select>
-              <div className="pillRightCaret"></div>
-            </div>
+            <MultiSelectPill
+              className="pillEvent"
+              label="Event"
+              options={events}
+              value={eventIds}
+              onChange={setEventIds}
+              getOptionValue={(option) => option.event_id}
+              getOptionLabel={(option) => `${option.event_id} — ${option.event_name}`}
+            />
 
             <div className="filterPill pillSearch">
               <input
@@ -149,66 +160,41 @@ export default function BoothsPage() {
               />
             </div>
 
-            <div className="filterPill pillZone pillSelectWrap">
-              <select
-                className="pillSelect"
-                value={zoneId}
-                onChange={(e) => setZoneId(e.target.value)}
-              >
-                <option value="">All Zones</option>
-                {filters?.zones?.map((z) => (
-                  <option key={z} value={z}>
-                    {z}
-                  </option>
-                ))}
-              </select>
-              <div className="pillRightCaret"></div>
-            </div>
+            <MultiSelectPill
+              className="pillZone"
+              label="Zone"
+              options={filters?.zones || []}
+              value={zoneIds}
+              onChange={setZoneIds}
+            />
 
-            <div className="filterPill pillHall pillSelectWrap">
-              <select
-                className="pillSelect"
-                value={hallId}
-                onChange={(e) => setHallId(e.target.value)}
-              >
-                <option value="">All Halls</option>
-                {filters?.halls?.map((h) => (
-                  <option key={h} value={h}>
-                    {h}
-                  </option>
-                ))}
-              </select>
-              <div className="pillRightCaret"></div>
-            </div>
+            <MultiSelectPill
+              className="pillHall"
+              label="Hall"
+              options={hallOptions}
+              value={hallIds}
+              onChange={setHallIds}
+              getOptionValue={(option) => option.hall_id}
+              getOptionLabel={(option) => option.hall_id}
+            />
 
-            <div className="filterPill pillSize pillSelectWrap">
-              <select
-                className="pillSelect"
-                value={sizeType}
-                onChange={(e) => setSizeType(e.target.value)}
-              >
-                <option value="">All Sizes</option>
-                {filters?.boothSizeTypes?.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <div className="pillRightCaret"></div>
-            </div>
+            <MultiSelectPill
+              className="pillSize"
+              label="Size"
+              options={filters?.boothSizeTypes || []}
+              value={sizeTypes}
+              onChange={setSizeTypes}
+            />
 
-            <div className="filterPill pillAssigned pillSelectWrap">
-              <select
-                className="pillSelect"
-                value={assigned}
-                onChange={(e) => setAssigned(e.target.value)}
-              >
-                <option value="">Assigned + Unassigned</option>
-                <option value="true">Assigned only</option>
-                <option value="false">Unassigned only</option>
-              </select>
-              <div className="pillRightCaret"></div>
-            </div>
+            <MultiSelectPill
+              className="pillAssigned"
+              label="Assigned"
+              options={assignedOptions}
+              value={assignedValues}
+              onChange={setAssignedValues}
+              getOptionValue={(option) => option.value}
+              getOptionLabel={(option) => option.label}
+            />
 
           </div>
 

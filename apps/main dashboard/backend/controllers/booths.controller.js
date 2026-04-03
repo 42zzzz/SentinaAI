@@ -6,24 +6,67 @@ function toInt(v, def) {
   return Number.isFinite(n) ? n : def;
 }
 
+function parseMulti(value) {
+  if (!value) return [];
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 exports.getBoothFilters = async (req, res) => {
   try {
-    const eventId = req.query.event_id;
-    if (!eventId) return res.status(400).json({ ok: false, error: "event_id is required" });
+    const eventIds = parseMulti(req.query.event_id);
 
     const [zones, halls, sizes, statuses] = await Promise.all([
-      coreDb.query(`SELECT DISTINCT zone_id FROM booths WHERE event_id = $1 ORDER BY zone_id;`, [eventId]),
-      coreDb.query(`SELECT DISTINCT hall_id FROM booths WHERE event_id = $1 ORDER BY hall_id;`, [eventId]),
-      coreDb.query(`SELECT DISTINCT booth_size_type FROM booths WHERE event_id = $1 ORDER BY booth_size_type;`, [eventId]),
-      coreDb.query(`SELECT DISTINCT status FROM booth_assignments WHERE event_id = $1 ORDER BY status;`, [eventId]),
+      coreDb.query(
+        `
+        SELECT DISTINCT zone_id
+        FROM booths
+        WHERE zone_id IS NOT NULL
+          AND (cardinality($1::text[]) = 0 OR event_id = ANY($1::text[]))
+        ORDER BY zone_id;
+        `,
+        [eventIds]
+      ),
+      coreDb.query(
+        `
+        SELECT DISTINCT hall_id, zone_id
+        FROM booths
+        WHERE hall_id IS NOT NULL
+          AND (cardinality($1::text[]) = 0 OR event_id = ANY($1::text[]))
+        ORDER BY zone_id, hall_id;
+        `,
+        [eventIds]
+      ),
+      coreDb.query(
+        `
+        SELECT DISTINCT booth_size_type
+        FROM booths
+        WHERE booth_size_type IS NOT NULL
+          AND (cardinality($1::text[]) = 0 OR event_id = ANY($1::text[]))
+        ORDER BY booth_size_type;
+        `,
+        [eventIds]
+      ),
+      coreDb.query(
+        `
+        SELECT DISTINCT status
+        FROM booth_assignments
+        WHERE status IS NOT NULL
+          AND (cardinality($1::text[]) = 0 OR event_id = ANY($1::text[]))
+        ORDER BY status;
+        `,
+        [eventIds]
+      ),
     ]);
 
     res.json({
       ok: true,
-      zones: zones.rows.map(r => r.zone_id),
-      halls: halls.rows.map(r => r.hall_id),
-      boothSizeTypes: sizes.rows.map(r => r.booth_size_type),
-      assignmentStatuses: statuses.rows.map(r => r.status),
+      zones: zones.rows.map((r) => r.zone_id),
+      halls: halls.rows,
+      boothSizeTypes: sizes.rows.map((r) => r.booth_size_type),
+      assignmentStatuses: statuses.rows.map((r) => r.status),
       sortOptions: ["booth_code_asc", "booth_code_desc", "area_desc", "area_asc"],
     });
   } catch (err) {
@@ -33,16 +76,14 @@ exports.getBoothFilters = async (req, res) => {
 
 exports.listBooths = async (req, res) => {
   try {
-    const eventId = req.query.event_id;
-    if (!eventId) return res.status(400).json({ ok: false, error: "event_id is required" });
-
+    const eventIds = parseMulti(req.query.event_id);
     const q = (req.query.q || "").trim();
-    const zoneId = req.query.zone_id || null;
-    const hallId = req.query.hall_id || null;
-    const boothSizeType = req.query.booth_size_type || null;
+    const zoneIds = parseMulti(req.query.zone_id);
+    const hallIds = parseMulti(req.query.hall_id);
+    const boothSizeTypes = parseMulti(req.query.booth_size_type);
 
-    const assignedRaw = req.query.assigned; // "true" | "false" | undefined
-    const assigned = assignedRaw === "true" ? true : assignedRaw === "false" ? false : null;
+    const assignedSelections = parseMulti(req.query.assigned);
+    const assigned = assignedSelections.length === 1 ? assignedSelections[0] === "true" : null;
 
     const page = Math.max(toInt(req.query.page, 1), 1);
     const pageSize = Math.min(Math.max(toInt(req.query.pageSize, 10), 1), 100);
@@ -66,10 +107,10 @@ exports.listBooths = async (req, res) => {
         ON h.hall_id = b.hall_id
       LEFT JOIN zones z
         ON z.zone_id = b.zone_id
-      WHERE b.event_id = $1
-        AND ($2::text IS NULL OR b.zone_id = $2)
-        AND ($3::text IS NULL OR b.hall_id = $3)
-        AND ($4::text IS NULL OR b.booth_size_type = $4)
+      WHERE (cardinality($1::text[]) = 0 OR b.event_id = ANY($1::text[]))
+        AND (cardinality($2::text[]) = 0 OR b.zone_id = ANY($2::text[]))
+        AND (cardinality($3::text[]) = 0 OR b.hall_id = ANY($3::text[]))
+        AND (cardinality($4::text[]) = 0 OR b.booth_size_type = ANY($4::text[]))
         AND (
           $5::text = '' OR
           b.booth_id ILIKE '%' || $5 || '%' OR
@@ -107,7 +148,7 @@ exports.listBooths = async (req, res) => {
       LIMIT $7 OFFSET $8;
     `;
 
-    const params = [eventId, zoneId, hallId, boothSizeType, q, assigned, pageSize, offset];
+    const params = [eventIds, zoneIds, hallIds, boothSizeTypes, q, assigned, pageSize, offset];
 
     const [countRes, dataRes] = await Promise.all([
       coreDb.query(countSql, params.slice(0, 6)),

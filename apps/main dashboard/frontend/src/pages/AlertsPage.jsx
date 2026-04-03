@@ -1,7 +1,8 @@
-﻿// frontend/src/pages/AlertsPage.jsx
+// frontend/src/pages/AlertsPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./AlertsPage.css";
+import MultiSelectPill from "../components/MultiSelectPill";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -117,11 +118,11 @@ export default function AlertsPage() {
   const [filters, setFilters] = useState(null);
 
   const [q, setQ] = useState("");
-  const [severity, setSeverity] = useState("");
-  const [status, setStatus] = useState("");
-  const [ruleKey, setRuleKey] = useState("");
-  const [zoneId, setZoneId] = useState("");
-  const [hallId, setHallId] = useState("");
+  const [severities, setSeverities] = useState([]);
+  const [statuses, setStatuses] = useState([]);
+  const [ruleKeys, setRuleKeys] = useState([]);
+  const [zoneIds, setZoneIds] = useState([]);
+  const [hallIds, setHallIds] = useState([]);
   const [deviceId, setDeviceId] = useState("");
   const [sort, setSort] = useState("detected_desc");
   const [page, setPage] = useState(1);
@@ -161,11 +162,11 @@ export default function AlertsPage() {
           params: {
             domain,
             q: qLive || undefined,
-            severity: severity || undefined,
-            status: status || undefined,
-            rule_key: ruleKey || undefined,
-            zone_id: zoneId || undefined,
-            hall_id: hallId || undefined,
+            severity: severities.length ? severities.join(",") : undefined,
+            status: statuses.length ? statuses.join(",") : undefined,
+            rule_key: ruleKeys.length ? ruleKeys.join(",") : undefined,
+            zone_id: zoneIds.length ? zoneIds.join(",") : undefined,
+            hall_id: hallIds.length ? hallIds.join(",") : undefined,
             device_id: deviceId || undefined,
             sort,
             page,
@@ -190,19 +191,29 @@ export default function AlertsPage() {
       alive = false;
       clearInterval(t);
     };
-  }, [domain, qLive, severity, status, ruleKey, zoneId, hallId, deviceId, sort, page, pageSize]);
+  }, [domain, qLive, severities, statuses, ruleKeys, zoneIds, hallIds, deviceId, sort, page, pageSize]);
 
-  useEffect(() => setPage(1), [severity, status, ruleKey, zoneId, hallId, deviceId, sort, pageSize]);
+  useEffect(() => setPage(1), [severities, statuses, ruleKeys, zoneIds, hallIds, deviceId, sort, pageSize]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
 
+  const hallOptions = useMemo(() => {
+    const allHalls = filters?.halls || [];
+    if (!zoneIds.length) return allHalls;
+    return allHalls.filter((hall) => zoneIds.includes(String(hall.zone_id || "")));
+  }, [filters, zoneIds]);
+
+  useEffect(() => {
+    setHallIds((prev) => prev.filter((hallId) => hallOptions.some((hall) => String(hall.hall_id) === String(hallId))));
+  }, [hallOptions]);
+
   const clearFilters = () => {
     setQ("");
-    setSeverity("");
-    setStatus("");
-    setRuleKey("");
-    setZoneId("");
-    setHallId("");
+    setSeverities([]);
+    setStatuses([]);
+    setRuleKeys([]);
+    setZoneIds([]);
+    setHallIds([]);
     setDeviceId("");
     setSort("detected_desc");
     setPage(1);
@@ -278,135 +289,54 @@ export default function AlertsPage() {
                 />
               </div>
 
-              {/* Severity */}
-              <div className={`filterPill pillSelectWrap pillSeverity ${openSelect === "sev" ? "isOpen" : ""}`}>
-                <span className="pillLeftIcon" aria-hidden>
-                  <IconSeverity />
-                </span>
-                <select
-                  value={severity}
-                  className="pillSelect"
-                  onFocus={() => setOpenSelect("sev")}
-                  onBlur={() => setOpenSelect(null)}
-                  onChange={(e) => {
-                    setSeverity(e.target.value);
-                    setOpenSelect(null);
-                    e.currentTarget.blur();
-                  }}
-                >
-                  <option value="">All Severities</option>
-                  {filters?.severities?.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-                <span className="pillRightCaret" aria-hidden />
-              </div>
+              <MultiSelectPill
+                className="pillSeverity"
+                icon={<IconSeverity />}
+                label="Severity"
+                options={filters?.severities || []}
+                value={severities}
+                onChange={setSeverities}
+              />
 
-              {/* Status */}
-              <div className={`filterPill pillSelectWrap pillAlertStatus ${openSelect === "status" ? "isOpen" : ""}`}>
-                <span className="pillLeftIcon" aria-hidden>
-                  <IconStatus />
-                </span>
-                <select
-                  value={status}
-                  className="pillSelect"
-                  onFocus={() => setOpenSelect("status")}
-                  onBlur={() => setOpenSelect(null)}
-                  onChange={(e) => {
-                    setStatus(e.target.value);
-                    setOpenSelect(null);
-                    e.currentTarget.blur();
-                  }}
-                >
-                  <option value="">All Statuses</option>
-                  {filters?.statuses?.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-                <span className="pillRightCaret" aria-hidden />
-              </div>
+              <MultiSelectPill
+                className="pillAlertStatus"
+                icon={<IconStatus />}
+                label="Status"
+                options={filters?.statuses || []}
+                value={statuses}
+                onChange={setStatuses}
+              />
 
-              {/* Zone */}
-              <div className={`filterPill pillSelectWrap pillZone ${openSelect === "zone" ? "isOpen" : ""}`}>
-                <span className="pillLeftIcon" aria-hidden>
-                  <IconZone />
-                </span>
-                <select
-                  value={zoneId}
-                  className="pillSelect"
-                  onFocus={() => setOpenSelect("zone")}
-                  onBlur={() => setOpenSelect(null)}
-                  onChange={(e) => {
-                    setZoneId(e.target.value);
-                    setOpenSelect(null);
-                    e.currentTarget.blur();
-                  }}
-                >
-                  <option value="">All Zones</option>
-                  {filters?.zones?.map((z) => (
-                    <option key={z} value={z}>
-                      {z}
-                    </option>
-                  ))}
-                </select>
-                <span className="pillRightCaret" aria-hidden />
-              </div>
+              <MultiSelectPill
+                className="pillZone"
+                icon={<IconZone />}
+                label="Zone"
+                options={filters?.zones || []}
+                value={zoneIds}
+                onChange={setZoneIds}
+              />
 
-              {/* Hall */}
-              <div className={`filterPill pillSelectWrap pillHall ${openSelect === "hall" ? "isOpen" : ""}`}>
-                <span className="pillLeftIcon" aria-hidden>
-                  <IconZone />
-                </span>
-                <select
-                  value={hallId}
-                  className="pillSelect"
-                  onFocus={() => setOpenSelect("hall")}
-                  onBlur={() => setOpenSelect(null)}
-                  onChange={(e) => {
-                    setHallId(e.target.value);
-                    setOpenSelect(null);
-                    e.currentTarget.blur();
-                  }}
-                >
-                  <option value="">All Halls</option>
-                  {filters?.halls?.map((h) => (
-                    <option key={h} value={h}>
-                      {h}
-                    </option>
-                  ))}
-                </select>
-                <span className="pillRightCaret" aria-hidden />
-              </div>
+              <MultiSelectPill
+                className="pillHall"
+                icon={<IconZone />}
+                label="Hall"
+                options={hallOptions}
+                value={hallIds}
+                onChange={setHallIds}
+                getOptionValue={(option) => option.hall_id}
+                getOptionLabel={(option) => option.hall_id}
+              />
 
-              {/* Rules */}
-              <div className={`filterPill pillSelectWrap pillRule ${openSelect === "rule" ? "isOpen" : ""}`}>
-                <span className="pillLeftIcon" aria-hidden>
-                  <IconRule />
-                </span>
-                <select
-                  value={ruleKey}
-                  className="pillSelect"
-                  onFocus={() => setOpenSelect("rule")}
-                  onBlur={() => setOpenSelect(null)}
-                  onChange={(e) => {
-                    setRuleKey(e.target.value);
-                    setOpenSelect(null);
-                    e.currentTarget.blur();
-                  }}
-                >
-                  <option value="">All Rules</option>
-                  {filters?.rules?.map((r) => (
-                    <option key={r.rule_key} value={r.rule_key}>
-                      {r.rule_key} — {r.rule_name}
-                    </option>
-                  ))}
-                </select>
-                <span className="pillRightCaret" aria-hidden />
-              </div>
+              <MultiSelectPill
+                className="pillRule"
+                icon={<IconRule />}
+                label="Rule"
+                options={filters?.rules || []}
+                value={ruleKeys}
+                onChange={setRuleKeys}
+                getOptionValue={(option) => option.rule_key}
+                getOptionLabel={(option) => `${option.rule_key} — ${option.rule_name}`}
+              />
             </div>
 
             <div className="alertsControlsBottomRow">
