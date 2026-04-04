@@ -1,5 +1,11 @@
 import axios from "axios";
 
+const SESSION_KEYS = ["token", "role", "full_name", "employee_id", "email", "last_login"];
+
+function clearSession() {
+  SESSION_KEYS.forEach((key) => sessionStorage.removeItem(key));
+}
+
 //Request interceptor: attach token + count API calls as activity
 axios.interceptors.request.use(
   (config) => {
@@ -21,11 +27,7 @@ axios.interceptors.response.use(
     const code = err?.response?.data?.error;
 
     if (status === 401 && code === "SESSION_EXPIRED") {
-      sessionStorage.removeItem("token");
-      sessionStorage.removeItem("role");
-      sessionStorage.removeItem("full_name");
-      sessionStorage.removeItem("employee_id");
-
+      clearSession();
       sessionStorage.setItem("loginFlash", "Logged out due to inactivity.");
       window.location.assign("/");
     }

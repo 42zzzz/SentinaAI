@@ -1,8 +1,12 @@
-﻿// frontend/src/pages/EnergyPage.jsx
+// frontend/src/pages/EnergyPage.jsx
 import "./EnergyPage.css";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Sparkline from "../components/Sparkline";
+import {
+  getDashboardRefreshMs,
+  useDashboardSettings,
+} from "../utils/dashboardSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const SUST_GREEN = "#00802B";
@@ -72,6 +76,8 @@ function KpiMiniCard({ label, value, sub, points }) {
 }
 
 export default function EnergyPage() {
+  const settings = useDashboardSettings("sustainability");
+  const refreshMs = getDashboardRefreshMs(settings);
   const [q, setQ] = useState("");
   const [zoneId, setZoneId] = useState("");
   const [metric, setMetric] = useState("energy");
@@ -108,12 +114,12 @@ export default function EnergyPage() {
     };
 
     load();
-    const t = setInterval(load, 15000);
+    const t = setInterval(load, refreshMs);
     return () => {
       alive = false;
       clearInterval(t);
     };
-  }, [metric, zoneId]);
+  }, [metric, zoneId, refreshMs]);
 
   // Widgets (zones / sources / anomalies + 6h spark)
   useEffect(() => {
@@ -142,12 +148,12 @@ export default function EnergyPage() {
     };
 
     load();
-    const t = setInterval(load, 15000);
+    const t = setInterval(load, refreshMs);
     return () => {
       alive = false;
       clearInterval(t);
     };
-  }, [zoneId]);
+  }, [zoneId, refreshMs]);
 
   // ✅ FIX: compute KPIs from real data we already have (no /energy/kpis-24h needed)
   const kpis = useMemo(() => {

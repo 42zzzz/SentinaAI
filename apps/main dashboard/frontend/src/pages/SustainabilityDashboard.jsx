@@ -1,4 +1,4 @@
-﻿// frontend/src/pages/SustainabilityDashboard.jsx
+// frontend/src/pages/SustainabilityDashboard.jsx
 import "./SustainabilityDashboard.css";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
@@ -7,6 +7,10 @@ import TrendPanel from "../components/TrendPanel";
 import ComfortGauge from "../components/ComfortGauge";
 import TopHallsEnergyBar from "../components/TopHallsEnergyBar";
 import AiSustPanel from "../components/AiSustPanel"; // ✅ NEW (from the sust AI pipeline)
+import {
+  getDashboardRefreshMs,
+  useDashboardSettings,
+} from "../utils/dashboardSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -112,6 +116,8 @@ function CardShell({ title, right, icon, children }) {
 }
 
 export default function SustainabilityDashboard() {
+  const settings = useDashboardSettings("sustainability");
+  const refreshMs = getDashboardRefreshMs(settings);
   const [energyUsage, setEnergyUsage] = useState(null);
   const [carbonEmission, setCarbonEmission] = useState(null);
   const [hvacEfficiency, setHvacEfficiency] = useState(null);
@@ -144,13 +150,13 @@ export default function SustainabilityDashboard() {
     };
 
     load();
-    const t = setInterval(load, 15000);
+    const t = setInterval(load, refreshMs);
 
     return () => {
       alive = false;
       clearInterval(t);
     };
-  }, []);
+  }, [refreshMs]);
 
   const energyValue = useMemo(() => {
     const n = Number(energyUsage);

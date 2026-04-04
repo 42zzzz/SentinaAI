@@ -40,6 +40,7 @@ router.post("/login", async (req, res) => {
         u.failed_login_attempts,
         u.locked_until,
         u.last_failed_login_at,
+        u.last_active_at,
         r.role_name
       FROM users u
       JOIN user_roles ur ON ur.user_id = u.user_id
@@ -153,7 +154,9 @@ router.post("/login", async (req, res) => {
       token,
       role: user.role_name,
       full_name: user.full_name,
+      email: user.email,
       employee_id: user.employee_id,
+      last_active_at: user.last_active_at,
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -164,11 +167,55 @@ router.post("/login", async (req, res) => {
 });
 
 /* ===============================
+   CURRENT USER
+================================= */
+router.get("/me", authenticate, async (req, res) => {
+  try {
+    const result = await core.query(
+      `
+      SELECT
+        u.user_id,
+        u.full_name,
+        u.email,
+        u.employee_id,
+        u.last_active_at,
+        r.role_name
+      FROM users u
+      JOIN user_roles ur ON ur.user_id = u.user_id
+      JOIN roles r ON r.role_id = ur.role_id
+      WHERE u.user_id = $1
+      AND u.status = 'active'
+      LIMIT 1
+      `,
+      [req.user.user_id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const user = result.rows[0];
+
+    return res.json({
+      user_id: user.user_id,
+      full_name: user.full_name,
+      email: user.email,
+      employee_id: user.employee_id,
+      role: user.role_name,
+      last_active_at: user.last_active_at,
+    });
+  } catch (err) {
+    console.error("Auth me error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ===============================
    CHANGE PASSWORD
 ================================= */
 router.post("/change-password", authenticate, async (req, res) => {
   const userId = req.user.user_id;
-  const { currentPassword, newPassword } = req.body;
+  const { currentPassword, newPassword, confirmPassword } = req.body;
 
   req.audit = {
     ...(req.audit || {}),
@@ -178,13 +225,20 @@ router.post("/change-password", authenticate, async (req, res) => {
     role: req.user.role,
     extra: {
       route: "/auth/change-password",
+      mode: currentPassword ? "current_password_verified" : "authenticated_session",
     },
   };
 
-  if (!currentPassword || !newPassword) {
+  if (!newPassword || !confirmPassword) {
     req.audit.authResult = "FAILED";
     req.audit.failureReason = "MISSING_REQUIRED_FIELDS";
-    return res.status(400).json({ error: "currentPassword and newPassword are required" });
+    return res.status(400).json({ error: "newPassword and confirmPassword are required" });
+  }
+
+  if (newPassword !== confirmPassword) {
+    req.audit.authResult = "FAILED";
+    req.audit.failureReason = "PASSWORD_CONFIRMATION_MISMATCH";
+    return res.status(400).json({ error: "New password and confirm password must match" });
   }
 
   try {
@@ -203,11 +257,13 @@ router.post("/change-password", authenticate, async (req, res) => {
 
     const user = result.rows[0];
 
-    const match = await bcrypt.compare(currentPassword, user.password_hash);
-    if (!match) {
-      req.audit.authResult = "FAILED";
-      req.audit.failureReason = "INVALID_CURRENT_PASSWORD";
-      return res.status(401).json({ error: "Invalid current password" });
+    if (currentPassword) {
+      const match = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!match) {
+        req.audit.authResult = "FAILED";
+        req.audit.failureReason = "INVALID_CURRENT_PASSWORD";
+        return res.status(401).json({ error: "Invalid current password" });
+      }
     }
 
     const v = validatePassword(newPassword, { email: user.email, name: user.full_name });

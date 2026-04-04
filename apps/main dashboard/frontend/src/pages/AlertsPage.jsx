@@ -4,6 +4,10 @@ import axios from "axios";
 import "./AlertsPage.css";
 import MultiSelectPill from "../components/MultiSelectPill";
 import { useLocation, useNavigate } from "react-router-dom";
+import {
+  getDashboardRefreshMs,
+  useDashboardSettings,
+} from "../utils/dashboardSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -105,6 +109,15 @@ export default function AlertsPage() {
   const isSoc = location.pathname.startsWith("/soc");
   const isExhibitor = location.pathname.startsWith("/exhibitor");
 
+  const settingsSection = isSustainability
+    ? "sustainability"
+    : isExhibitor
+    ? "exhibitor"
+    : "operations";
+
+  const dashboardSettings = useDashboardSettings(settingsSection);
+  const refreshMs = getDashboardRefreshMs(dashboardSettings);
+
   const domain = isSustainability
     ? "SUSTAINABILITY"
     : isSoc
@@ -186,12 +199,12 @@ export default function AlertsPage() {
     };
 
     fetchAlerts();
-    const t = setInterval(fetchAlerts, 10000);
+    const t = setInterval(fetchAlerts, refreshMs);
     return () => {
       alive = false;
       clearInterval(t);
     };
-  }, [domain, qLive, severities, statuses, ruleKeys, zoneIds, hallIds, deviceId, sort, page, pageSize]);
+  }, [domain, qLive, severities, statuses, ruleKeys, zoneIds, hallIds, deviceId, sort, page, pageSize, refreshMs]);
 
   useEffect(() => setPage(1), [severities, statuses, ruleKeys, zoneIds, hallIds, deviceId, sort, pageSize]);
 

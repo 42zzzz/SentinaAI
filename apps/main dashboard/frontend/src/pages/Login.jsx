@@ -52,13 +52,17 @@ export default function Login() {
         password,
       });
 
-      const { token, role, full_name, employee_id } = res.data;
+      const { token, role, full_name, employee_id, email: accountEmail, last_active_at } = res.data;
 
       sessionStorage.setItem("token", token);
       window.dispatchEvent(new Event("sentina:login"));
       sessionStorage.setItem("role", role);
       sessionStorage.setItem("full_name", full_name);
       sessionStorage.setItem("employee_id", employee_id);
+      sessionStorage.setItem("email", accountEmail || email);
+      if (last_active_at) {
+        sessionStorage.setItem("last_login", last_active_at);
+      }
 
       switch (role) {
         case "super_admin":

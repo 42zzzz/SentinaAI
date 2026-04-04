@@ -3,6 +3,10 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./../pages/ExhibitorDashboard.css";
 import SettingsPage from "../pages/SettingsPage";
+import {
+  getDashboardRefreshMs,
+  useDashboardSettings,
+} from "../utils/dashboardSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const DEFAULT_EXHIBITOR_ID = "EXH0240";
@@ -237,6 +241,9 @@ export default function ExhibitorLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const dashboardSettings = useDashboardSettings("exhibitor");
+  const refreshMs = getDashboardRefreshMs(dashboardSettings);
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
   try {
@@ -349,6 +356,17 @@ export default function ExhibitorLayout() {
     loadAll(exhibitorId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intervalMinutes, catchmentK, mcPasses]);
+
+  useEffect(() => {
+    if (!hasBootstrapped.current) return;
+
+    const t = window.setInterval(() => {
+      loadAll(exhibitorId);
+    }, refreshMs);
+
+    return () => window.clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshMs, exhibitorId, intervalMinutes, catchmentK, mcPasses]);
 
   const densitySeries = safeArray(density?.series);
   const densityLatest = densitySeries.length ? densitySeries[densitySeries.length - 1] : null;
