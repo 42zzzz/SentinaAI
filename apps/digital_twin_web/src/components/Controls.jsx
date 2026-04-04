@@ -153,9 +153,9 @@ function Controls({
         </button>
         <button
           onClick={() => setSimMode('sandbox')}
-          title="Sandbox — manually inject sensor data"
+          title="Simulator — manually inject sensor data"
           style={{ background: simMode === 'sandbox' ? '#ef4444' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>
-          Sandbox
+          Simulator
         </button>
         <button
           onClick={() => setSimMode('forecast')}
@@ -232,7 +232,7 @@ function Controls({
             onClick={handleInject}
             title="Inject these values into the selected hall"
             style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', fontSize: '11px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>
-            ⚡ Inject Ripple
+            Inject effect
           </button>
         </div>
       )}
@@ -241,8 +241,8 @@ function Controls({
       {simMode === 'forecast' && (
         <div style={{ borderTop: '1px solid #f59e0b', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f59e0b', fontSize: '10px', fontWeight: 'bold' }}>
-            <span>BASELINE: {formatHour(timeIndex)}</span>
-            <span>FORECAST: +{forecastHours}h ahead</span>
+            <span>Current time: {formatHour(timeIndex)}</span>
+            <span>Forecast: +{forecastHours}h ahead</span>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <div style={{ flex: 1 }}>

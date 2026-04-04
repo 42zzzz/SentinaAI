@@ -10,7 +10,7 @@ export default function HallDetails({ hall, telemetryData, onClose, simMode }) {
   const isForecast = simMode === 'forecast';
 
   const PredBadge = () => isForecast
-    ? <span style={{ color: '#f59e0b', fontSize: '9px', fontWeight: 700, marginRight: 4 }}>PREDICTED</span>
+    ? <span style={{ color: '#f59e0b', fontSize: '9px', fontWeight: 700, marginRight: 4 }}>PREDICTED : </span>
     : null;
 
   return (
@@ -26,11 +26,11 @@ export default function HallDetails({ hall, telemetryData, onClose, simMode }) {
       {co2 > 800 && (
         <>
           <div className="stat">
-            <span className="stat-label">HVAC Status</span>
+            <span className="stat-label">HVAC Status </span>
             <span className="stat-value" style={{ color: '#3b82f6' }}>{getHVACStatus(co2).toUpperCase()}</span>
           </div>
           <div className="stat">
-            <span className="stat-label">Energy Cost</span>
+            <span className="stat-label">Energy Cost </span>
             <span className="stat-value">{calculateHVACEnergy(co2)} kWh</span>
           </div>
         </>
@@ -49,6 +49,7 @@ export default function HallDetails({ hall, telemetryData, onClose, simMode }) {
           {data.aiAction ? data.aiAction.toUpperCase().replace(/([A-Z])/g, ' $1') : 'MONITORING'}
         </p>
       </div>
+      
 
       {/* Event schedule (Feature 3) */}
       <EventsWidget hallId={hall.id} />
