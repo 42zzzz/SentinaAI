@@ -90,6 +90,7 @@ export default function App() {
           <Route path="alerts/:id" element={<AlertDetailsPage />} />
           <Route path="reports" element={<ReportsPage />} />
           
+          
         </Route>
 
         <Route
@@ -119,6 +120,7 @@ export default function App() {
           <Route path="map" element={<NavigationPage />} />
           <Route path="digital-twin" element={<DigitalTwinPage />} />
           <Route path="reports" element={<ReportsPage />} />
+         
         </Route>
 
         <Route
@@ -134,6 +136,7 @@ export default function App() {
           <Route path="analytics" element={<ExhibitorAnalyticsPage />} />
           <Route path="navigation" element={<NavigationPage />} />
           <Route path="reports" element={<ReportsPage />} />
+         
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,6 +1,7 @@
 // frontend/src/layout/AppLayout.jsx
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import SettingsPage from "../pages/SettingsPage";
 
 const rolePrefixMap = {
   operations_manager: "/operations",
@@ -43,6 +44,9 @@ function getPageTitle(pathname) {
 
   if (pathname.startsWith("/sustainability/digital-twin")) return "Digital Twin";
   if (pathname.startsWith("/operations/digital-twin")) return "Digital Twin";
+
+  if (pathname.startsWith("/sustainability/settings")) return "Settings";
+  if (pathname.startsWith("/operations/settings")) return "Settings";
 
   return "SentinaAI";
 }
@@ -229,6 +233,8 @@ export default function AppLayout() {
   const pathname = location.pathname;
   const section = getSectionFromPath(pathname);
   const storedRole = localStorage.getItem("role") || "operations_manager";
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
@@ -592,7 +598,19 @@ const handleLogout = (e) => {
 
         <div style={styles.sectionLabel}>SETTINGS</div>
 
-        <NavLink to={`${rolePrefix}/settings`} style={navItemStyle} title={sidebarCollapsed ? "Settings" : undefined}>
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          style={{
+            ...navItemStyle({ isActive: settingsOpen }),
+            width: "100%",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: "inherit",
+          }}
+          title={sidebarCollapsed ? "Settings" : undefined}
+          aria-label="Open settings"
+        >
           <SvgIcon>
             <svg width="100%" height="100%" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
               <g clipPath="url(#clip0-settings)">
@@ -619,7 +637,9 @@ const handleLogout = (e) => {
             </svg>
           </SvgIcon>
           <SidebarText collapsed={sidebarCollapsed}>Settings</SidebarText>
-        </NavLink>
+        </button>
+
+      
 
         <NavLink to={`${rolePrefix}/help`} style={navItemStyle} title={sidebarCollapsed ? "Help" : undefined}>
           <SvgIcon>
@@ -711,7 +731,14 @@ const handleLogout = (e) => {
         <div style={styles.content}>
           <Outlet />
         </div>
+          {settingsOpen ? (
+            <SettingsPage
+              section={isSust ? "sustainability" : "operations"}
+              onClose={() => setSettingsOpen(false)}
+            />
+          ) : null}
       </main>
     </div>
+    
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./../pages/ExhibitorDashboard.css";
+import SettingsPage from "../pages/SettingsPage";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const DEFAULT_EXHIBITOR_ID = "EXH0240";
@@ -236,6 +237,7 @@ export default function ExhibitorLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
   try {
     return localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
@@ -461,6 +463,7 @@ export default function ExhibitorLayout() {
     if (location.pathname.startsWith("/exhibitor/analytics")) return "Analytics";
     if (location.pathname.startsWith("/exhibitor/reports")) return "Reports";
     if (location.pathname.startsWith("/exhibitor/navigation")) return "Navigation";
+    if (location.pathname.startsWith("/exhibitor/settings")) return "Settings";
     return "Exhibitor Portal";
   }, [location.pathname]);
 
@@ -550,7 +553,12 @@ export default function ExhibitorLayout() {
           <div className="exhSidebarSpacer" />
 
           <div className="exhSidebarLabel">SETTINGS</div>
-          <button type="button" title={sidebarCollapsed ? "Settings" : undefined} className="exhSideLink isGhost">
+          <button
+            type="button"
+            title={sidebarCollapsed ? "Settings" : undefined}
+            className={`exhSideLink isGhost${settingsOpen ? " isActive" : ""}`}
+            onClick={() => setSettingsOpen(true)}
+          >
             <span className="exhSideIcon"><SettingsIcon /></span>
             <span className="exhLinkText">Settings</span>
           </button>
@@ -690,6 +698,12 @@ export default function ExhibitorLayout() {
               }}
             />
           </div>
+            {settingsOpen ? (
+              <SettingsPage
+                section="exhibitor"
+                onClose={() => setSettingsOpen(false)}
+              />
+            ) : null}
         </main>
       </div>
     </div>
