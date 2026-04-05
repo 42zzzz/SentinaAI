@@ -61,6 +61,26 @@ export default function GenerateReportPage() {
     return (options.facilities || []).filter((facility) => form.zones.includes(String(facility.zone_id)));
   }, [form.zones, options.facilities]);
 
+  const currentExhibitor = useMemo(() => {
+    if (domain !== "exhibitors") return null;
+    return options.currentExhibitor || null;
+  }, [domain, options.currentExhibitor]);
+
+  const selectedEvent = useMemo(() => {
+    if (domain !== "exhibitors") return null;
+    if (options.selectedEvent?.event_id && String(options.selectedEvent.event_id) === String(form.event_id || "")) {
+      return options.selectedEvent;
+    }
+    return (options.events || []).find((item) => String(item.event_id) === String(form.event_id || "")) || null;
+  }, [domain, form.event_id, options.events, options.selectedEvent]);
+
+  const boothDisplayValue = useMemo(() => {
+    if (domain !== "exhibitors") return "";
+    return (options.booths || [])
+      .map((booth) => `${booth.booth_code}${booth.hall_name ? ` • ${booth.hall_name}` : ""}`)
+      .join("\n");
+  }, [domain, options.booths]);
+
   useEffect(() => {
     let ignore = false;
 
@@ -141,6 +161,33 @@ export default function GenerateReportPage() {
       facilities: prev.facilities.filter((facilityId) => availableFacilities.some((item) => String(item.hall_id) === String(facilityId))),
     }));
   }, [availableFacilities]);
+
+  useEffect(() => {
+    if (domain !== "exhibitors") return;
+    if (!currentExhibitor?.exhibitor_id) return;
+    setForm((prev) => {
+      if (prev.exhibitor_id === currentExhibitor.exhibitor_id) return prev;
+      return { ...prev, exhibitor_id: currentExhibitor.exhibitor_id };
+    });
+  }, [currentExhibitor, domain]);
+
+  useEffect(() => {
+    if (domain !== "exhibitors") return;
+    setForm((prev) => {
+      const next = { ...prev };
+      const nextBoothIds = (options.booths || []).map((booth) => String(booth.booth_id));
+      next.booth_ids = nextBoothIds;
+
+      if (selectedEvent?.start_datetime_utc) {
+        next.date_from = toDateInputValue(selectedEvent.start_datetime_utc);
+      }
+      if (selectedEvent?.end_datetime_utc) {
+        next.date_to = toDateInputValue(selectedEvent.end_datetime_utc);
+      }
+
+      return next;
+    });
+  }, [domain, options.booths, selectedEvent]);
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -243,11 +290,11 @@ export default function GenerateReportPage() {
               <div className="reportFieldRow twoCols">
                 <label className="reportField">
                   <span>Date From</span>
-                  <input type="date" value={form.date_from} onChange={(event) => updateField("date_from", event.target.value)} />
+                  <input type="date" value={form.date_from} onChange={(event) => updateField("date_from", event.target.value)} disabled={domain === "exhibitors"} />
                 </label>
                 <label className="reportField">
                   <span>Date To</span>
-                  <input type="date" value={form.date_to} onChange={(event) => updateField("date_to", event.target.value)} />
+                  <input type="date" value={form.date_to} onChange={(event) => updateField("date_to", event.target.value)} disabled={domain === "exhibitors"} />
                 </label>
               </div>
 
@@ -291,25 +338,24 @@ export default function GenerateReportPage() {
 
                   <label className="reportField">
                     <span>Exhibitor</span>
-                    <select value={form.exhibitor_id} onChange={(event) => updateField("exhibitor_id", event.target.value)}>
-                      <option value="">Select exhibitor</option>
-                      {(options.exhibitors || []).map((item) => (
-                        <option key={item.exhibitor_id} value={item.exhibitor_id}>
-                          {item.exhibitor_name}
-                        </option>
-                      ))}
-                    </select>
+                    <input
+                      type="text"
+                      value={currentExhibitor ? `${currentExhibitor.exhibitor_name} (${currentExhibitor.exhibitor_id})` : form.exhibitor_id}
+                      readOnly
+                      disabled
+                      placeholder="Linked exhibitor"
+                    />
                   </label>
 
                   <label className="reportField">
                     <span>Booth</span>
-                    <select multiple value={form.booth_ids} onChange={(event) => updateField("booth_ids", Array.from(event.target.selectedOptions, (option) => option.value))}>
-                      {(options.booths || []).map((booth) => (
-                        <option key={booth.booth_id} value={booth.booth_id}>
-                          {booth.booth_code} • {booth.hall_name}
-                        </option>
-                      ))}
-                    </select>
+                    <textarea
+                      rows={4}
+                      value={boothDisplayValue}
+                      readOnly
+                      disabled
+                      placeholder={form.event_id ? "Assigned booth will appear here." : "Select an event to load the assigned booth."}
+                    />
                   </label>
                 </>
               )}

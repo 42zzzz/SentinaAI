@@ -35,10 +35,24 @@ const accessAudit = require("./middleware/accessAudit.middleware");
 app.use(accessAudit);
 
 const environmentRoutes = require("./routes/environment.routes");
+const authenticate = require("./middleware/auth.middleware");
+const { assertExhibitorOwnership } = require("./utils/exhibitorAccess");
 
 app.get("/health", (req, res) =>
   res.json({ ok: true, service: "backend", time: new Date().toISOString() })
 );
+
+function extractExhibitorIdFromProxyPath(rawPath = "") {
+  const match = String(rawPath).match(/\/api\/exhibitor\/([^/]+)/i);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
+async function enforceExhibitorProxyOwnership(req, rawPath) {
+  if (req.user?.role !== "exhibitor") return;
+  const targetExhibitorId = extractExhibitorIdFromProxyPath(rawPath);
+  if (!targetExhibitorId) return;
+  await assertExhibitorOwnership(req, targetExhibitorId);
+}
 
 // --- Exhibitor AI proxy (FastAPI) ---
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
@@ -57,9 +71,10 @@ app.get("/api/exhibitor-ai/health", async (req, res) => {
   }
 });
 
-app.get("/api/exhibitor-ai/*path", async (req, res) => {
+app.get("/api/exhibitor-ai/*path", authenticate, async (req, res) => {
   try {
     const path = req.originalUrl.replace("/api/exhibitor-ai", "");
+    await enforceExhibitorProxyOwnership(req, path);
     const r = await fetch(`${EXHIBITOR_AI_SERVICE_URL}${path}`);
     const contentType = r.headers.get("content-type") || "";
 
@@ -69,16 +84,17 @@ app.get("/api/exhibitor-ai/*path", async (req, res) => {
       res.status(r.status).send(await r.text());
     }
   } catch (e) {
-    res.status(502).json({
-      error: "Exhibitor AI proxy failed",
-      detail: String(e),
+    res.status(e?.statusCode || 502).json({
+      error: e?.statusCode ? "Forbidden" : "Exhibitor AI proxy failed",
+      detail: e?.message || String(e),
     });
   }
 });
 
-app.get("/api/exhibitor-ai-download/*path", async (req, res) => {
+app.get("/api/exhibitor-ai-download/*path", authenticate, async (req, res) => {
   try {
     const path = req.originalUrl.replace("/api/exhibitor-ai-download", "");
+    await enforceExhibitorProxyOwnership(req, path);
     const r = await fetch(`${EXHIBITOR_AI_SERVICE_URL}${path}`);
 
     const disp = r.headers.get("content-disposition");
@@ -90,9 +106,9 @@ app.get("/api/exhibitor-ai-download/*path", async (req, res) => {
     const buf = Buffer.from(await r.arrayBuffer());
     res.send(buf);
   } catch (e) {
-    res.status(502).json({
-      error: "Exhibitor AI download proxy failed",
-      detail: String(e),
+    res.status(e?.statusCode || 502).json({
+      error: e?.statusCode ? "Forbidden" : "Exhibitor AI download proxy failed",
+      detail: e?.message || String(e),
     });
   }
 });

@@ -4,7 +4,7 @@ const DEFAULT_IDLE_MS = 20 * 60 * 1000; // 20 mins
 let timer = null;
 let idleMs = DEFAULT_IDLE_MS;
 
-const SESSION_KEYS = ["token", "role", "full_name", "employee_id", "email", "last_login"];
+const SESSION_KEYS = ["token", "role", "full_name", "employee_id", "email", "last_login", "exhibitor_id", "exhibitor_name"];
 
 function isAuthenticated() {
   return !!sessionStorage.getItem("token");

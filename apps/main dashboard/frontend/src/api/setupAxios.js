@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const SESSION_KEYS = ["token", "role", "full_name", "employee_id", "email", "last_login"];
+const SESSION_KEYS = ["token", "role", "full_name", "employee_id", "email", "last_login", "exhibitor_id", "exhibitor_name"];
 
 function clearSession() {
   SESSION_KEYS.forEach((key) => sessionStorage.removeItem(key));

@@ -1,5 +1,6 @@
 // backend/controllers/exhibitors.controller.js
 const coreDb = require("../dbs/core.db");
+const { assertExhibitorOwnership, requireOwnedExhibitorContext } = require("../utils/exhibitorAccess");
 
 function toInt(v, def) {
   const n = parseInt(v, 10);
@@ -45,6 +46,7 @@ exports.getExhibitorFilters = async (req, res) => {
 
 exports.listExhibitors = async (req, res) => {
   try {
+    const exhibitorContext = req.user?.role === "exhibitor" ? await requireOwnedExhibitorContext(req) : null;
     const q = (req.query.q || "").trim();
     const industries = parseMulti(req.query.industry);
     const hqCountries = parseMulti(req.query.hq_country);
@@ -106,6 +108,7 @@ exports.listExhibitors = async (req, res) => {
           e.exhibitor_id ILIKE '%' || $4 || '%' OR
           e.exhibitor_name ILIKE '%' || $4 || '%'
         )
+        AND ($9::text = '' OR e.exhibitor_id = $9::text)
         AND ((cardinality($5::text[]) = 0 AND cardinality($6::text[]) = 0) OR a.exhibitor_id IS NOT NULL)
       ORDER BY ${sortSql}, e.exhibitor_id ASC
       LIMIT $7 OFFSET $8;
@@ -131,13 +134,15 @@ exports.listExhibitors = async (req, res) => {
           e.exhibitor_id ILIKE '%' || $4 || '%' OR
           e.exhibitor_name ILIKE '%' || $4 || '%'
         )
+        AND ($7::text = '' OR e.exhibitor_id = $7::text)
         AND ((cardinality($5::text[]) = 0 AND cardinality($6::text[]) = 0) OR a.exhibitor_id IS NOT NULL);
     `;
 
-    const params = [industries, hqCountries, statuses, q, eventIds, packageTiers, pageSize, offset];
+    const ownedExhibitorId = exhibitorContext?.exhibitor_id || "";
+    const params = [industries, hqCountries, statuses, q, eventIds, packageTiers, pageSize, offset, ownedExhibitorId];
 
     const [countRes, dataRes] = await Promise.all([
-      coreDb.query(countSql, params.slice(0, 6)),
+      coreDb.query(countSql, [...params.slice(0, 6), ownedExhibitorId]),
       coreDb.query(sqlCTE, params),
     ]);
 
@@ -156,6 +161,7 @@ exports.listExhibitors = async (req, res) => {
 exports.getExhibitorById = async (req, res) => {
   try {
     const { exhibitor_id } = req.params;
+    await assertExhibitorOwnership(req, exhibitor_id);
 
     const sql = `
       SELECT
@@ -186,6 +192,7 @@ exports.getExhibitorById = async (req, res) => {
 exports.getExhibitorEvents = async (req, res) => {
   try {
     const { exhibitor_id } = req.params;
+    await assertExhibitorOwnership(req, exhibitor_id);
 
     const sql = `
       SELECT

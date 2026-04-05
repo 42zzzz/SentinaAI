@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const core = require("../dbs/core.db");
 const analytics = require("../dbs/analytics.db");
 const { renderReport } = require("../services/reportExport.client");
+const { requireOwnedExhibitorContext, getOwnedEventAssignments } = require("../utils/exhibitorAccess");
 
 const DOMAIN_PREFIX = {
   operations: "OP",
@@ -47,10 +48,24 @@ function normalizeFormat(format) {
 
 function normalizeDomain(domain) {
   const value = String(domain || "").toLowerCase();
-  if (["operations", "sustainability", "exhibitors", "soc"].includes(value)) {
+
+  if (value === "exhibitor" || value === "exhibitors") {
+    return "exhibitors";
+  }
+
+  if (["operations", "sustainability", "soc"].includes(value)) {
     return value;
   }
+
   throw new Error(`Unsupported report domain: ${domain}`);
+}
+
+function toDbDomain(domain) {
+  return domain === "exhibitors" ? "exhibitor" : domain;
+}
+
+function fromDbDomain(domain) {
+  return domain === "exhibitor" ? "exhibitors" : domain;
 }
 
 function reportStorageRoot() {
@@ -81,13 +96,16 @@ function fallbackReportCode(domain) {
 
 async function generateReportCode(domain) {
   try {
-    const result = await core.query("SELECT generate_report_code($1) AS report_code", [domain]);
-    const value = result.rows?.[0]?.report_code;
-    if (value) return value;
+    const result = await core.query(
+      "SELECT generate_report_code($1) AS report_code",
+      [toDbDomain(domain)]
+    );
+
+    return result.rows?.[0]?.report_code || null;
   } catch (error) {
-    console.warn("[reports] generate_report_code fallback:", error.message);
+    console.error("Failed to generate report code:", error);
+    throw error;
   }
-  return fallbackReportCode(domain);
 }
 
 async function getUserDisplayName(userId) {
@@ -140,16 +158,18 @@ function deriveDescription(domain, sectionList, filters) {
 function mapReportRow(row) {
   const filters = row.filters_json || {};
   const sections = Array.isArray(row.section_list) ? row.section_list : [];
+  const domain = fromDbDomain(row.domain);
+
   return {
     report_id: row.report_id,
     report_code: row.report_code,
     report_title: row.report_name,
-    description: deriveDescription(row.domain, sections, filters),
+    description: deriveDescription(domain, sections, filters),
     timestamp: row.generated_at || row.created_at,
-    report_type: deriveReportType(row.domain, sections),
+    report_type: deriveReportType(domain, sections),
     format: String(row.format || "").toUpperCase(),
     status: row.status,
-    domain: row.domain,
+    domain,
     section_list: sections,
     filters_json: filters,
     generated_by_name: row.generated_by_name,
@@ -163,6 +183,56 @@ function parseDateOnly(value) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) throw new Error(`Invalid date: ${value}`);
   return parsed.toISOString().slice(0, 10);
+}
+
+function errorStatus(error, fallback = 500) {
+  return Number(error?.statusCode || error?.status || 0) || fallback;
+}
+
+async function getExhibitorScopedEventContext(exhibitorId, eventId) {
+  const assignments = await getOwnedEventAssignments(exhibitorId, eventId);
+  if (!assignments.length) {
+    throw new Error("The selected event is not linked to the logged-in exhibitor.");
+  }
+
+  const event = assignments[0];
+  const boothIds = [...new Set(assignments.map((row) => row.booth_id).filter(Boolean))];
+
+  return { event, assignments, boothIds };
+}
+
+async function applyOwnedExhibitorScope(req, domain, filters) {
+  if (domain !== "exhibitors" || req.user?.role !== "exhibitor") return filters;
+
+  const exhibitorContext = await requireOwnedExhibitorContext(req);
+  const scoped = {
+    ...filters,
+    exhibitor_id: exhibitorContext.exhibitor_id,
+  };
+
+  if (!scoped.event_id) {
+    throw new Error("event_id is required for exhibitor reports");
+  }
+
+  const eventContext = await getExhibitorScopedEventContext(exhibitorContext.exhibitor_id, scoped.event_id);
+  scoped.booth_ids = eventContext.boothIds;
+  scoped.date_from = parseDateOnly(eventContext.event.start_datetime_utc);
+  scoped.date_to = parseDateOnly(eventContext.event.end_datetime_utc);
+
+  return scoped;
+}
+
+async function ensureReportOwnership(req, report) {
+  if (!report) return;
+  if (req.user?.role !== "exhibitor") return;
+
+  const exhibitorContext = await requireOwnedExhibitorContext(req);
+  const reportExhibitorId = String(report.filters_json?.exhibitor_id || "").trim().toUpperCase();
+  if (!reportExhibitorId || reportExhibitorId !== String(exhibitorContext.exhibitor_id).trim().toUpperCase()) {
+    const error = new Error("You can only access reports for your own exhibitor profile.");
+    error.statusCode = 403;
+    throw error;
+  }
 }
 
 function validateFilters(domain, filters) {
@@ -263,21 +333,23 @@ async function fetchExhibitorDatasets(filters) {
   const eventResult = await core.query(
     `
       SELECT
-        event_id,
-        event_name,
-        venue_id,
-        venue_name,
-        start_datetime_utc,
-        end_datetime_utc,
-        expected_attendance_total,
-        expected_exhibitors,
-        status,
-        person_in_charge_name,
-        person_in_charge_email,
-        created_at,
-        updated_at
-      FROM events
-      WHERE event_id = $1
+        ev.event_id,
+        ev.event_name,
+        ev.venue_id,
+        COALESCE(v.venue_name, 'DWTC') AS venue_name,
+        ev.start_datetime_utc,
+        ev.end_datetime_utc,
+        ev.expected_attendance_total,
+        ev.expected_exhibitors,
+        ev.status,
+        NULL::text AS person_in_charge_name,
+        NULL::text AS person_in_charge_email,
+        ev.created_at,
+        ev.updated_at
+      FROM events ev
+      LEFT JOIN venues v
+        ON v.venue_id = ev.venue_id
+      WHERE ev.event_id = $1
       LIMIT 1
     `,
     [filters.event_id]
@@ -285,18 +357,41 @@ async function fetchExhibitorDatasets(filters) {
 
   const exhibitorResult = await core.query(
     `
-      SELECT exhibitor_id, exhibitor_name, industry, hq_country, status, created_at, updated_at
-      FROM exhibitors
-      WHERE exhibitor_id = $1
+      SELECT
+        e.exhibitor_id,
+        e.exhibitor_name,
+        e.industry,
+        e.hq_country,
+        e.status,
+        e.created_at,
+        e.updated_at,
+        NULLIF(string_agg(DISTINCT ec.contact_name, ', '), '') AS "contactName",
+        NULLIF(string_agg(DISTINCT ec.contact_email, ', '), '') AS "contactEmail",
+        NULLIF(string_agg(DISTINCT ec.contact_phone, ', '), '') AS "contactPhone"
+      FROM exhibitors e
+      LEFT JOIN exhibitor_contacts ec
+        ON ec.exhibitor_id = e.exhibitor_id
+      WHERE e.exhibitor_id = $1
+      GROUP BY
+        e.exhibitor_id,
+        e.exhibitor_name,
+        e.industry,
+        e.hq_country,
+        e.status,
+        e.created_at,
+        e.updated_at
       LIMIT 1
     `,
     [filters.exhibitor_id]
   );
 
-  const assignmentValues = [filters.event_id, filters.exhibitor_id];
+  const boothIds = Array.isArray(filters.booth_ids) ? filters.booth_ids.filter(Boolean) : [];
+
   let boothClause = "";
-  if (filters.booth_ids.length) {
-    assignmentValues.push(filters.booth_ids);
+  const assignmentValues = [filters.event_id, filters.exhibitor_id];
+
+  if (boothIds.length > 0) {
+    assignmentValues.push(boothIds);
     boothClause = ` AND ba.booth_id = ANY($${assignmentValues.length})`;
   }
 
@@ -309,20 +404,26 @@ async function fetchExhibitorDatasets(filters) {
         b.booth_code,
         b.zone_id,
         b.hall_id,
-        b.hall_name,
+        h.hall_name,
         b.booth_size_type,
         b.booth_area_sqm,
-        ba.assigned_at,
-        ba.package_tier,
-        ba.discount_pct,
-        ba.amount_paid_aed,
-        ba.status
+        NULL::timestamptz AS assigned_at,
+        ee.package_tier,
+        ee.discount_pct,
+        ee.amount_paid_aed,
+        NULL::text AS status
       FROM booth_assignments ba
-      LEFT JOIN booths b ON b.booth_id = ba.booth_id
+      LEFT JOIN booths b
+        ON b.booth_id = ba.booth_id
+      LEFT JOIN halls h
+        ON h.hall_id = b.hall_id
+      LEFT JOIN event_exhibitors ee
+        ON ee.event_id = ba.event_id
+      AND ee.exhibitor_id = ba.exhibitor_id
       WHERE ba.event_id = $1
         AND ba.exhibitor_id = $2
         ${boothClause}
-      ORDER BY b.hall_name ASC, b.booth_code ASC
+      ORDER BY h.hall_name ASC NULLS LAST, b.booth_code ASC
     `,
     assignmentValues
   );
@@ -416,14 +517,31 @@ async function getOptions(req, res) {
 
     if (domain === "exhibitors") {
       const eventId = req.query.eventId ? String(req.query.eventId) : null;
-      const exhibitorId = req.query.exhibitorId ? String(req.query.exhibitorId) : null;
+      const ownedContext = req.user?.role === "exhibitor" ? await requireOwnedExhibitorContext(req) : null;
+      const scopedExhibitorId = ownedContext?.exhibitor_id || (req.query.exhibitorId ? String(req.query.exhibitorId) : null);
 
-      const eventsResult = await core.query(
-        `SELECT event_id, event_name, start_datetime_utc, end_datetime_utc, status FROM events ORDER BY start_datetime_utc DESC`
-      );
+      let eventsResult;
+      if (scopedExhibitorId) {
+        eventsResult = await core.query(
+          `
+            SELECT DISTINCT ev.event_id, ev.event_name, ev.start_datetime_utc, ev.end_datetime_utc, ev.status
+            FROM booth_assignments ba
+            JOIN events ev ON ev.event_id = ba.event_id
+            WHERE ba.exhibitor_id = $1
+            ORDER BY ev.start_datetime_utc DESC
+          `,
+          [scopedExhibitorId]
+        );
+      } else {
+        eventsResult = await core.query(
+          `SELECT event_id, event_name, start_datetime_utc, end_datetime_utc, status FROM events ORDER BY start_datetime_utc DESC`
+        );
+      }
 
       let exhibitorsResult;
-      if (eventId) {
+      if (ownedContext) {
+        exhibitorsResult = { rows: [{ exhibitor_id: ownedContext.exhibitor_id, exhibitor_name: ownedContext.exhibitor_name }] };
+      } else if (eventId) {
         exhibitorsResult = await core.query(
           `
             SELECT DISTINCT e.exhibitor_id, e.exhibitor_name
@@ -440,18 +558,23 @@ async function getOptions(req, res) {
         );
       }
 
-      let boothsResult = { rows: [] };
-      if (eventId && exhibitorId) {
-        boothsResult = await core.query(
-          `
-            SELECT b.booth_id, b.booth_code, b.hall_name, b.zone_id, b.hall_id
-            FROM booth_assignments ba
-            JOIN booths b ON b.booth_id = ba.booth_id
-            WHERE ba.event_id = $1 AND ba.exhibitor_id = $2
-            ORDER BY b.hall_name ASC, b.booth_code ASC
-          `,
-          [eventId, exhibitorId]
-        );
+      let booths = [];
+      let selectedEvent = null;
+      if (eventId && scopedExhibitorId) {
+        const eventContext = await getExhibitorScopedEventContext(scopedExhibitorId, eventId);
+        booths = eventContext.assignments.map((row) => ({
+          booth_id: row.booth_id,
+          booth_code: row.booth_code,
+          hall_name: row.hall_name,
+          zone_id: row.zone_id,
+          hall_id: row.hall_id,
+        }));
+        selectedEvent = {
+          event_id: eventContext.event.event_id,
+          event_name: eventContext.event.event_name,
+          start_datetime_utc: eventContext.event.start_datetime_utc,
+          end_datetime_utc: eventContext.event.end_datetime_utc,
+        };
       }
 
       return res.json({
@@ -459,7 +582,14 @@ async function getOptions(req, res) {
         data: {
           events: eventsResult.rows,
           exhibitors: exhibitorsResult.rows,
-          booths: boothsResult.rows,
+          booths,
+          selectedEvent,
+          currentExhibitor: ownedContext
+            ? {
+                exhibitor_id: ownedContext.exhibitor_id,
+                exhibitor_name: ownedContext.exhibitor_name,
+              }
+            : null,
         },
       });
     }
@@ -467,7 +597,7 @@ async function getOptions(req, res) {
     return res.status(400).json({ success: false, error: "Unsupported domain" });
   } catch (error) {
     console.error("[reports.options]", error);
-    return res.status(500).json({ success: false, error: error.message || "Failed to load options" });
+    return res.status(errorStatus(error, 500)).json({ success: false, error: error.message || "Failed to load options" });
   }
 }
 
@@ -478,8 +608,14 @@ async function listReports(req, res) {
     const where = ["deleted_at IS NULL"];
 
     if (domain) {
-      values.push(domain);
+      values.push(toDbDomain(domain));
       where.push(`domain = $${values.length}`);
+    }
+
+    if (req.user?.role === "exhibitor") {
+      const exhibitorContext = await requireOwnedExhibitorContext(req);
+      values.push(exhibitorContext.exhibitor_id);
+      where.push(`filters_json ->> 'exhibitor_id' = $${values.length}`);
     }
 
     const result = await core.query(
@@ -498,7 +634,7 @@ async function listReports(req, res) {
     });
   } catch (error) {
     console.error("[reports.list]", error);
-    return res.status(500).json({ success: false, error: error.message || "Failed to list reports" });
+    return res.status(errorStatus(error, 500)).json({ success: false, error: error.message || "Failed to list reports" });
   }
 }
 
@@ -516,18 +652,20 @@ async function getReport(req, res) {
     if (!report) {
       return res.status(404).json({ success: false, error: "Report not found" });
     }
+    await ensureReportOwnership(req, report);
 
     return res.json({ success: true, data: mapReportRow(report) });
   } catch (error) {
     console.error("[reports.get]", error);
-    return res.status(500).json({ success: false, error: error.message || "Failed to fetch report" });
+    return res.status(errorStatus(error, 500)).json({ success: false, error: error.message || "Failed to fetch report" });
   }
 }
 
 async function createDraft(req, res) {
   try {
     const domain = normalizeDomain(req.body?.domain || req.body?.filters?.module);
-    const filters = validateFilters(domain, req.body.filters || {});
+    let filters = validateFilters(domain, req.body.filters || {});
+    filters = await applyOwnedExhibitorScope(req, domain, filters);
     const format = normalizeFormat(req.body.format);
     const reportId = crypto.randomUUID();
     const reportCode = await generateReportCode(domain);
@@ -569,7 +707,7 @@ async function createDraft(req, res) {
         reportId,
         reportCode,
         filters.report_title,
-        domain,
+        toDbDomain(domain),
         JSON.stringify(filters.sections),
         JSON.stringify(filters),
         format,
@@ -581,7 +719,7 @@ async function createDraft(req, res) {
     return res.status(201).json({ success: true, data: mapReportRow(insert.rows[0]) });
   } catch (error) {
     console.error("[reports.createDraft]", error);
-    return res.status(400).json({ success: false, error: error.message || "Failed to save draft" });
+    return res.status(errorStatus(error, 400)).json({ success: false, error: error.message || "Failed to save draft" });
   }
 }
 
@@ -594,9 +732,11 @@ async function updateDraft(req, res) {
     if (existing.status !== "DRAFT") {
       return res.status(400).json({ success: false, error: "Only draft reports can be edited" });
     }
+    await ensureReportOwnership(req, existing);
 
     const domain = normalizeDomain(req.body?.domain || req.body?.filters?.module || existing.domain);
-    const filters = validateFilters(domain, req.body.filters || existing.filters_json || {});
+    let filters = validateFilters(domain, req.body.filters || existing.filters_json || {});
+    filters = await applyOwnedExhibitorScope(req, domain, filters);
     const format = normalizeFormat(req.body.format || existing.format);
 
     const update = await core.query(
@@ -615,7 +755,7 @@ async function updateDraft(req, res) {
       [
         existing.report_id,
         filters.report_title,
-        domain,
+        toDbDomain(domain),
         JSON.stringify(filters.sections),
         JSON.stringify(filters),
         format,
@@ -625,7 +765,7 @@ async function updateDraft(req, res) {
     return res.json({ success: true, data: mapReportRow(update.rows[0]) });
   } catch (error) {
     console.error("[reports.updateDraft]", error);
-    return res.status(400).json({ success: false, error: error.message || "Failed to update draft" });
+    return res.status(errorStatus(error, 400)).json({ success: false, error: error.message || "Failed to update draft" });
   }
 }
 
@@ -665,7 +805,7 @@ async function persistGeneratedReport({ report, domain, filters, format, buffer,
       [
         reportId,
         filters.report_title,
-        domain,
+        toDbDomain(domain),
         JSON.stringify(filters.sections),
         JSON.stringify(filters),
         format,
@@ -731,7 +871,7 @@ async function persistGeneratedReport({ report, domain, filters, format, buffer,
       reportId,
       reportCode,
       filters.report_title,
-      domain,
+      toDbDomain(domain),
       JSON.stringify(filters.sections),
       JSON.stringify(filters),
       format,
@@ -753,7 +893,8 @@ async function persistGeneratedReport({ report, domain, filters, format, buffer,
 async function generateReport(req, res) {
   try {
     const domain = normalizeDomain(req.body?.domain || req.body?.filters?.module);
-    const filters = validateFilters(domain, req.body.filters || {});
+    let filters = validateFilters(domain, req.body.filters || {});
+    filters = await applyOwnedExhibitorScope(req, domain, filters);
     const format = normalizeFormat(req.body.format);
     const generatedByName = (await getUserDisplayName(req.user?.user_id)) || null;
 
@@ -779,7 +920,7 @@ async function generateReport(req, res) {
     return res.status(201).json({ success: true, data: mapReportRow(row) });
   } catch (error) {
     console.error("[reports.generate]", error);
-    return res.status(400).json({ success: false, error: error.message || "Failed to generate report" });
+    return res.status(errorStatus(error, 400)).json({ success: false, error: error.message || "Failed to generate report" });
   }
 }
 
@@ -789,12 +930,14 @@ async function finalizeDraft(req, res) {
     if (!report) {
       return res.status(404).json({ success: false, error: "Report not found" });
     }
+    await ensureReportOwnership(req, report);
     if (report.status !== "DRAFT") {
       return res.status(400).json({ success: false, error: "Only draft reports can be generated" });
     }
 
     const domain = normalizeDomain(report.domain);
-    const filters = validateFilters(domain, report.filters_json || {});
+    let filters = validateFilters(domain, report.filters_json || {});
+    filters = await applyOwnedExhibitorScope(req, domain, filters);
     const format = normalizeFormat(report.format);
     const generatedByName = (await getUserDisplayName(req.user?.user_id)) || report.generated_by_name || null;
 
@@ -820,7 +963,7 @@ async function finalizeDraft(req, res) {
     return res.json({ success: true, data: mapReportRow(row) });
   } catch (error) {
     console.error("[reports.finalizeDraft]", error);
-    return res.status(400).json({ success: false, error: error.message || "Failed to generate draft" });
+    return res.status(errorStatus(error, 400)).json({ success: false, error: error.message || "Failed to generate draft" });
   }
 }
 
@@ -830,6 +973,7 @@ async function sendReportFile(req, res, inline) {
     if (!report) {
       return res.status(404).json({ success: false, error: "Report not found" });
     }
+    await ensureReportOwnership(req, report);
     if (report.status !== "GENERATED") {
       return res.status(400).json({ success: false, error: "Report is not generated yet" });
     }
@@ -843,7 +987,7 @@ async function sendReportFile(req, res, inline) {
     return res.sendFile(path.resolve(report.file_path));
   } catch (error) {
     console.error("[reports.file]", error);
-    return res.status(500).json({ success: false, error: error.message || "Failed to open report file" });
+    return res.status(errorStatus(error, 500)).json({ success: false, error: error.message || "Failed to open report file" });
   }
 }
 

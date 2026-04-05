@@ -52,7 +52,7 @@ export default function Login() {
         password,
       });
 
-      const { token, role, full_name, employee_id, email: accountEmail, last_active_at } = res.data;
+      const { token, role, full_name, employee_id, email: accountEmail, last_active_at, exhibitor_id, exhibitor_name } = res.data;
 
       sessionStorage.setItem("token", token);
       window.dispatchEvent(new Event("sentina:login"));
@@ -62,6 +62,16 @@ export default function Login() {
       sessionStorage.setItem("email", accountEmail || email);
       if (last_active_at) {
         sessionStorage.setItem("last_login", last_active_at);
+      }
+      if (exhibitor_id) {
+        sessionStorage.setItem("exhibitor_id", exhibitor_id);
+      } else {
+        sessionStorage.removeItem("exhibitor_id");
+      }
+      if (exhibitor_name) {
+        sessionStorage.setItem("exhibitor_name", exhibitor_name);
+      } else {
+        sessionStorage.removeItem("exhibitor_name");
       }
 
       switch (role) {

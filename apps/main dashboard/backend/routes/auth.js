@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const core = require("../dbs/core.db");
 const authenticate = require("../middleware/auth.middleware");
 const { validatePassword } = require("../security/passwordPolicy");
+const { resolveExhibitorContext } = require("../utils/exhibitorAccess");
 
 const router = express.Router();
 
@@ -146,6 +147,11 @@ router.post("/login", async (req, res) => {
       { expiresIn: "8h" }
     );
 
+    const exhibitorContext =
+      user.role_name === "exhibitor"
+        ? await resolveExhibitorContext(user.user_id)
+        : null;
+
     req.audit.authResult = "SUCCESS";
     req.audit.userId = user.user_id;
     req.audit.role = user.role_name;
@@ -157,6 +163,8 @@ router.post("/login", async (req, res) => {
       email: user.email,
       employee_id: user.employee_id,
       last_active_at: user.last_active_at,
+      exhibitor_id: exhibitorContext?.exhibitor_id || null,
+      exhibitor_name: exhibitorContext?.exhibitor_name || null,
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -196,6 +204,11 @@ router.get("/me", authenticate, async (req, res) => {
 
     const user = result.rows[0];
 
+    const exhibitorContext =
+      user.role_name === "exhibitor"
+        ? await resolveExhibitorContext(user.user_id)
+        : null;
+
     return res.json({
       user_id: user.user_id,
       full_name: user.full_name,
@@ -203,6 +216,8 @@ router.get("/me", authenticate, async (req, res) => {
       employee_id: user.employee_id,
       role: user.role_name,
       last_active_at: user.last_active_at,
+      exhibitor_id: exhibitorContext?.exhibitor_id || null,
+      exhibitor_name: exhibitorContext?.exhibitor_name || null,
     });
   } catch (err) {
     console.error("Auth me error:", err);

@@ -9,7 +9,6 @@ import {
 } from "../utils/dashboardSettings";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-const DEFAULT_EXHIBITOR_ID = "EXH0240";
 const ACCENT = "#35005C";
 const SIDEBAR_STORAGE_KEY = "sentina.sidebarCollapsed";
 
@@ -263,8 +262,8 @@ export default function ExhibitorLayout() {
 
   const [now, setNow] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState("");
-  const [exhibitorId, setExhibitorId] = useState(DEFAULT_EXHIBITOR_ID);
-  const [draftExhibitorId, setDraftExhibitorId] = useState(DEFAULT_EXHIBITOR_ID);
+  const [exhibitorId, setExhibitorId] = useState(() => sessionStorage.getItem("exhibitor_id") || "");
+  const [exhibitorName, setExhibitorName] = useState(() => sessionStorage.getItem("exhibitor_name") || "");
   const [intervalMinutes, setIntervalMinutes] = useState(30);
   const [catchmentK, setCatchmentK] = useState(6);
   const [mcPasses, setMcPasses] = useState(15);
@@ -275,6 +274,7 @@ export default function ExhibitorLayout() {
   const [density, setDensity] = useState(null);
 
   const [loading, setLoading] = useState(false);
+  const [bootstrapping, setBootstrapping] = useState(true);
   const [error, setError] = useState("");
 
   const hasBootstrapped = useRef(false);
@@ -302,7 +302,7 @@ export default function ExhibitorLayout() {
   const loadAll = async (nextExhibitorId = exhibitorId) => {
     const safeId = String(nextExhibitorId || "").trim();
     if (!safeId) {
-      setError("Please enter an exhibitor ID.");
+      setError("No exhibitor profile is linked to this account.");
       return;
     }
 
@@ -333,7 +333,6 @@ export default function ExhibitorLayout() {
       setHeatmap(heatmapRes.value?.data || null);
       setDensity(densityRes.value?.data || null);
       setExhibitorId(safeId);
-      setDraftExhibitorId(safeId);
     } catch (err) {
       setProfile(null);
       setEvents([]);
@@ -346,8 +345,49 @@ export default function ExhibitorLayout() {
   };
 
   useEffect(() => {
-    loadAll(DEFAULT_EXHIBITOR_ID);
-    hasBootstrapped.current = true;
+    let ignore = false;
+
+    async function bootstrapExhibitor() {
+      try {
+        setBootstrapping(true);
+        setError("");
+
+        const meRes = await axios.get(`${API_BASE}/auth/me`);
+        if (ignore) return;
+
+        const linkedExhibitorId = String(meRes.data?.exhibitor_id || sessionStorage.getItem("exhibitor_id") || "").trim();
+        const linkedExhibitorName = String(meRes.data?.exhibitor_name || sessionStorage.getItem("exhibitor_name") || "").trim();
+
+        if (!linkedExhibitorId) {
+          throw new Error("No exhibitor profile is linked to the logged-in account.");
+        }
+
+        sessionStorage.setItem("exhibitor_id", linkedExhibitorId);
+        if (linkedExhibitorName) {
+          sessionStorage.setItem("exhibitor_name", linkedExhibitorName);
+        }
+
+        setExhibitorId(linkedExhibitorId);
+        setExhibitorName(linkedExhibitorName);
+        await loadAll(linkedExhibitorId);
+        hasBootstrapped.current = true;
+      } catch (err) {
+        if (!ignore) {
+          setProfile(null);
+          setEvents([]);
+          setHeatmap(null);
+          setDensity(null);
+          setError(String(err?.response?.data?.error || err?.message || err));
+        }
+      } finally {
+        if (!ignore) setBootstrapping(false);
+      }
+    }
+
+    bootstrapExhibitor();
+    return () => {
+      ignore = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -487,7 +527,25 @@ export default function ExhibitorLayout() {
     return "Exhibitor Portal";
   }, [location.pathname]);
 
-  const handleRefresh = () => loadAll(draftExhibitorId);
+  const handleRefresh = () => loadAll(exhibitorId);
+
+  const handleDownloadReport = async () => {
+    try {
+      const response = await axios.get(reportDownloadUrl, { responseType: "blob" });
+      const blobUrl = window.URL.createObjectURL(response.data);
+      const anchor = document.createElement("a");
+      const disposition = String(response.headers["content-disposition"] || "");
+      const match = disposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
+      anchor.href = blobUrl;
+      anchor.download = decodeURIComponent(match?.[1] || match?.[2] || `${exhibitorId || "exhibitor"}-analytics.xlsx`);
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || "Failed to download XLSX.");
+    }
+  };
 
   const handleLogout = () => {
     sessionStorage.clear();
@@ -620,6 +678,9 @@ export default function ExhibitorLayout() {
                     Role: {sessionStorage.getItem("role") || localStorage.getItem("role") || "exhibitor"}
                   </div>
                   <div className="exhUserMeta">
+                    Exhibitor: {exhibitorName || exhibitorId || "—"}
+                  </div>
+                  <div className="exhUserMeta">
                     Employee ID: {sessionStorage.getItem("employee_id") || localStorage.getItem("employee_id") || "—"}
                   </div>
                 </div>
@@ -634,9 +695,10 @@ export default function ExhibitorLayout() {
                 <div className="exhControl">
                   <label>Exhibitor ID</label>
                   <input
-                    value={draftExhibitorId}
-                    onChange={(e) => setDraftExhibitorId(e.target.value.toUpperCase())}
-                    placeholder="Enter exhibitor ID"
+                    value={exhibitorId}
+                    readOnly
+                    disabled
+                    placeholder="Linked exhibitor ID"
                   />
                 </div>
 
@@ -672,15 +734,15 @@ export default function ExhibitorLayout() {
                 </div>
 
                 <div className="exhControlActions">
-                  <button type="button" className="exhPrimaryBtn" onClick={handleRefresh} disabled={loading}>
-                    {loading ? "Refreshing..." : "Refresh dashboard"}
+                  <button type="button" className="exhPrimaryBtn" onClick={handleRefresh} disabled={loading || bootstrapping || !exhibitorId}>
+                    {loading || bootstrapping ? "Refreshing..." : "Refresh dashboard"}
                   </button>
-                  <a href={reportDownloadUrl} className="exhSecondaryBtn">Download XLSX</a>
+                  <button type="button" className="exhSecondaryBtn" onClick={handleDownloadReport} disabled={loading || bootstrapping || !exhibitorId}>Download XLSX</button>
                 </div>
               </div>
 
               {error ? <div className="exhBanner isError">{error}</div> : null}
-              {!error && loading ? <div className="exhBanner">Updating exhibitor analytics…</div> : null}
+              {!error && (loading || bootstrapping) ? <div className="exhBanner">Updating exhibitor analytics…</div> : null}
             </div>
 
             <Outlet
@@ -688,6 +750,7 @@ export default function ExhibitorLayout() {
                 API_BASE,
                 ACCENT,
                 exhibitorId,
+                exhibitorName,
                 profile,
                 events,
                 heatmap,
