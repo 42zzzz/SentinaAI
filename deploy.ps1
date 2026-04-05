@@ -5,7 +5,7 @@
 # CONFIG
 $PROJECT  = "sentina-ai"
 $REGION   = "me-central1"
-$REPO     = "me-central1-docker.pkg.dev/$PROJECT/sentina-ai"
+$REPO     = "me-central1-docker.pkg.dev/$PROJECT/sentinaai"
 # ──────────────────────────────────────────────────────────────
 
 Write-Host ""
