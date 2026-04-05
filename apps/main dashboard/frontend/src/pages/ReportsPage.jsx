@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import MultiSelectPill from "../components/MultiSelectPill";
-import { downloadReportFile, fetchReports, finalizeDraftReport, openReportFile } from "../api/reports";
+import { deleteReport, downloadReportFile, fetchReports, finalizeDraftReport, openReportFile } from "../api/reports";
 import { formatReportStatus, getDomainFromPath } from "../utils/reportConfig";
 import "./ReportsPage.css";
 
@@ -89,6 +89,18 @@ function IconEdit() {
   );
 }
 
+function IconDelete() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2.75 4.25H11.25" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M5.25 1.75H8.75" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M4 4.25V10.25C4 10.9404 4.55964 11.5 5.25 11.5H8.75C9.44036 11.5 10 10.9404 10 10.25V4.25" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5.75 6V9.25" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M8.25 6V9.25" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function formatDateTime(value) {
   if (!value) return "-";
   const d = new Date(value);
@@ -141,7 +153,7 @@ export default function ReportsPage() {
   const [statuses, setStatuses] = useState([]);
   const [sort, setSort] = useState("timestamp_desc");
   const [page, setPage] = useState(1);
-  const [busyId, setBusyId] = useState("");
+  const [busyKey, setBusyKey] = useState("");
 
   useEffect(() => {
     let ignore = false;
@@ -200,16 +212,39 @@ export default function ReportsPage() {
     setPage(1);
   }, [q, reportTypes, dateFilter, format, statuses, sort, domain]);
 
+  async function refreshRows() {
+    const refreshed = await fetchReports(domain);
+    setRows(refreshed);
+  }
+
   async function handleGenerateDraft(reportId) {
+    const key = `generate:${reportId}`;
     try {
-      setBusyId(reportId);
+      setBusyKey(key);
+      setError("");
       await finalizeDraftReport(reportId);
-      const refreshed = await fetchReports(domain);
-      setRows(refreshed);
+      await refreshRows();
     } catch (err) {
       setError(err?.response?.data?.error || err.message || "Failed to generate draft.");
     } finally {
-      setBusyId("");
+      setBusyKey("");
+    }
+  }
+
+  async function handleDelete(reportId, reportTitle) {
+    const confirmed = window.confirm(`Delete report \"${reportTitle || reportId}\"?`);
+    if (!confirmed) return;
+
+    const key = `delete:${reportId}`;
+    try {
+      setBusyKey(key);
+      setError("");
+      await deleteReport(reportId);
+      await refreshRows();
+    } catch (err) {
+      setError(err?.response?.data?.error || err.message || "Failed to delete report.");
+    } finally {
+      setBusyKey("");
     }
   }
 
@@ -307,7 +342,13 @@ export default function ReportsPage() {
                 ) : (
                   pageRows.map((row) => {
                     const statusStyle = statusPill(row.status);
-                    const isDraft = String(row.status).toUpperCase() === "DRAFT";
+                    const normalizedStatus = String(row.status || "").toUpperCase();
+                    const normalizedFormat = String(row.format || "").toUpperCase();
+                    const isDraft = normalizedStatus === "DRAFT";
+                    const isPdf = normalizedFormat === "PDF";
+                    const deleteBusy = busyKey === `delete:${row.report_id}`;
+                    const generateBusy = busyKey === `generate:${row.report_id}`;
+
                     return (
                       <tr key={row.report_id}>
                         <td className="tdStrong">{row.report_code}</td>
@@ -323,20 +364,64 @@ export default function ReportsPage() {
                           <div className="reportsActionBtns">
                             {isDraft ? (
                               <>
-                                <button type="button" className="actionIconBtn isPrimary" title="Edit draft" onClick={() => navigate(`${location.pathname}/${row.report_id}/edit`)}>
+                                <button
+                                  type="button"
+                                  className="actionIconBtn"
+                                  title="Generate draft"
+                                  onClick={() => handleGenerateDraft(row.report_id)}
+                                  disabled={generateBusy || deleteBusy}
+                                >
+                                  <IconDownload />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="actionIconBtn isPrimary"
+                                  title="Edit draft"
+                                  onClick={() => navigate(`${location.pathname}/${row.report_id}/edit`)}
+                                  disabled={generateBusy || deleteBusy}
+                                >
                                   <IconEdit />
                                 </button>
-                                <button type="button" className="actionIconBtn" title="Generate draft" onClick={() => handleGenerateDraft(row.report_id)} disabled={busyId === row.report_id}>
-                                  <IconDownload />
+                                <button
+                                  type="button"
+                                  className="actionIconBtn"
+                                  title="Delete draft"
+                                  onClick={() => handleDelete(row.report_id, row.report_title)}
+                                  disabled={generateBusy || deleteBusy}
+                                >
+                                  <IconDelete />
                                 </button>
                               </>
                             ) : (
                               <>
-                                <button type="button" className="actionIconBtn isPrimary" title="Download" onClick={() => downloadReportFile(row.report_id)}>
+                                <button
+                                  type="button"
+                                  className="actionIconBtn isPrimary"
+                                  title="Download"
+                                  onClick={() => downloadReportFile(row.report_id)}
+                                  disabled={deleteBusy}
+                                >
                                   <IconDownload />
                                 </button>
-                                <button type="button" className="actionIconBtn" title="Preview" onClick={() => openReportFile(row.report_id)}>
-                                  <IconPreview />
+                                {isPdf ? (
+                                  <button
+                                    type="button"
+                                    className="actionIconBtn"
+                                    title="Preview"
+                                    onClick={() => openReportFile(row.report_id)}
+                                    disabled={deleteBusy}
+                                  >
+                                    <IconPreview />
+                                  </button>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  className="actionIconBtn"
+                                  title="Delete"
+                                  onClick={() => handleDelete(row.report_id, row.report_title)}
+                                  disabled={deleteBusy}
+                                >
+                                  <IconDelete />
                                 </button>
                               </>
                             )}

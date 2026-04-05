@@ -61,6 +61,11 @@ export async function finalizeDraftReport(reportId) {
   return response.data?.data;
 }
 
+export async function deleteReport(reportId) {
+  const response = await axios.delete(buildUrl(`/reports/${reportId}`));
+  return response.data;
+}
+
 export async function downloadReportFile(reportId) {
   const response = await axios.get(buildUrl(`/reports/${reportId}/download`), {
     responseType: "blob",

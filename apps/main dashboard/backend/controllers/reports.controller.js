@@ -1,5 +1,3 @@
-const fs = require("fs");
-const path = require("path");
 const crypto = require("crypto");
 
 const core = require("../dbs/core.db");
@@ -35,6 +33,30 @@ const SECTION_LABELS = {
   },
 };
 
+const REPORT_PUBLIC_COLUMNS = `
+  report_id,
+  report_code,
+  report_name,
+  domain,
+  section_list,
+  filters_json,
+  status,
+  format,
+  generated_by_user_id,
+  generated_by_name,
+  created_at,
+  updated_at,
+  generated_at,
+  file_path,
+  file_name,
+  mime_type,
+  file_size_bytes,
+  checksum,
+  deleted_at
+`;
+
+const REPORT_FILE_COLUMNS = `${REPORT_PUBLIC_COLUMNS}, file_bytes`;
+
 function toArray(value) {
   if (!value) return [];
   if (Array.isArray(value)) return value.filter(Boolean).map((item) => String(item));
@@ -68,25 +90,6 @@ function fromDbDomain(domain) {
   return domain === "exhibitor" ? "exhibitors" : domain;
 }
 
-function reportStorageRoot() {
-  const root = path.resolve(__dirname, "..", "storage", "reports");
-  fs.mkdirSync(root, { recursive: true });
-  return root;
-}
-
-function buildReportStorage(domain, reportCode, format) {
-  const now = new Date();
-  const year = String(now.getUTCFullYear());
-  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
-  const folder = path.join(reportStorageRoot(), domain, year, month);
-  fs.mkdirSync(folder, { recursive: true });
-  const fileName = `${reportCode}.${format}`;
-  return {
-    fileName,
-    filePath: path.join(folder, fileName),
-  };
-}
-
 function fallbackReportCode(domain) {
   const prefix = DOMAIN_PREFIX[domain] || "RP";
   const now = new Date();
@@ -101,10 +104,10 @@ async function generateReportCode(domain) {
       [toDbDomain(domain)]
     );
 
-    return result.rows?.[0]?.report_code || null;
+    return result.rows?.[0]?.report_code || fallbackReportCode(domain);
   } catch (error) {
     console.error("Failed to generate report code:", error);
-    throw error;
+    return fallbackReportCode(domain);
   }
 }
 
@@ -419,7 +422,7 @@ async function fetchExhibitorDatasets(filters) {
         ON h.hall_id = b.hall_id
       LEFT JOIN event_exhibitors ee
         ON ee.event_id = ba.event_id
-      AND ee.exhibitor_id = ba.exhibitor_id
+       AND ee.exhibitor_id = ba.exhibitor_id
       WHERE ba.event_id = $1
         AND ba.exhibitor_id = $2
         ${boothClause}
@@ -620,7 +623,7 @@ async function listReports(req, res) {
 
     const result = await core.query(
       `
-        SELECT *
+        SELECT ${REPORT_PUBLIC_COLUMNS}
         FROM reports
         WHERE ${where.join(" AND ")}
         ORDER BY COALESCE(generated_at, created_at) DESC, created_at DESC
@@ -638,9 +641,10 @@ async function listReports(req, res) {
   }
 }
 
-async function getReportRow(reportId) {
+async function getReportRow(reportId, { includeFileBytes = false } = {}) {
+  const columns = includeFileBytes ? REPORT_FILE_COLUMNS : REPORT_PUBLIC_COLUMNS;
   const result = await core.query(
-    `SELECT * FROM reports WHERE report_id = $1 AND deleted_at IS NULL LIMIT 1`,
+    `SELECT ${columns} FROM reports WHERE report_id = $1 AND deleted_at IS NULL LIMIT 1`,
     [reportId]
   );
   return result.rows[0] || null;
@@ -701,7 +705,7 @@ async function createDraft(req, res) {
           NOW(),
           NOW()
         )
-        RETURNING *
+        RETURNING ${REPORT_PUBLIC_COLUMNS}
       `,
       [
         reportId,
@@ -750,7 +754,7 @@ async function updateDraft(req, res) {
           format = $6,
           updated_at = NOW()
         WHERE report_id = $1
-        RETURNING *
+        RETURNING ${REPORT_PUBLIC_COLUMNS}
       `,
       [
         existing.report_id,
@@ -772,12 +776,12 @@ async function updateDraft(req, res) {
 async function persistGeneratedReport({ report, domain, filters, format, buffer, userId, generatedByName }) {
   const reportId = report?.report_id || crypto.randomUUID();
   const reportCode = report?.report_code || (await generateReportCode(domain));
-  const { fileName, filePath } = buildReportStorage(domain, reportCode, format);
-
-  fs.writeFileSync(filePath, buffer);
-
+  const fileName = `${reportCode}.${format}`;
   const checksum = crypto.createHash("sha256").update(buffer).digest("hex");
-  const stats = fs.statSync(filePath);
+  const mimeType =
+    format === "pdf"
+      ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
   if (report) {
     const update = await core.query(
@@ -794,13 +798,14 @@ async function persistGeneratedReport({ report, domain, filters, format, buffer,
           generated_by_name = $8,
           updated_at = NOW(),
           generated_at = NOW(),
-          file_path = $9,
-          file_name = $10,
-          mime_type = $11,
-          file_size_bytes = $12,
-          checksum = $13
+          file_path = NULL,
+          file_name = $9,
+          mime_type = $10,
+          file_size_bytes = $11,
+          checksum = $12,
+          file_bytes = $13
         WHERE report_id = $1
-        RETURNING *
+        RETURNING ${REPORT_PUBLIC_COLUMNS}
       `,
       [
         reportId,
@@ -811,13 +816,11 @@ async function persistGeneratedReport({ report, domain, filters, format, buffer,
         format,
         userId || null,
         generatedByName || null,
-        filePath,
         fileName,
-        format === "pdf"
-          ? "application/pdf"
-          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        stats.size,
+        mimeType,
+        buffer.length,
         checksum,
+        buffer,
       ]
     );
     return update.rows[0];
@@ -843,7 +846,8 @@ async function persistGeneratedReport({ report, domain, filters, format, buffer,
         file_name,
         mime_type,
         file_size_bytes,
-        checksum
+        checksum,
+        file_bytes
       )
       VALUES (
         $1,
@@ -859,13 +863,14 @@ async function persistGeneratedReport({ report, domain, filters, format, buffer,
         NOW(),
         NOW(),
         NOW(),
+        NULL,
         $10,
         $11,
         $12,
         $13,
         $14
       )
-      RETURNING *
+      RETURNING ${REPORT_PUBLIC_COLUMNS}
     `,
     [
       reportId,
@@ -877,13 +882,11 @@ async function persistGeneratedReport({ report, domain, filters, format, buffer,
       format,
       userId || null,
       generatedByName || null,
-      filePath,
       fileName,
-      format === "pdf"
-        ? "application/pdf"
-        : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      stats.size,
+      mimeType,
+      buffer.length,
       checksum,
+      buffer,
     ]
   );
 
@@ -967,9 +970,36 @@ async function finalizeDraft(req, res) {
   }
 }
 
-async function sendReportFile(req, res, inline) {
+async function deleteReport(req, res) {
   try {
     const report = await getReportRow(req.params.reportId);
+    if (!report) {
+      return res.status(404).json({ success: false, error: "Report not found" });
+    }
+    await ensureReportOwnership(req, report);
+
+    await core.query(
+      `
+        UPDATE reports
+        SET
+          deleted_at = NOW(),
+          updated_at = NOW(),
+          file_bytes = NULL
+        WHERE report_id = $1
+      `,
+      [report.report_id]
+    );
+
+    return res.json({ success: true, message: "Report deleted successfully" });
+  } catch (error) {
+    console.error("[reports.delete]", error);
+    return res.status(errorStatus(error, 500)).json({ success: false, error: error.message || "Failed to delete report" });
+  }
+}
+
+async function sendReportFile(req, res, inline) {
+  try {
+    const report = await getReportRow(req.params.reportId, { includeFileBytes: true });
     if (!report) {
       return res.status(404).json({ success: false, error: "Report not found" });
     }
@@ -977,14 +1007,14 @@ async function sendReportFile(req, res, inline) {
     if (report.status !== "GENERATED") {
       return res.status(400).json({ success: false, error: "Report is not generated yet" });
     }
-    if (!report.file_path || !fs.existsSync(report.file_path)) {
+    if (!report.file_bytes) {
       return res.status(404).json({ success: false, error: "Report file not found" });
     }
 
     res.setHeader("Content-Type", report.mime_type || "application/octet-stream");
-    const disposition = `${inline ? "inline" : "attachment"}; filename=\"${report.file_name || path.basename(report.file_path)}\"`;
+    const disposition = `${inline ? "inline" : "attachment"}; filename=\"${report.file_name || `report-${report.report_id}`}\"`;
     res.setHeader("Content-Disposition", disposition);
-    return res.sendFile(path.resolve(report.file_path));
+    return res.send(report.file_bytes);
   } catch (error) {
     console.error("[reports.file]", error);
     return res.status(errorStatus(error, 500)).json({ success: false, error: error.message || "Failed to open report file" });
@@ -1007,6 +1037,7 @@ module.exports = {
   updateDraft,
   generateReport,
   finalizeDraft,
+  deleteReport,
   viewReport,
   downloadReport,
 };
