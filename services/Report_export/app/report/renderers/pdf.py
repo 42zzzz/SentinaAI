@@ -4,17 +4,32 @@ from pathlib import Path
 from typing import Any, Dict
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import pdfkit
-
+import os
+import shutil
 
 
 def _find_wkhtmltopdf() -> str:
+    env_path = os.getenv("WKHTMLTOPDF_PATH")
+    if env_path and Path(env_path).exists():
+        return env_path
+
     candidates = [
-        "/usr/local/bin/wkhtmltopdf",     # Intel Homebrew
+        r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe",
+        r"C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe",
+        "/usr/local/bin/wkhtmltopdf",
     ]
     for p in candidates:
         if Path(p).exists():
             return p
-    return "wkhtmltopdf"
+
+    found = shutil.which("wkhtmltopdf")
+    if found:
+        return found
+
+    raise RuntimeError(
+        "wkhtmltopdf not found. Install it or set WKHTMLTOPDF_PATH."
+    )
+
 
 WKHTMLTOPDF_PATH = _find_wkhtmltopdf()
 PDFKIT_CONFIG = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
@@ -33,7 +48,6 @@ def render_pdf(payload: Dict[str, Any], template_path: str) -> bytes:
 
     template = env.get_template(template_path)
 
-    # Pick cover image based on report/module
     meta = payload.get("meta", {}) or {}
     module = (meta.get("module") or meta.get("report_type") or meta.get("type") or "").strip().lower()
 
@@ -46,9 +60,7 @@ def render_pdf(payload: Dict[str, Any], template_path: str) -> bytes:
 
     cover_filename = cover_map.get(module, "cover_default.png")
     cover = static_dir / cover_filename
-
     cover_uri = cover.resolve().as_uri()
-
 
     html = template.render(
         meta=payload.get("meta", {}),
@@ -57,7 +69,6 @@ def render_pdf(payload: Dict[str, Any], template_path: str) -> bytes:
     )
 
     options = {
-        # IMPORTANT: wkhtmltopdf needs this to load local images
         "enable-local-file-access": "",
         "allow": str(static_dir.resolve()),
     }
