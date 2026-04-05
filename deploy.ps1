@@ -5,7 +5,7 @@
 # CONFIG
 $PROJECT  = "sentina-ai-486321"
 $REGION   = "me-central1"
-$REPO     = "me-central1-docker.pkg.dev/$PROJECT/sentinaai"
+$REPO     = "me-central1-docker.pkg.dev/$PROJECT/sentina-ai"
 # ──────────────────────────────────────────────────────────────
 
 Write-Host ""
@@ -19,7 +19,7 @@ Write-Host "--- [Setup] Configuring project..." -ForegroundColor Yellow
 gcloud config set project $PROJECT
 
 Write-Host "--- [Setup] Creating Artifact Registry repo (safe to re-run)..." -ForegroundColor Yellow
-gcloud artifacts repositories create sentina `
+gcloud artifacts repositories create sentina-ai `
     --repository-format=docker `
     --location=$REGION `
     --quiet 2>$null
