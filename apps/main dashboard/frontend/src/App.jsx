@@ -30,6 +30,7 @@ import EnvironmentalPage from "./pages/EnvironmentalPage";
 
 
 import ReportsPage from "./pages/ReportsPage";
+import GenerateReportPage from "./pages/GenerateReportPage";
 import DigitalTwinPage from "./pages/DigitalTwinPage";
 
 
@@ -89,8 +90,9 @@ export default function App() {
           <Route path="digital-twin" element={<DigitalTwinPage />} />
           <Route path="alerts/:id" element={<AlertDetailsPage />} />
           <Route path="reports" element={<ReportsPage />} />
-          
-          
+          <Route path="reports/new" element={<GenerateReportPage />} />
+          <Route path="reports/:reportId/edit" element={<GenerateReportPage />} />
+
         </Route>
 
         <Route
@@ -120,7 +122,9 @@ export default function App() {
           <Route path="map" element={<NavigationPage />} />
           <Route path="digital-twin" element={<DigitalTwinPage />} />
           <Route path="reports" element={<ReportsPage />} />
-         
+          <Route path="reports/new" element={<GenerateReportPage />} />
+          <Route path="reports/:reportId/edit" element={<GenerateReportPage />} />
+
         </Route>
 
         <Route
@@ -136,7 +140,9 @@ export default function App() {
           <Route path="analytics" element={<ExhibitorAnalyticsPage />} />
           <Route path="navigation" element={<NavigationPage />} />
           <Route path="reports" element={<ReportsPage />} />
-         
+          <Route path="reports/new" element={<GenerateReportPage />} />
+          <Route path="reports/:reportId/edit" element={<GenerateReportPage />} />
+
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -30,7 +30,7 @@ def generate_report_file(body: ExportRequest) -> Dict[str, Any]:
     if module not in MODULE_BUILDERS:
         raise ValueError(f"Unsupported module: {module}")
 
-    payload = MODULE_BUILDERS[module](body.filters, mode=fmt)
+    payload = MODULE_BUILDERS[module](body.filters, mode=fmt, datasets=body.datasets)
 
     print("DEBUG module:", module)
     print("DEBUG fmt:", fmt)

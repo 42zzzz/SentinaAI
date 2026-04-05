@@ -111,6 +111,7 @@ app.use("/ai", require("./routes/ai.routes.js"));
 app.use("/alerts", require("./routes/alerts.routes.js"));
 app.use("/environment", environmentRoutes);
 app.use("/sustainability", require("./routes/sustainability.routes.js"));
+app.use("/reports", require("./routes/reports.routes.js"));
 
 //AUTH LAYER
 app.use("/auth", require("./routes/auth"));

@@ -1,26 +1,18 @@
 from datetime import date
-from typing import List, Optional, Literal
+from typing import Any, Dict, List, Optional, Literal
 
 from pydantic import BaseModel, Field
 
-
-# =========================================================
-# TYPES
-# =========================================================
 
 ModuleName = Literal["sustainability", "operations", "exhibitors", "soc"]
 ExportFormat = Literal["pdf", "xlsx"]
 
 
-# =========================================================
-# MAIN FILTER SCHEMA
-# =========================================================
-
 class ReportFilters(BaseModel):
     module: ModuleName = "sustainability"
 
     report_title: str = Field(
-        min_length=5,
+        min_length=3,
         max_length=150,
     )
 
@@ -43,11 +35,14 @@ class ReportFilters(BaseModel):
 class ExportRequest(BaseModel):
     filters: ReportFilters
     format: ExportFormat
+    generated_by_user_id: Optional[int] = None
+    generated_by_name: Optional[str] = None
+    datasets: Optional[Dict[str, Any]] = None
 
-# =========================================================
-# ReportActionRequest
-# =========================================================
 
 class ReportActionRequest(BaseModel):
     filters: ReportFilters
     format: ExportFormat
+    generated_by_user_id: Optional[int] = None
+    generated_by_name: Optional[str] = None
+    datasets: Optional[Dict[str, Any]] = None

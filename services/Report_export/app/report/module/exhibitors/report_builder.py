@@ -1,7 +1,6 @@
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
-from app.data.filter import apply_bucketing
 from app.report.module.exhibitors.constant import SECTION_LABELS
 from app.report.module.exhibitors.data_prep import prepare_exhibitor_report_data
 
@@ -47,15 +46,18 @@ def _normalize_section(key: str, sec: Dict[str, Any]) -> Dict[str, Any]:
     return sec
 
 
-def build_exhibitors_report(filters: ReportFilters, mode: str) -> Dict[str, Any]:
+def build_exhibitors_report(
+    filters: ReportFilters,
+    mode: str,
+    datasets: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     requested = _clean_list(filters.sections)
     selected = [s for s in requested if s in ALLOWED_SECTIONS and s in SECTION_LABELS]
 
     if not selected:
         selected = [s for s in ALLOWED_SECTIONS if s in SECTION_LABELS]
 
-    # New: load + validate + scope the 4 exhibitor tables
-    prepared = prepare_exhibitor_report_data(filters)
+    prepared = prepare_exhibitor_report_data(filters, tables=datasets)
 
     event_row = prepared["event"]
     exhibitor_row = prepared["exhibitor"]
@@ -63,7 +65,6 @@ def build_exhibitors_report(filters: ReportFilters, mode: str) -> Dict[str, Any]
     metrics_df = prepared["metrics"]
     scope = prepared["scope"]
 
-    # Apply bucketing only to scoped metrics
     if "bucket_ts" in metrics_df.columns:
         metrics_df["timestamp"] = metrics_df["bucket_ts"]
 
@@ -94,10 +95,9 @@ def build_exhibitors_report(filters: ReportFilters, mode: str) -> Dict[str, Any]
 
         added_keys.add(key)
 
-    # Pass prepared package, not just one raw df
     _add_section(
-    "booth_profile",
-    build_booth_profile_section(
+        "booth_profile",
+        build_booth_profile_section(
             metrics_df,
             filters,
             event_row=event_row,
@@ -105,51 +105,51 @@ def build_exhibitors_report(filters: ReportFilters, mode: str) -> Dict[str, Any]
             assignments_df=assignments_df,
             scope=scope,
         ),
-        
-        )
+    )
 
     for key in selected:
         if key == "traffic_overview":
             _add_section(
                 "traffic_overview",
                 build_traffic_overview_section(
-                    metrics_df, filters,
+                    metrics_df,
+                    filters,
                     event_row=event_row,
                     exhibitor_row=exhibitor_row,
                     assignments_df=assignments_df,
                     scope=scope,
                 ),
             )
-
         elif key == "engagement_analysis":
             _add_section(
                 "engagement_analysis",
                 build_engagement_analysis_section(
-                    metrics_df, filters,
+                    metrics_df,
+                    filters,
                     event_row=event_row,
                     exhibitor_row=exhibitor_row,
                     assignments_df=assignments_df,
                     scope=scope,
                 ),
             )
-
         elif key == "time_analysis":
             _add_section(
                 "time_analysis",
                 build_time_analysis_section(
-                    metrics_df, filters,
+                    metrics_df,
+                    filters,
                     event_row=event_row,
                     exhibitor_row=exhibitor_row,
                     assignments_df=assignments_df,
                     scope=scope,
                 ),
             )
-
         elif key == "performance_breakdown":
             _add_section(
                 "performance_breakdown",
                 build_performance_breakdown_section(
-                    metrics_df, filters,
+                    metrics_df,
+                    filters,
                     event_row=event_row,
                     exhibitor_row=exhibitor_row,
                     assignments_df=assignments_df,
@@ -158,11 +158,12 @@ def build_exhibitors_report(filters: ReportFilters, mode: str) -> Dict[str, Any]
             )
 
     _add_section(
-    "definitions",
-    build_definitions_section(
-        filters=filters,
-        used_metrics=used_metrics,
-    ),)
+        "definitions",
+        build_definitions_section(
+            filters=filters,
+            used_metrics=used_metrics,
+        ),
+    )
 
     payload: Dict[str, Any] = {
         "meta": {

@@ -3,7 +3,7 @@ import hashlib
 from typing import cast
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from app.report.schemas import (
     ReportFilters,
@@ -38,10 +38,14 @@ app = FastAPI()
 def startup_event():
     init_report_db()
 
-def _build_request_from_filters(filters: ReportFilters, fmt: str) -> ExportRequest:
+def _build_request_from_filters(filters, fmt: str, datasets=None, generated_by_user_id=None, generated_by_name=None) -> ExportRequest:
+    filters_model = filters if isinstance(filters, ReportFilters) else ReportFilters.model_validate(filters)
     return ExportRequest(
-        filters=filters,
+        filters=filters_model,
         format=cast(ExportFormat, fmt),
+        generated_by_user_id=generated_by_user_id,
+        generated_by_name=generated_by_name,
+        datasets=datasets,
     )
 
 def _mime_type_for(fmt: str) -> str:
@@ -50,6 +54,23 @@ def _mime_type_for(fmt: str) -> str:
         if fmt == "pdf"
         else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+@app.post("/api/render-report")
+async def render_report_bytes(body: ReportActionRequest):
+    try:
+        request_obj = _build_request_from_filters(
+            body.filters,
+            body.format,
+            datasets=body.datasets,
+            generated_by_user_id=body.generated_by_user_id,
+            generated_by_name=body.generated_by_name,
+        )
+        result = generate_report_file(request_obj)
+        return Response(content=result["bytes"], media_type=_mime_type_for(body.format))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/reports/download-new")
 async def download_new_report(body: ReportActionRequest):

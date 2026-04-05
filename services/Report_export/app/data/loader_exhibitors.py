@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+from typing import Any, Dict, Iterable, Optional
+
 import pandas as pd
-from typing import Dict
 
 
 EVENTS_PATH = "app/data/sample/events.csv"
@@ -14,6 +17,8 @@ def _rename_if_exists(df: pd.DataFrame, rename_map: Dict[str, str]) -> pd.DataFr
 
 
 def _normalize_events(events: pd.DataFrame) -> pd.DataFrame:
+    if events.empty and not len(events.columns):
+        events = pd.DataFrame(columns=["event_id", "event_name", "venue_id", "venue_name", "start_datetime_utc", "end_datetime_utc", "expected_attendance_total", "expected_exhibitors", "status", "person_in_charge_name", "person_in_charge_email", "created_at", "updated_at"])
     events = _rename_if_exists(
         events,
         {
@@ -34,12 +39,14 @@ def _normalize_events(events: pd.DataFrame) -> pd.DataFrame:
 
     for col in ["start_datetime_utc", "end_datetime_utc", "created_at", "updated_at"]:
         if col in events.columns:
-            events[col] = pd.to_datetime(events[col], errors="coerce")
+            events[col] = pd.to_datetime(events[col], errors="coerce", utc=True)
 
     return events
 
 
 def _normalize_exhibitors(exhibitors: pd.DataFrame) -> pd.DataFrame:
+    if exhibitors.empty and not len(exhibitors.columns):
+        exhibitors = pd.DataFrame(columns=["exhibitor_id", "exhibitor_name", "industry", "hq_country", "status", "created_at", "updated_at"])
     exhibitors = _rename_if_exists(
         exhibitors,
         {
@@ -53,12 +60,14 @@ def _normalize_exhibitors(exhibitors: pd.DataFrame) -> pd.DataFrame:
 
     for col in ["created_at", "updated_at"]:
         if col in exhibitors.columns:
-            exhibitors[col] = pd.to_datetime(exhibitors[col], errors="coerce")
+            exhibitors[col] = pd.to_datetime(exhibitors[col], errors="coerce", utc=True)
 
     return exhibitors
 
 
 def _normalize_assignments(assignments: pd.DataFrame) -> pd.DataFrame:
+    if assignments.empty and not len(assignments.columns):
+        assignments = pd.DataFrame(columns=["event_id", "exhibitor_id", "booth_id", "booth_code", "zone_id", "hall_id", "hall_name", "booth_size_type", "booth_area_sqm", "package_tier", "discount_pct", "amount_paid_aed", "assigned_at", "status"])
     assignments = _rename_if_exists(
         assignments,
         {
@@ -79,12 +88,14 @@ def _normalize_assignments(assignments: pd.DataFrame) -> pd.DataFrame:
     )
 
     if "assigned_at" in assignments.columns:
-        assignments["assigned_at"] = pd.to_datetime(assignments["assigned_at"], errors="coerce")
+        assignments["assigned_at"] = pd.to_datetime(assignments["assigned_at"], errors="coerce", utc=True)
 
     return assignments
 
 
 def _normalize_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
+    if metrics.empty and not len(metrics.columns):
+        metrics = pd.DataFrame(columns=["node_id", "event_id", "zone_id", "hall_id", "hall_name", "bucket_ts", "occupancy_ratio", "inflow_count", "outflow_count", "flow_congestion_index", "is_event", "is_overcrowded", "is_queue", "crowd_comfort_penalty", "comfort_index", "density_score", "hour", "day_of_week", "is_weekend", "engagement_truth"])
     metrics = _rename_if_exists(
         metrics,
         {
@@ -94,57 +105,50 @@ def _normalize_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
             "hallId": "hall_id",
             "hallName": "hall_name",
             "isEvent": "is_event",
-            "hallCapacity": "hall_capacity",
-            "currentOccupancy": "current_occupancy",
-            "isOvercrowded": "is_overcrowded",
+            "hourOfDay": "hour",
+            "densityScore": "density_score",
             "occupancyRatio": "occupancy_ratio",
-            "crowdDensityClass": "crowd_density_class",
             "inflowCount": "inflow_count",
             "outflowCount": "outflow_count",
             "flowCongestionIndex": "flow_congestion_index",
+            "isOvercrowded": "is_overcrowded",
             "isQueue": "is_queue",
-            "queueLengthClass": "queue_length_class",
-            "recommendedAction": "recommended_action",
-            "hourOfDay": "hour_of_day",
-            "dayOfYear": "day_of_year",
-            "outdoorTempC": "outdoor_temp_c",
-            "humidityPct": "humidity_pct",
-            "indoorTempC": "indoor_temp_c",
-            "tempComfortScore": "temp_comfort_score",
-            "humidityComfortScore": "humidity_comfort_score",
             "crowdComfortPenalty": "crowd_comfort_penalty",
             "comfortIndex": "comfort_index",
-            "comfortStatus": "comfort_status",
-            "hvacEnergyKwh": "hvac_energy_kwh",
-            "carbonKgCo2": "carbon_kg_co2",
-            "energyEfficiencyScore": "energy_efficiency_score",
-            "sustainabilityStatus": "sustainability_status",
-            "venueRole": "venue_role",
-            "xCoord": "x_coord",
-            "yCoord": "y_coord",
             "engagementTruth": "engagement_truth",
-            "densityScore": "density_score",
         },
     )
 
     if "bucket_ts" not in metrics.columns:
-        raise ValueError("syn_zone_metrics_15mins.csv must contain 'bucket_ts' or 'ts'.")
+        raise ValueError("Exhibitor metrics dataset must contain 'bucket_ts' or 'ts'.")
 
-    metrics["bucket_ts"] = pd.to_datetime(metrics["bucket_ts"], errors="coerce")
-
+    metrics["bucket_ts"] = pd.to_datetime(metrics["bucket_ts"], errors="coerce", utc=True)
     return metrics
 
 
-def load_exhibitor_tables() -> Dict[str, pd.DataFrame]:
-    events = pd.read_csv(EVENTS_PATH)
-    exhibitors = pd.read_csv(EXHIBITORS_PATH)
-    assignments = pd.read_csv(ASSIGNMENTS_PATH)
-    metrics = pd.read_csv(METRICS_PATH)
+def _df_from_rows(rows: Optional[Iterable[dict[str, Any]]]) -> pd.DataFrame:
+    if rows is None:
+        return pd.DataFrame()
+    return pd.DataFrame(list(rows))
 
-    events = _normalize_events(events)
-    exhibitors = _normalize_exhibitors(exhibitors)
-    assignments = _normalize_assignments(assignments)
-    metrics = _normalize_metrics(metrics)
+
+def load_exhibitor_tables(preloaded: Optional[Dict[str, Any]] = None) -> Dict[str, pd.DataFrame]:
+    if preloaded is not None:
+        events = _normalize_events(_df_from_rows(preloaded.get("events")))
+        exhibitors = _normalize_exhibitors(_df_from_rows(preloaded.get("exhibitors")))
+        assignments = _normalize_assignments(_df_from_rows(preloaded.get("assignments")))
+        metrics = _normalize_metrics(_df_from_rows(preloaded.get("metrics")))
+        return {
+            "events": events,
+            "exhibitors": exhibitors,
+            "assignments": assignments,
+            "metrics": metrics,
+        }
+
+    events = _normalize_events(pd.read_csv(EVENTS_PATH))
+    exhibitors = _normalize_exhibitors(pd.read_csv(EXHIBITORS_PATH))
+    assignments = _normalize_assignments(pd.read_csv(ASSIGNMENTS_PATH))
+    metrics = _normalize_metrics(pd.read_csv(METRICS_PATH))
 
     return {
         "events": events,

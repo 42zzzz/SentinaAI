@@ -31,8 +31,9 @@ def _find_wkhtmltopdf() -> str:
     )
 
 
-WKHTMLTOPDF_PATH = _find_wkhtmltopdf()
-PDFKIT_CONFIG = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
+def _get_pdfkit_config():
+    wkhtmltopdf_path = _find_wkhtmltopdf()
+    return wkhtmltopdf_path, pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path)
 
 
 def render_pdf(payload: Dict[str, Any], template_path: str) -> bytes:
@@ -56,6 +57,7 @@ def render_pdf(payload: Dict[str, Any], template_path: str) -> bytes:
         "sustainability": "cover_sustainability.png",
         "soc": "cover_soc.png",
         "exhibitor": "cover_exhibitor.png",
+        "exhibitors": "cover_exhibitor.png",
     }
 
     cover_filename = cover_map.get(module, "cover_default.png")
@@ -73,16 +75,20 @@ def render_pdf(payload: Dict[str, Any], template_path: str) -> bytes:
         "allow": str(static_dir.resolve()),
     }
 
+    wkhtmltopdf_path, pdfkit_config = _get_pdfkit_config()
+
     pdf = pdfkit.from_string(
         html,
         output_path=False,
         options=options,
-        configuration=PDFKIT_CONFIG,
+        configuration=pdfkit_config,
     )
 
     if isinstance(pdf, (bytes, bytearray)):
         return bytes(pdf)
 
+    wkhtmltopdf_path = os.getenv("WKHTMLTOPDF_PATH")
+
     raise RuntimeError(
-        f"pdfkit did not return PDF bytes. wkhtmltopdf used: {WKHTMLTOPDF_PATH}"
-    )
+        f"pdfkit did not return PDF bytes. wkhtmltopdf used: {wkhtmltopdf_path}"
+)

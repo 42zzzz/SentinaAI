@@ -1,0 +1,209 @@
+.generateReportPage {
+  min-width: 0;
+}
+
+.generateReportShell {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.generateReportHeaderRow h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 900;
+  color: #102a43;
+}
+
+.generateReportHeaderRow p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.generateReportError {
+  border-radius: 14px;
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
+.generateReportCard {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+  padding: 22px;
+}
+
+.generateReportGrid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 0.95fr;
+  gap: 22px;
+}
+
+.generateReportSection {
+  min-width: 0;
+}
+
+.generateReportSection h3 {
+  margin: 0 0 18px;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--report-accent, #35005c);
+}
+
+.reportField,
+.reportFieldRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.reportFieldRow.twoCols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.reportField span {
+  font-size: 12px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.reportField input,
+.reportField select,
+.reportField textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  background: #f8fafc;
+  font-size: 14px;
+  color: #0f172a;
+  padding: 11px 12px;
+  outline: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.reportField select[multiple] {
+  min-height: 110px;
+}
+
+.reportField input:focus,
+.reportField select:focus,
+.reportField textarea:focus {
+  border-color: var(--report-accent, #35005c);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--report-accent, #35005c) 14%, white);
+}
+
+.sectionToggleList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionToggleItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid #edf2f7;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.switchButton {
+  width: 46px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: #cbd5e1;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.16s ease;
+}
+
+.switchButton.isOn {
+  background: var(--report-accent, #35005c);
+}
+
+.switchThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.16s ease;
+}
+
+.switchButton.isOn .switchThumb {
+  transform: translateX(20px);
+}
+
+.radioGroup,
+.formatChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+}
+
+.radioItem,
+.checkItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.generateReportActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #edf2f7;
+}
+
+.actionBtn {
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.actionBtn.ghost {
+  background: #f3f4f6;
+  color: #64748b;
+}
+
+.actionBtn.secondary {
+  background: #17324d;
+  color: #fff;
+}
+
+.actionBtn.primary {
+  background: var(--report-accent, #35005c);
+  color: #fff;
+}
+
+.actionBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1100px) {
+  .generateReportGrid {
+    grid-template-columns: 1fr;
+  }
+}

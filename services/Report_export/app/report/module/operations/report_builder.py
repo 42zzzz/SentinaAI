@@ -1,17 +1,15 @@
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 from app.data.loader import load_sentina_df
 from app.data.filter import apply_date_zone_facility_filters, apply_bucketing
 from app.report.module.operations.constant import SECTION_LABELS
-
 from app.report.module.operations.sections.executive import build_executive_section
 from app.report.module.operations.sections.hall_utilization import build_hall_utilization_section
 from app.report.module.operations.sections.event_impact import build_event_impact_section
 from app.report.module.operations.sections.peak_congestion import build_peak_congestion_section
 from app.report.module.operations.sections.stress_index import build_stress_index_section
 from app.report.module.operations.sections.definitions import build_definitions_section
-
 from app.report.schemas import ReportFilters
 
 
@@ -44,14 +42,22 @@ def _normalize_section(key: str, sec: Dict[str, Any]) -> Dict[str, Any]:
     return sec
 
 
-def build_operations_report(filters: ReportFilters, mode: str) -> Dict[str, Any]:
+def build_operations_report(
+    filters: ReportFilters,
+    mode: str,
+    datasets: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     requested = _clean_list(filters.sections)
     selected = [s for s in requested if s in ALLOWED_SECTIONS and s in SECTION_LABELS]
 
     if not selected:
         selected = [s for s in ALLOWED_SECTIONS if s in SECTION_LABELS]
 
-    df = load_sentina_df()
+    preloaded_rows = None
+    if isinstance(datasets, dict):
+        preloaded_rows = datasets.get("rows") or datasets.get("metrics")
+
+    df = load_sentina_df(preloaded_rows=preloaded_rows)
     df = apply_date_zone_facility_filters(df, filters)
     df = apply_bucketing(df, filters)
 
@@ -85,29 +91,24 @@ def build_operations_report(filters: ReportFilters, mode: str) -> Dict[str, Any]
 
         added_keys.add(key)
 
-    
-
     _add_section("executive", build_executive_section(df, filters))
 
     for key in selected:
         if key == "hall_utilization":
             _add_section("hall_utilization", build_hall_utilization_section(df, filters))
-
         elif key == "event_impact":
             _add_section("event_impact", build_event_impact_section(df, filters))
-
         elif key == "peak_congestion":
             _add_section("peak_congestion", build_peak_congestion_section(df, filters))
-
         elif key == "stress_index":
             _add_section("stress_index", build_stress_index_section(df, filters))
-    
+
     _add_section(
-    "definitions",
-    build_definitions_section(
-        filters=filters,
-        used_metrics=used_metrics,
-    ),
+        "definitions",
+        build_definitions_section(
+            filters=filters,
+            used_metrics=used_metrics,
+        ),
     )
 
     payload: Dict[str, Any] = {

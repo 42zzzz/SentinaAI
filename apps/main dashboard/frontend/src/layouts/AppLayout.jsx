@@ -28,6 +28,8 @@ function getPageTitle(pathname) {
   if (pathname.startsWith("/sustainability/energy")) return "Energy";
   if (pathname.startsWith("/sustainability/environment")) return "Environmental";
   if (pathname.startsWith("/sustainability/map")) return "Navigation";
+  if (pathname.startsWith("/sustainability/reports/new")) return "Generate Report";
+  if (pathname.startsWith("/sustainability/reports/") && pathname.endsWith("/edit")) return "Edit Report Draft";
   if (pathname.startsWith("/sustainability/reports")) return "Reports";
 
   if (pathname === "/operations" || pathname === "/operations/") return "Dashboard";
@@ -37,6 +39,8 @@ function getPageTitle(pathname) {
   if (pathname.startsWith("/operations/booths")) return "Booths";
   if (pathname.startsWith("/operations/alerts")) return "Alerts";
   if (pathname.startsWith("/operations/navigation")) return "Navigation";
+  if (pathname.startsWith("/operations/reports/new")) return "Generate Report";
+  if (pathname.startsWith("/operations/reports/") && pathname.endsWith("/edit")) return "Edit Report Draft";
   if (pathname.startsWith("/operations/reports")) return "Reports";
 
   if (pathname.startsWith("/soc")) return "SOC";

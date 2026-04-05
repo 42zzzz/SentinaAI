@@ -479,6 +479,8 @@ export default function ExhibitorLayout() {
     if (location.pathname === "/exhibitor" || location.pathname === "/exhibitor/") return "Dashboard";
     if (location.pathname.startsWith("/exhibitor/heatmap")) return "Heat Map";
     if (location.pathname.startsWith("/exhibitor/analytics")) return "Analytics";
+    if (location.pathname.startsWith("/exhibitor/reports/new")) return "Generate Report";
+    if (location.pathname.startsWith("/exhibitor/reports/") && location.pathname.endsWith("/edit")) return "Edit Report Draft";
     if (location.pathname.startsWith("/exhibitor/reports")) return "Reports";
     if (location.pathname.startsWith("/exhibitor/navigation")) return "Navigation";
     if (location.pathname.startsWith("/exhibitor/settings")) return "Settings";

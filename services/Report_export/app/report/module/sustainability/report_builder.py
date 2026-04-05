@@ -1,6 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List
-from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from app.data.loader import load_sentina_df
 from app.data.filter import apply_date_zone_facility_filters, apply_bucketing
@@ -23,13 +22,21 @@ def _clean_list(values):
     return [str(v) for v in values if str(v).strip()]
 
 
-def build_sustainability_report(filters: ReportFilters, mode: str) -> Dict[str, Any]:
+def build_sustainability_report(
+    filters: ReportFilters,
+    mode: str,
+    datasets: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     requested = _clean_list(getattr(filters, "sections", None) or [])
     selected = [s for s in requested if s in ALLOWED_SECTIONS and s in SECTION_LABELS]
     if not selected:
         selected = [s for s in ALLOWED_SECTIONS if s in SECTION_LABELS]
 
-    df = load_sentina_df()
+    preloaded_rows = None
+    if isinstance(datasets, dict):
+        preloaded_rows = datasets.get("rows") or datasets.get("metrics")
+
+    df = load_sentina_df(preloaded_rows=preloaded_rows)
     df = apply_date_zone_facility_filters(df, filters)
     df = apply_bucketing(df, filters)
 
@@ -47,7 +54,7 @@ def build_sustainability_report(filters: ReportFilters, mode: str) -> Dict[str, 
         if not sec.get("title"):
             sec["title"] = SECTION_LABELS.get(key) or key.replace("_", " ").title()
         return sec
-    
+
     def _add_pdf_section(key: str, sec: Dict[str, Any]) -> None:
         if key in added_keys:
             return
@@ -61,13 +68,11 @@ def build_sustainability_report(filters: ReportFilters, mode: str) -> Dict[str, 
 
         added_keys.add(key)
 
-    # ---- Occupancy builder ----
     occ_out = build_occupancy_section(df, filters)
     occ_pdf = _normalize_pdf_section("occupancy", occ_out.get("pdf_section") or {})
     _add_pdf_section("occupancy", occ_pdf)
     xlsx_sheets.extend(occ_out.get("xlsx_sheets") or [])
 
-    # ---- Other selected sections (energy/environment) ----
     for key in selected:
         if key == "occupancy":
             continue
@@ -79,9 +84,7 @@ def build_sustainability_report(filters: ReportFilters, mode: str) -> Dict[str, 
             out = build_environmental_section(df, filters)
             _add_pdf_section("environment", out)
             xlsx_sheets.extend(out.get("xlsx_sheets") or [])
-    
-    # ---- Definitions section (always LAST) ----
-    # ---- Definitions section (always LAST) ----
+
     defs_out = build_definitions_section(
         filters=filters,
         used_metrics=used_metrics,
@@ -96,8 +99,6 @@ def build_sustainability_report(filters: ReportFilters, mode: str) -> Dict[str, 
     if isinstance(defs_out, dict):
         xlsx_sheets.extend(defs_out.get("xlsx_sheets") or [])
 
-
-        
     payload: Dict[str, Any] = {
         "meta": {
             "title": filters.report_title.strip(),
