@@ -3,7 +3,7 @@
 # Prerequisites: gcloud CLI installed and authenticated
 
 # CONFIG
-$PROJECT  = "sentina-ai"
+$PROJECT  = "sentina-ai-486321"
 $REGION   = "me-central1"
 $REPO     = "me-central1-docker.pkg.dev/$PROJECT/sentinaai"
 # ──────────────────────────────────────────────────────────────
