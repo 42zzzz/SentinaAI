@@ -1,4 +1,8 @@
 import React, { useState } from 'react';
+
+function formatCamelCase(str) {
+  return str.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, s => s.toUpperCase());
+}
 import Scene3D from './components/Scene3D';
 import InfoPanel from './components/InfoPanel';
 import Controls from './components/Controls';
@@ -41,8 +45,8 @@ function AppContent() {
         }}>
           ⚠️ SENTINAAI ALERT: {activeAnomalies.length} Anomaly Detected!
           <br/>
-          <span style={{fontSize: '12px', fontWeight: 'normal'}}>
-            AI Action: {activeAnomalies[0].aiAction.toUpperCase()}
+          <span style={{fontSize: 'var(--text-sm)', fontWeight: 'normal'}}>
+            AI Action: {formatCamelCase(activeAnomalies[0].aiAction)}
           </span>
         </div>
       )}

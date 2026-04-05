@@ -77,7 +77,7 @@ function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
           color: '#f1f5f9',
           padding: '3px 7px',
           borderRadius: '4px',
-          fontSize: '10px',
+          fontSize: 'var(--text-xs)',
           fontWeight: '600',
           whiteSpace: 'nowrap',
           border: `1px solid ${typeConfig.color}44`,
@@ -100,7 +100,7 @@ function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
             color: '#e2e8f0',
             padding: '8px 12px',
             borderRadius: '6px',
-            fontSize: '11px',
+            fontSize: 'var(--text-sm)',
             minWidth: '140px',
             border: `1px solid ${typeConfig.color}66`,
             boxShadow: `0 4px 16px rgba(0,0,0,0.6), 0 0 8px ${typeConfig.color}44`,
@@ -110,7 +110,7 @@ function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
               {typeConfig.label}
             </div>
             <div style={{ marginBottom: '2px' }}>{device.label}</div>
-            <div style={{ color: '#94a3b8', fontSize: '10px', marginBottom: '3px' }}>
+            <div style={{ color: '#94a3b8', fontSize: 'var(--text-xs)', marginBottom: '3px' }}>
               ID: {device.id}
             </div>
             <div style={{
@@ -119,13 +119,13 @@ function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
               borderRadius: '3px',
               background: `${statusConfig.color}22`,
               color: statusConfig.color,
-              fontSize: '10px',
+              fontSize: 'var(--text-xs)',
               fontWeight: '600',
             }}>
               {liveStatus.toUpperCase()}
             </div>
             {deviceTelemetry?.[device.id]?.value !== undefined && (
-              <div style={{ marginTop: '4px', color: '#cbd5e1', fontSize: '10px' }}>
+              <div style={{ marginTop: '4px', color: '#cbd5e1', fontSize: 'var(--text-xs)' }}>
                 {deviceTelemetry[device.id].value} {deviceTelemetry[device.id].unit ?? ''}
               </div>
             )}

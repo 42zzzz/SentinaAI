@@ -1,22 +1,23 @@
 .info-panel h1 {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  line-height: 1.2;
   margin-bottom: 8px;
-  color: #ffffff;
+  color: var(--text-primary);
   letter-spacing: -0.5px;
 }
 
 .subtitle {
-  font-size: 12px;
-  color: #666;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
   margin-bottom: 16px;
 }
 
 .info-panel h2 {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
   margin: 16px 0 8px 0;
-  color: #999;
+  color: var(--text-accent);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -25,8 +26,9 @@
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid #222;
-  font-size: 14px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: var(--text-md);
+  line-height: 1.5;
 }
 
 .stat:last-child {
@@ -34,12 +36,12 @@
 }
 
 .stat-label {
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .stat-value {
-  color: #fff;
-  font-weight: 500;
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
 }
 
 .status-indicator {

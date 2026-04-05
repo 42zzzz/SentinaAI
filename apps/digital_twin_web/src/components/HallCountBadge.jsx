@@ -22,7 +22,7 @@ function HallCountBadge({ hallId, count }) {
           border: '1.5px solid rgba(255,255,255,0.25)',
           borderRadius: '12px',
           padding: '3px 8px',
-          fontSize: '11px',
+          fontSize: 'var(--text-sm)',
           fontWeight: '700',
           whiteSpace: 'nowrap',
           display: 'flex',

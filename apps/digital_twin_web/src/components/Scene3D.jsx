@@ -4,7 +4,6 @@ import { OrbitControls, PerspectiveCamera, Text } from '@react-three/drei';
 import HallMesh from './HallMesh';
 import DeviceLayer from './DeviceLayer';
 import HallFocusCamera from './HallFocusCamera';
-import HVACLayer from './HVACLayer';
 import FlowArrowLayer from './FlowArrowLayer';
 import { useHalls } from '../context/HallsContext';
 import { useTheme } from '../context/ThemeContext';
@@ -149,9 +148,6 @@ function Scene3D({ telemetryData, currentView, currentLayer, devices, deviceTele
           deviceTelemetry={deviceTelemetry}
         />
       )}
-
-      {/* HVAC spinning fans on halls with high CO2 */}
-      <HVACLayer telemetryData={telemetryData} />
 
       {/* AI reroute flow arrows on anomalous halls */}
       <FlowArrowLayer telemetryData={telemetryData} currentLayer={currentLayer} />

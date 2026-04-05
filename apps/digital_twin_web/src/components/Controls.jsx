@@ -118,7 +118,7 @@ function Controls({
           position: 'absolute', top: '-44px', left: '50%', transform: 'translateX(-50%)',
           background: toast.type === 'error' ? '#ef4444' : '#10b981',
           color: '#fff', padding: '8px 16px', borderRadius: '8px',
-          fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap',
+          fontSize: 'var(--text-sm)', fontWeight: 600, whiteSpace: 'nowrap',
           boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
           animation: 'slideInRight 0.18s ease-out both',
           pointerEvents: 'none',
@@ -134,7 +134,7 @@ function Controls({
             className={currentView === v.id && !isEditMode ? 'active' : ''}
             onClick={() => onViewChange(v.id)}
             title={v.title}
-            style={{ padding: '8px 12px', fontSize: '11px' }}>
+            style={{ padding: '8px 12px', fontSize: 'var(--text-sm)' }}>
             {v.label}
           </button>
         ))}
@@ -142,25 +142,25 @@ function Controls({
         <button
           onClick={() => setSimMode('live')}
           title="Live IoT — real-time sensor data"
-          style={{ background: simMode === 'live' ? '#10b981' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>
+          style={{ background: simMode === 'live' ? '#10b981' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: 'var(--text-sm)', fontWeight: 700 }}>
           Live IoT
         </button>
         <button
           onClick={() => setSimMode('history')}
           title="History — scrub through the last 24 hours"
-          style={{ background: simMode === 'history' ? '#9333ea' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>
+          style={{ background: simMode === 'history' ? '#9333ea' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: 'var(--text-sm)', fontWeight: 700 }}>
           History
         </button>
         <button
           onClick={() => setSimMode('sandbox')}
           title="Simulator — manually inject sensor data"
-          style={{ background: simMode === 'sandbox' ? '#ef4444' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>
+          style={{ background: simMode === 'sandbox' ? '#ef4444' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: 'var(--text-sm)', fontWeight: 700 }}>
           Simulator
         </button>
         <button
           onClick={() => setSimMode('forecast')}
           title="Forecast — predict occupancy 1-4 hours ahead"
-          style={{ background: simMode === 'forecast' ? '#f59e0b' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: '11px', fontWeight: 'bold' }}>
+          style={{ background: simMode === 'forecast' ? '#f59e0b' : 'var(--button-inactive-bg)', color: '#fff', border: '1px solid var(--border-color)', padding: '8px 14px', fontSize: 'var(--text-sm)', fontWeight: 700 }}>
           Forecast
         </button>
         <div style={{ width: '1px', height: '20px', background: 'var(--divider-color)', margin: '0 8px' }} />
@@ -168,7 +168,7 @@ function Controls({
           className={isEditMode ? 'active btn-edit' : 'btn-edit'}
           onClick={onToggleEdit}
           title={isEditMode ? 'Exit the layout editor' : 'Open the layout editor'}
-          style={{ padding: '8px 14px', fontSize: '11px' }}>
+          style={{ padding: '8px 14px', fontSize: 'var(--text-sm)' }}>
           {isEditMode ? 'Exit Editor' : 'Edit Layout'}
         </button>
         <div style={{ width: '1px', height: '20px', background: 'var(--divider-color)', margin: '0 8px' }} />
@@ -176,7 +176,7 @@ function Controls({
           onClick={toggleTheme}
           className="theme-toggle"
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          style={{ padding: '8px 14px', fontSize: '16px', background: 'var(--button-bg)', border: '1px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
+          style={{ padding: '8px 14px', fontSize: 'var(--text-md)', background: 'var(--button-bg)', border: '1px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
       </div>
@@ -184,7 +184,7 @@ function Controls({
       {/* HISTORY SCRUBBER */}
       {simMode === 'history' && (
         <div style={{ borderTop: '1px solid #9333ea', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#9333ea', fontSize: '10px', fontWeight: 'bold' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#9333ea', fontSize: 'var(--text-xs)', fontWeight: 700 }}>
             <span>HISTORY LOG (24H)</span>
             <span>{formatHour(timeIndex)}</span>
           </div>
@@ -192,7 +192,7 @@ function Controls({
             <button
               onClick={togglePlay}
               title={playing ? 'Pause playback' : 'Auto-play through 24 hours'}
-              style={{ background: '#9333ea', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 10px', fontSize: '13px', cursor: 'pointer', flexShrink: 0 }}>
+              style={{ background: '#9333ea', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 10px', fontSize: 'var(--text-base)', cursor: 'pointer', flexShrink: 0 }}>
               {playing ? '⏸' : '▶'}
             </button>
             <input
@@ -207,31 +207,31 @@ function Controls({
       {/* DATA INJECTOR */}
       {simMode === 'sandbox' && (
         <div style={{ borderTop: '1px solid #ef4444', paddingTop: '12px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <span style={{ color: '#ef4444', fontSize: '10px', fontWeight: 'bold', marginRight: '10px' }}>DATA INJECTOR:</span>
+          <span style={{ color: '#ef4444', fontSize: 'var(--text-xs)', fontWeight: 700, marginRight: '10px' }}>DATA INJECTOR:</span>
           <select value={injectHall} onChange={(e) => setInjectHall(e.target.value)}
-            style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', padding: '6px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '11px' }}>
+            style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', padding: '6px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: 'var(--text-sm)' }}>
             {ALL_HALLS.map((hall) => <option key={hall.id} value={hall.id}>{hall.label}</option>)}
           </select>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <label style={{ color: 'var(--text-secondary)', fontSize: '10px' }} title="Occupancy percentage (0–100)">Occ %:</label>
+            <label style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }} title="Occupancy percentage (0–100)">Occ %:</label>
             <input
               type="number" value={injectOcc} min="0" max="100"
               onChange={(e) => setInjectOcc(Math.min(100, Math.max(0, Number(e.target.value))))}
-              style={{ width: '50px', background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '4px', fontSize: '11px' }}
+              style={{ width: '50px', background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '4px', fontSize: 'var(--text-sm)' }}
             />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <label style={{ color: 'var(--text-secondary)', fontSize: '10px' }} title="CO₂ level in ppm (≥ 0)">CO₂:</label>
+            <label style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }} title="CO₂ level in ppm (≥ 0)">CO₂:</label>
             <input
               type="number" value={injectCO2} min="0"
               onChange={(e) => setInjectCO2(Math.max(0, Number(e.target.value)))}
-              style={{ width: '60px', background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '4px', fontSize: '11px' }}
+              style={{ width: '60px', background: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '4px', fontSize: 'var(--text-sm)' }}
             />
           </div>
           <button
             onClick={handleInject}
             title="Inject these values into the selected hall"
-            style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', fontSize: '11px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}>
+            style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', fontSize: 'var(--text-sm)', fontWeight: 700, borderRadius: '4px', cursor: 'pointer' }}>
             Inject effect
           </button>
         </div>
@@ -240,13 +240,13 @@ function Controls({
       {/* FORECAST SCRUBBER */}
       {simMode === 'forecast' && (
         <div style={{ borderTop: '1px solid #f59e0b', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f59e0b', fontSize: '10px', fontWeight: 'bold' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f59e0b', fontSize: 'var(--text-xs)', fontWeight: 700 }}>
             <span>Current time: {formatHour(timeIndex)}</span>
             <span>Forecast: +{forecastHours}h ahead</span>
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <div style={{ flex: 1 }}>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '9px', marginBottom: 2 }}>Current Time</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', marginBottom: 2 }}>Current Time</div>
               <input
                 type="range" min="0" max="24" value={timeIndex}
                 onChange={(e) => setTimeIndex(parseInt(e.target.value))}
@@ -254,13 +254,13 @@ function Controls({
               />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '9px', marginBottom: 2 }}>Horizon</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', marginBottom: 2 }}>Horizon</div>
               <input
                 type="range" min="1" max="4" value={forecastHours}
                 onChange={(e) => setForecastHours(parseInt(e.target.value))}
                 style={{ width: '100%', accentColor: '#f59e0b', cursor: 'pointer' }}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: 'var(--text-tertiary)', marginTop: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 1 }}>
                 <span>1h</span><span>2h</span><span>3h</span><span>4h</span>
               </div>
             </div>
@@ -271,9 +271,9 @@ function Controls({
       {/* Bottom Row: Layers & Export */}
       <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <label style={{ color: 'var(--text-secondary)', fontSize: '10px', fontWeight: 'bold' }} title="Choose what metric to visualize on the 3D map">DATA LAYER:</label>
+          <label style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', fontWeight: 700 }} title="Choose what metric to visualize on the 3D map">DATA LAYER:</label>
           <select value={currentLayer} onChange={(e) => onLayerChange(e.target.value)}
-            style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', padding: '6px', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '11px' }}>
+            style={{ background: 'var(--input-bg)', color: 'var(--text-primary)', padding: '6px', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: 'var(--text-sm)' }}>
             <option value="occupancy">Occupancy (%)</option>
             <option value="co2">CO₂ Levels (ppm)</option>
             <option value="aiAction">AI Recommendations</option>
@@ -283,7 +283,7 @@ function Controls({
         <button
           onClick={handleExportSnapshot}
           title="Save the current 3D view as a PNG image"
-          style={{ background: '#2E86C1', color: 'white', border: 'none', padding: '8px 16px', fontSize: '11px', borderRadius: '4px', cursor: 'pointer' }}>
+          style={{ background: '#2E86C1', color: 'white', border: 'none', padding: '8px 16px', fontSize: 'var(--text-sm)', borderRadius: '4px', cursor: 'pointer' }}>
           Export Snapshot
         </button>
       </div>

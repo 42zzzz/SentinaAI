@@ -63,17 +63,17 @@ function Legend({ currentLayer = 'occupancy', simMode }) {
               flexShrink: 0,
             }}
           >
-            <span style={{ fontSize: '8px', fontWeight: '800', color: '#fff', letterSpacing: '0.02em', textShadow: '0 1px 2px rgba(0,0,0,0.7)', userSelect: 'none' }}>
+            <span style={{ fontSize: 'var(--text-xs)', fontWeight: '800', color: '#fff', letterSpacing: '0.02em', textShadow: '0 1px 2px rgba(0,0,0,0.7)', userSelect: 'none' }}>
               {level.label.toUpperCase()}
             </span>
           </div>
-          <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{level.range}</span>
+          <span style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>{level.range}</span>
         </div>
       ))}
       {simMode === 'forecast' && (
         <div className="legend-item" style={{ display: 'flex', alignItems: 'center', marginTop: '4px', paddingTop: '8px', borderTop: '1px solid var(--border-color)' }}>
           <div style={{ width: 42, height: 18, borderRadius: 4, marginRight: 10, border: '2px dashed #f59e0b', flexShrink: 0 }} />
-          <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 600 }}>Forecasted</span>
+          <span style={{ color: '#f59e0b', fontSize: 'var(--text-sm)', fontWeight: 600 }}>Forecasted</span>
         </div>
       )}
     </div>
