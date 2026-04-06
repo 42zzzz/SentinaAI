@@ -239,6 +239,9 @@ function LogoutIcon() {
 export default function ExhibitorLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const hideTopControls =
+  location.pathname.startsWith("/exhibitor/reports") ||
+  location.pathname.startsWith("/exhibitor/navigation");
 
   const dashboardSettings = useDashboardSettings("exhibitor");
   const refreshMs = getDashboardRefreshMs(dashboardSettings);
@@ -690,60 +693,64 @@ export default function ExhibitorLayout() {
           </header>
 
           <div className="exhContent">
-            <div className="exhControlsCard">
-              <div className="exhControlsRow">
-                <div className="exhControl">
-                  <label>Exhibitor ID</label>
-                  <input
-                    value={exhibitorId}
-                    readOnly
-                    disabled
-                    placeholder="Linked exhibitor ID"
-                  />
+            {!hideTopControls ? (
+              <div className="exhControlsCard">
+                <div className="exhControlsRow">
+                  <div className="exhControl">
+                    <label>Exhibitor ID</label>
+                    <input
+                      value={exhibitorId}
+                      readOnly
+                      disabled
+                      placeholder="Linked exhibitor ID"
+                    />
+                  </div>
+
+                  <div className="exhControl isSmall">
+                    <label>Interval</label>
+                    <select value={intervalMinutes} onChange={(e) => setIntervalMinutes(Number(e.target.value))}>
+                      {[15, 30, 60, 120].map((value) => (
+                        <option key={value} value={value}>{value} min</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="exhControl isSmall">
+                    <label>Catchment K</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={26}
+                      value={catchmentK}
+                      onChange={(e) => setCatchmentK(Number(e.target.value))}
+                    />
+                  </div>
+
+                  <div className="exhControl isSmall">
+                    <label>MC passes</label>
+                    <input
+                      type="number"
+                      min={5}
+                      max={50}
+                      value={mcPasses}
+                      onChange={(e) => setMcPasses(Number(e.target.value))}
+                    />
+                  </div>
+
+                  <div className="exhControlActions">
+                    <button type="button" className="exhPrimaryBtn" onClick={handleRefresh} disabled={loading || bootstrapping || !exhibitorId}>
+                      {loading || bootstrapping ? "Refreshing..." : "Refresh dashboard"}
+                    </button>
+                    <button type="button" className="exhSecondaryBtn" onClick={handleDownloadReport} disabled={loading || bootstrapping || !exhibitorId}>
+                      Download XLSX
+                    </button>
+                  </div>
                 </div>
 
-                <div className="exhControl isSmall">
-                  <label>Interval</label>
-                  <select value={intervalMinutes} onChange={(e) => setIntervalMinutes(Number(e.target.value))}>
-                    {[15, 30, 60, 120].map((value) => (
-                      <option key={value} value={value}>{value} min</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="exhControl isSmall">
-                  <label>Catchment K</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={26}
-                    value={catchmentK}
-                    onChange={(e) => setCatchmentK(Number(e.target.value))}
-                  />
-                </div>
-
-                <div className="exhControl isSmall">
-                  <label>MC passes</label>
-                  <input
-                    type="number"
-                    min={5}
-                    max={50}
-                    value={mcPasses}
-                    onChange={(e) => setMcPasses(Number(e.target.value))}
-                  />
-                </div>
-
-                <div className="exhControlActions">
-                  <button type="button" className="exhPrimaryBtn" onClick={handleRefresh} disabled={loading || bootstrapping || !exhibitorId}>
-                    {loading || bootstrapping ? "Refreshing..." : "Refresh dashboard"}
-                  </button>
-                  <button type="button" className="exhSecondaryBtn" onClick={handleDownloadReport} disabled={loading || bootstrapping || !exhibitorId}>Download XLSX</button>
-                </div>
+                {error ? <div className="exhBanner isError">{error}</div> : null}
+                {!error && (loading || bootstrapping) ? <div className="exhBanner">Updating exhibitor analytics…</div> : null}
               </div>
-
-              {error ? <div className="exhBanner isError">{error}</div> : null}
-              {!error && (loading || bootstrapping) ? <div className="exhBanner">Updating exhibitor analytics…</div> : null}
-            </div>
+            ) : null}
 
             <Outlet
               context={{

@@ -28,6 +28,98 @@ function getDefaultRange() {
   };
 }
 
+function MultiSelectList({
+  label,
+  options,
+  selectedValues,
+  onChange,
+  getOptionValue,
+  getOptionLabel,
+  getOptionMeta,
+  helperText,
+  emptyText,
+  disabled = false,
+}) {
+  const normalizedSelected = Array.isArray(selectedValues) ? selectedValues.map(String) : [];
+  const allValues = options.map((option) => String(getOptionValue(option)));
+  const selectedCount = normalizedSelected.length;
+  const allSelected = allValues.length > 0 && allValues.every((value) => normalizedSelected.includes(value));
+
+  function toggleValue(value) {
+    if (disabled) return;
+    const nextValue = String(value);
+    const next = normalizedSelected.includes(nextValue)
+      ? normalizedSelected.filter((item) => item !== nextValue)
+      : [...normalizedSelected, nextValue];
+    onChange(next);
+  }
+
+  function handleSelectAll() {
+    if (disabled) return;
+    onChange(allValues);
+  }
+
+  function handleClear() {
+    if (disabled) return;
+    onChange([]);
+  }
+
+  return (
+    <label className="reportField">
+      <span>{label}</span>
+
+      <div className={`multiSelectCard${disabled ? " isDisabled" : ""}`}>
+        <div className="multiSelectToolbar">
+          <div className="multiSelectSummary">
+            <strong>{selectedCount}</strong> selected
+          </div>
+
+          <div className="multiSelectToolbarActions">
+            <button type="button" className="multiSelectActionBtn" onClick={handleSelectAll} disabled={disabled || !options.length || allSelected}>
+              Select all
+            </button>
+            <button type="button" className="multiSelectActionBtn" onClick={handleClear} disabled={disabled || !normalizedSelected.length}>
+              Clear
+            </button>
+          </div>
+        </div>
+
+        {helperText ? <div className="multiSelectHelper">{helperText}</div> : null}
+
+        <div className="multiSelectList" role="listbox" aria-multiselectable="true">
+          {options.length ? (
+            options.map((option) => {
+              const optionValue = String(getOptionValue(option));
+              const checked = normalizedSelected.includes(optionValue);
+              const meta = getOptionMeta ? getOptionMeta(option) : "";
+
+              return (
+                <button
+                  key={optionValue}
+                  type="button"
+                  className={`multiSelectOption${checked ? " isSelected" : ""}`}
+                  onClick={() => toggleValue(optionValue)}
+                  aria-pressed={checked}
+                  disabled={disabled}
+                >
+                  <span className={`multiSelectCheckbox${checked ? " isChecked" : ""}`}>{checked ? "✓" : ""}</span>
+
+                  <span className="multiSelectTextWrap">
+                    <span className="multiSelectPrimary">{getOptionLabel(option)}</span>
+                    {meta ? <span className="multiSelectSecondary">{meta}</span> : null}
+                  </span>
+                </button>
+              );
+            })
+          ) : (
+            <div className="multiSelectEmpty">{emptyText}</div>
+          )}
+        </div>
+      </div>
+    </label>
+  );
+}
+
 export default function GenerateReportPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -57,7 +149,7 @@ export default function GenerateReportPage() {
   }));
 
   const availableFacilities = useMemo(() => {
-    if (!form.zones.length) return options.facilities || [];
+    if (!form.zones.length) return [];
     return (options.facilities || []).filter((facility) => form.zones.includes(String(facility.zone_id)));
   }, [form.zones, options.facilities]);
 
@@ -106,7 +198,10 @@ export default function GenerateReportPage() {
             date_to: toDateInputValue(filters.date_to || prev.date_to),
             zones: Array.isArray(filters.zones) ? filters.zones.map(String) : [],
             facilities: Array.isArray(filters.facilities) ? filters.facilities.map(String) : [],
-            sections: Array.isArray(filters.sections) && filters.sections.length ? filters.sections.map(String) : [...config.defaultSections],
+            sections:
+              Array.isArray(filters.sections) && filters.sections.length
+                ? filters.sections.map(String)
+                : [...config.defaultSections],
             frequency: filters.frequency || prev.frequency,
             custom_notes: filters.custom_notes || "",
             format: String(report?.format || prev.format).toLowerCase(),
@@ -158,7 +253,9 @@ export default function GenerateReportPage() {
   useEffect(() => {
     setForm((prev) => ({
       ...prev,
-      facilities: prev.facilities.filter((facilityId) => availableFacilities.some((item) => String(item.hall_id) === String(facilityId))),
+      facilities: prev.facilities.filter((facilityId) =>
+        availableFacilities.some((item) => String(item.hall_id) === String(facilityId))
+      ),
     }));
   }, [availableFacilities]);
 
@@ -266,7 +363,11 @@ export default function GenerateReportPage() {
         <div className="generateReportHeaderRow">
           <div>
             <h2>{config.title}</h2>
-            <p>{isEditingDraft ? "Edit your saved draft and generate when ready." : "Configure your cloud-backed report and save it as a draft or generate it now."}</p>
+            <p>
+              {isEditingDraft
+                ? "Edit your saved draft and generate when ready."
+                : "Configure your cloud-backed report and save it as a draft or generate it now."}
+            </p>
           </div>
         </div>
 
@@ -290,37 +391,59 @@ export default function GenerateReportPage() {
               <div className="reportFieldRow twoCols">
                 <label className="reportField">
                   <span>Date From</span>
-                  <input type="date" value={form.date_from} onChange={(event) => updateField("date_from", event.target.value)} disabled={domain === "exhibitors"} />
+                  <input
+                    type="date"
+                    value={form.date_from}
+                    onChange={(event) => updateField("date_from", event.target.value)}
+                    disabled={domain === "exhibitors"}
+                  />
                 </label>
+
                 <label className="reportField">
                   <span>Date To</span>
-                  <input type="date" value={form.date_to} onChange={(event) => updateField("date_to", event.target.value)} disabled={domain === "exhibitors"} />
+                  <input
+                    type="date"
+                    value={form.date_to}
+                    onChange={(event) => updateField("date_to", event.target.value)}
+                    disabled={domain === "exhibitors"}
+                  />
                 </label>
               </div>
 
               {domain !== "exhibitors" ? (
                 <>
-                  <label className="reportField">
-                    <span>Zone</span>
-                    <select multiple value={form.zones} onChange={(event) => updateField("zones", Array.from(event.target.selectedOptions, (option) => option.value))}>
-                      {(options.zones || []).map((zone) => (
-                        <option key={zone.zone_id} value={zone.zone_id}>
-                          {zone.zone_id}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <MultiSelectList
+                    label="Zones"
+                    options={options.zones || []}
+                    selectedValues={form.zones}
+                    onChange={(next) => updateField("zones", next)}
+                    getOptionValue={(zone) => zone.zone_id}
+                    getOptionLabel={(zone) => zone.zone_id}
+                    getOptionMeta={(zone) => (zone.venue_id ? `Venue: ${zone.venue_id}` : "")}
+                    helperText="Select one or more zones. Halls will update automatically."
+                    emptyText="No zones available."
+                  />
 
-                  <label className="reportField">
-                    <span>Facility</span>
-                    <select multiple value={form.facilities} onChange={(event) => updateField("facilities", Array.from(event.target.selectedOptions, (option) => option.value))}>
-                      {availableFacilities.map((facility) => (
-                        <option key={facility.hall_id} value={facility.hall_id}>
-                          {facility.hall_name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <MultiSelectList
+                    label="Halls"
+                    options={availableFacilities}
+                    selectedValues={form.facilities}
+                    onChange={(next) => updateField("facilities", next)}
+                    getOptionValue={(facility) => facility.hall_id}
+                    getOptionLabel={(facility) => facility.hall_name || facility.hall_id}
+                    getOptionMeta={(facility) =>
+                      [facility.hall_id, facility.zone_id ? `Zone: ${facility.zone_id}` : ""].filter(Boolean).join(" • ")
+                    }
+                    helperText={
+                      form.zones.length
+                        ? "Only halls from the selected zones are shown."
+                        : "Choose zone(s) first to load the relevant halls."
+                    }
+                    emptyText={
+                      form.zones.length ? "No halls found for the selected zone(s)." : "Select at least one zone to view halls."
+                    }
+                    disabled={!form.zones.length}
+                  />
                 </>
               ) : (
                 <>
@@ -349,8 +472,8 @@ export default function GenerateReportPage() {
 
                   <label className="reportField">
                     <span>Booth</span>
-                    <textarea
-                      rows={4}
+                    <input
+                      type="text"
                       value={boothDisplayValue}
                       readOnly
                       disabled
@@ -359,49 +482,54 @@ export default function GenerateReportPage() {
                   </label>
                 </>
               )}
+            </section>
 
-              <div className="reportField">
-                <span>Aggregation Level</span>
-                <div className="radioGroup">
-                  {config.frequencyOptions.map((option) => (
-                    <label key={option} className="radioItem">
-                      <input
-                        type="radio"
-                        name="frequency"
-                        checked={form.frequency === option}
-                        onChange={() => updateField("frequency", option)}
-                      />
-                      <span>{option}</span>
-                    </label>
-                  ))}
+            <div className="generateReportMiddleColumn">
+              <section className="generateReportSection">
+                <h3>Include Sections</h3>
+                <div className="sectionToggleList">
+                  {config.sections.map((section) => {
+                    const checked = form.sections.includes(section.value);
+                    return (
+                      <label key={section.value} className="sectionToggleItem">
+                        <span>{section.label}</span>
+                        <button
+                          type="button"
+                          className={`switchButton${checked ? " isOn" : ""}`}
+                          onClick={() => toggleArrayValue("sections", section.value)}
+                          aria-pressed={checked}
+                        >
+                          <span className="switchThumb" />
+                        </button>
+                      </label>
+                    );
+                  })}
                 </div>
-              </div>
-            </section>
+              </section>
 
-            <section className="generateReportSection">
-              <h3>Include Sections</h3>
-              <div className="sectionToggleList">
-                {config.sections.map((section) => {
-                  const checked = form.sections.includes(section.value);
-                  return (
-                    <label key={section.value} className="sectionToggleItem">
-                      <span>{section.label}</span>
-                      <button
-                        type="button"
-                        className={`switchButton${checked ? " isOn" : ""}`}
-                        onClick={() => toggleArrayValue("sections", section.value)}
-                        aria-pressed={checked}
-                      >
-                        <span className="switchThumb" />
-                      </button>
-                    </label>
-                  );
-                })}
-              </div>
-            </section>
+              <section className="generateReportSection">
+                <h3>Aggregation Level</h3>
+                <div className="reportField aggregationField">
+                  <div className={`radioGroup ${domain !== "exhibitors" ? "radioGroupVertical" : ""}`}>
+                    {config.frequencyOptions.map((option) => (
+                      <label key={option} className="radioItem">
+                        <input
+                          type="radio"
+                          name="frequency"
+                          checked={form.frequency === option}
+                          onChange={() => updateField("frequency", option)}
+                        />
+                        <span>{option}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            </div>
 
             <section className="generateReportSection">
               <h3>Additional Notes</h3>
+
               <label className="reportField">
                 <span>Custom Notes / Comments</span>
                 <textarea
@@ -412,19 +540,32 @@ export default function GenerateReportPage() {
                 />
               </label>
 
-              <div className="reportField">
-                <span>Report Format</span>
-                <div className="formatChoices">
-                  <label className="checkItem">
-                    <input type="radio" name="format" checked={form.format === "pdf"} onChange={() => updateField("format", "pdf")} />
-                    <span>PDF</span>
-                  </label>
-                  <label className="checkItem">
-                    <input type="radio" name="format" checked={form.format === "xlsx"} onChange={() => updateField("format", "xlsx")} />
-                    <span>XLSX</span>
-                  </label>
+              <section className="generateReportSection">
+                <h3>Report Format</h3>
+                <div className="reportField aggregationField">
+                  <div className="formatChoices">
+                    <label className="checkItem">
+                      <input
+                        type="radio"
+                        name="format"
+                        checked={form.format === "pdf"}
+                        onChange={() => updateField("format", "pdf")}
+                      />
+                      <span>PDF</span>
+                    </label>
+
+                    <label className="checkItem">
+                      <input
+                        type="radio"
+                        name="format"
+                        checked={form.format === "xlsx"}
+                        onChange={() => updateField("format", "xlsx")}
+                      />
+                      <span>XLSX</span>
+                    </label>
+                  </div>
                 </div>
-              </div>
+              </section>
             </section>
           </div>
 
@@ -432,9 +573,11 @@ export default function GenerateReportPage() {
             <button type="button" className="actionBtn ghost" onClick={() => navigate(config.listPath)} disabled={saving}>
               Cancel
             </button>
+
             <button type="button" className="actionBtn secondary" onClick={handleSaveDraft} disabled={saving}>
               {saving ? "Saving…" : "Save Draft"}
             </button>
+
             <button type="button" className="actionBtn primary" onClick={handleGenerate} disabled={saving}>
               {saving ? "Generating…" : "Generate"}
             </button>

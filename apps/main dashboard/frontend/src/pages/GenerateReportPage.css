@@ -42,6 +42,14 @@
   display: grid;
   grid-template-columns: 1.15fr 1fr 0.95fr;
   gap: 22px;
+  align-items: start;
+}
+
+.generateReportMiddleColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
 
 .generateReportSection {
@@ -89,15 +97,159 @@
   transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
-.reportField select[multiple] {
-  min-height: 110px;
-}
-
 .reportField input:focus,
 .reportField select:focus,
 .reportField textarea:focus {
   border-color: var(--report-accent, #35005c);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--report-accent, #35005c) 14%, white);
+}
+
+.reportField textarea {
+  min-height: 200px;
+}
+
+.multiSelectCard {
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.multiSelectCard.isDisabled {
+  opacity: 0.72;
+}
+
+.multiSelectToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.multiSelectSummary {
+  font-size: 12px;
+  color: #475569;
+}
+
+.multiSelectSummary strong {
+  color: #0f172a;
+}
+
+.multiSelectToolbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.multiSelectActionBtn {
+  border: 0;
+  background: transparent;
+  color: var(--report-accent, #35005c);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0;
+}
+
+.multiSelectActionBtn:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.multiSelectHelper {
+  margin: 0;
+  padding: 10px 12px 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.multiSelectList {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.multiSelectOption {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.multiSelectOption:hover {
+  border-color: var(--report-accent, #35005c);
+}
+
+.multiSelectOption.isSelected {
+  border-color: var(--report-accent, #35005c);
+  background: color-mix(in srgb, var(--report-accent, #35005c) 7%, white);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--report-accent, #35005c) 10%, white);
+}
+
+.multiSelectOption:disabled {
+  cursor: not-allowed;
+}
+
+.multiSelectCheckbox {
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1px solid #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 900;
+  color: #ffffff;
+  background: #ffffff;
+  margin-top: 1px;
+}
+
+.multiSelectCheckbox.isChecked {
+  border-color: var(--report-accent, #35005c);
+  background: var(--report-accent, #35005c);
+}
+
+.multiSelectTextWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.multiSelectPrimary {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.multiSelectSecondary {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.multiSelectEmpty {
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 16px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #64748b;
 }
 
 .sectionToggleList {
@@ -145,6 +297,10 @@
 
 .switchButton.isOn .switchThumb {
   transform: translateX(20px);
+}
+
+.aggregationField {
+  margin-bottom: 0;
 }
 
 .radioGroup,
@@ -206,4 +362,14 @@
   .generateReportGrid {
     grid-template-columns: 1fr;
   }
+
+  .generateReportMiddleColumn {
+    gap: 18px;
+  }
+}
+
+.radioGroupVertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
 }
