@@ -921,8 +921,9 @@ def spa_fallback(e):
     return send_from_directory(frontend_dir, "index.html")
 
 
+initialize_system()
+
 if __name__ == "__main__":
-    initialize_system()
     print("\nStarting Flask server on http://localhost:5000")
     print("API endpoints:")
     print("  GET  /api/health          - System health check")
