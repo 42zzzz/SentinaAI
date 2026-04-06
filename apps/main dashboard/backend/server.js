@@ -132,6 +132,7 @@ app.use("/reports", require("./routes/reports.routes.js"));
 //AUTH LAYER
 app.use("/auth", require("./routes/auth"));
 app.use("/users", require("./routes/users.routes.js"));
+app.use("/compliance", require("./routes/compliance.routes.js"));
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));

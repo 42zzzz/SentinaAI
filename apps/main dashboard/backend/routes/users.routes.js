@@ -118,10 +118,10 @@ router.post("/", authenticate, requireSuperAdmin, async (req, res) => {
 
     const userResult = await client.query(
       `INSERT INTO users
-       (full_name, email, password_hash, employee_id, status, created_at)
-       VALUES ($1,$2,$3,$4,'active',CURRENT_TIMESTAMP)
+       (full_name, email, password_hash, employee_id, status, created_at, consent_given_at, consent_version)
+       VALUES ($1,$2,$3,$4,'active',CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $5)
        RETURNING user_id`,
-      [full_name, email, hashed, employee_id]
+      [full_name, email, hashed, employee_id, process.env.CONSENT_VERSION || "v1.0"]
     );
 
     const userId = userResult.rows[0].user_id;
