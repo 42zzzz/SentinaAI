@@ -9,25 +9,47 @@ import shutil
 
 
 def _find_wkhtmltopdf() -> str:
+    # 1) explicit env var, if provided
     env_path = os.getenv("WKHTMLTOPDF_PATH")
     if env_path and Path(env_path).exists():
-        return env_path
+        return str(Path(env_path).resolve())
 
-    candidates = [
-        r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe",
-        r"C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe",
-        "/usr/local/bin/wkhtmltopdf",
+    # pdf.py = services/Report_export/app/report/renderers/pdf.py
+    # project root we want = services/Report_export
+    project_root = Path(__file__).resolve().parents[3]
+
+    # 2) bundled copy inside the repo
+    bundled_candidates = [
+        project_root / "wkhtmltopdf" / "bin" / "wkhtmltopdf.exe",
+        project_root / "wkhtmltopdf" / "wkhtmltopdf.exe",
+        project_root / "wkhtmltopdf" / "bin" / "wkhtmltopdf",
+        project_root / "wkhtmltopdf" / "wkhtmltopdf",
     ]
-    for p in candidates:
-        if Path(p).exists():
-            return p
+    for p in bundled_candidates:
+        if p.exists():
+            return str(p.resolve())
 
+    # 3) common system install locations
+    system_candidates = [
+        Path(r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"),
+        Path(r"C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe"),
+        Path("/usr/local/bin/wkhtmltopdf"),
+        Path("/usr/bin/wkhtmltopdf"),
+        Path("/opt/homebrew/bin/wkhtmltopdf"),
+    ]
+    for p in system_candidates:
+        if p.exists():
+            return str(p.resolve())
+
+    # 4) PATH lookup
     found = shutil.which("wkhtmltopdf")
     if found:
-        return found
+        return str(Path(found).resolve())
 
     raise RuntimeError(
-        "wkhtmltopdf not found. Install it or set WKHTMLTOPDF_PATH."
+        "wkhtmltopdf not found. Put it in "
+        "'services/Report_export/wkhtmltopdf/bin/wkhtmltopdf.exe' "
+        "or set WKHTMLTOPDF_PATH."
     )
 
 
@@ -50,7 +72,12 @@ def render_pdf(payload: Dict[str, Any], template_path: str) -> bytes:
     template = env.get_template(template_path)
 
     meta = payload.get("meta", {}) or {}
-    module = (meta.get("module") or meta.get("report_type") or meta.get("type") or "").strip().lower()
+    module = (
+        meta.get("module")
+        or meta.get("report_type")
+        or meta.get("type")
+        or ""
+    ).strip().lower()
 
     cover_map = {
         "operations": "cover_operation.png",
@@ -67,7 +94,7 @@ def render_pdf(payload: Dict[str, Any], template_path: str) -> bytes:
     html = template.render(
         meta=payload.get("meta", {}),
         sections=payload.get("pdf_sections", []),
-        assets={"cover_image": cover_uri}
+        assets={"cover_image": cover_uri},
     )
 
     options = {
@@ -87,8 +114,6 @@ def render_pdf(payload: Dict[str, Any], template_path: str) -> bytes:
     if isinstance(pdf, (bytes, bytearray)):
         return bytes(pdf)
 
-    wkhtmltopdf_path = os.getenv("WKHTMLTOPDF_PATH")
-
     raise RuntimeError(
         f"pdfkit did not return PDF bytes. wkhtmltopdf used: {wkhtmltopdf_path}"
-)
+    )
