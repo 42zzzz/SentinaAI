@@ -382,16 +382,6 @@ const handleLogout = (e) => {
     pageTitle: { fontSize: 20, fontWeight: 900, color: ACCENT },
     subTitle: { marginTop: 4, fontSize: 12, opacity: 0.65 },
     headerRight: { display: "flex", alignItems: "center", gap: 14 },
-    searchWrap: { position: "relative", width: 320 },
-    searchInput: {
-      width: "100%",
-      padding: "10px 36px 10px 12px",
-      borderRadius: 12,
-      border: "1px solid #e5e7eb",
-      outline: "none",
-      background: "#ffffff",
-    },
-    searchIcon: { position: "absolute", right: 10, top: 8, opacity: 0.6 },
     userCard: {
       display: "flex",
       alignItems: "center",
@@ -697,22 +687,6 @@ const handleLogout = (e) => {
           </div>
 
           <div style={styles.headerRight}>
-            <div style={styles.searchWrap}>
-              <input placeholder="Search here" style={styles.searchInput} />
-              <span style={styles.searchIcon}>
-                <svg width="16" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M6 11C8.76142 11 11 8.76142 11 6C11 3.23858 8.76142 1 6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path d="M14 15L9 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-            </div>
-
             <div style={styles.userCard}>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 13 }}>
