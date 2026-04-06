@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import NavigationMap from "../components/NavigationMap.jsx";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_NAV_URL || import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 function toRoomOption(r) {
   const id = r?.id || r?.room_id || r?.name || r?.label;
