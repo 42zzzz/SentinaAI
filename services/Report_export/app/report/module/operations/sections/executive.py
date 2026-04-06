@@ -113,7 +113,7 @@ def build_executive_section(df: pd.DataFrame, filters: Any) -> Dict[str, Any]:
         occ = df["currentOccupancy"]
         ratio = (occ / cap.replace(0, pd.NA)).fillna(0)
 
-        event_flag = df["isEvent"].astype(int) if has_events else 0
+        event_flag = df["isEvent"].fillna(False).astype(int) if has_events else 0
         penalty = pd.to_numeric(df["crowdComfortPenalty"], errors="coerce").fillna(0) if has_penalty else 0
 
         df["__stress__"] = (
