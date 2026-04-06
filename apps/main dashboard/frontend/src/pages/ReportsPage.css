@@ -264,6 +264,19 @@
   color: #fff;
 }
 
+.actionIconBtn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.actionIconBtn.isDanger {
+  color: #b10003;
+  border-color: #fecaca;
+  background: #fff;
+}
+
 .reportsPage.opsTheme .actionIconBtn.isPrimary {
   background: #e8486f;
 }
