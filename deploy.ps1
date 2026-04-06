@@ -1,132 +1,225 @@
-# SentinaAI — GCP Cloud Run Deployment Script
-# Run from the repo root: .\deploy.ps1
-# Prerequisites: gcloud CLI installed and authenticated
+# SentinaAI, GCP Cloud Run Deployment Script
+# Run from repo root:
+#   powershell -ExecutionPolicy Bypass -File .\deploy.ps1
 
+$ErrorActionPreference = "Stop"
+
+# =========================
 # CONFIG
-$PROJECT  = "sentina-ai-486321"
-$REGION   = "me-central1"
-$REPO     = "me-central1-docker.pkg.dev/$PROJECT/sentina-ai"
-# ──────────────────────────────────────────────────────────────
+# =========================
+$PROJECT   = "sentina-ai-486321"
+$REGION    = "me-central1"
+$REPO_NAME = "sentina-ai"
+$REPO      = "me-central1-docker.pkg.dev/$PROJECT/$REPO_NAME"
 
+# Exact source folders
+$NAV_PATH       = "apps/navigation_web"
+$AI_PATH        = "services/ai-detection"
+$EXHIBITOR_PATH = "services/exhibitor-ai-pipeline"
+$REPORT_PATH    = "services/Report_export"
+$BACKEND_PATH   = "apps/main dashboard/backend"
+$FRONTEND_PATH  = "apps/main dashboard/frontend"
+$TWIN_PATH      = "apps/digital_twin_web"
+
+# =========================
+# HELPERS
+# =========================
+function Write-Section($text) {
+    Write-Host ""
+    Write-Host $text -ForegroundColor Cyan
+}
+
+function Write-Step($text) {
+    Write-Host $text -ForegroundColor Yellow
+}
+
+function Ensure-Gcloud {
+    Write-Step "--- [Check] Verifying gcloud CLI..."
+    $null = Get-Command gcloud -ErrorAction Stop
+    gcloud --version | Out-Null
+}
+
+function Ensure-PathExists($path) {
+    if (-not (Test-Path -LiteralPath $path)) {
+        throw "Required path not found: $path"
+    }
+}
+
+function Enable-Api($apiName) {
+    Write-Step "--- [Setup] Enabling API: $apiName"
+    gcloud services enable $apiName --project $PROJECT --quiet | Out-Null
+}
+
+function Ensure-ArtifactRepo {
+    Write-Step "--- [Setup] Ensuring Artifact Registry repo exists: $REPO_NAME"
+    $exists = $false
+    try {
+        gcloud artifacts repositories describe $REPO_NAME `
+            --location $REGION `
+            --project $PROJECT `
+            --format="value(name)" `
+            --quiet | Out-Null
+        $exists = $true
+    }
+    catch {
+        $exists = $false
+    }
+
+    if (-not $exists) {
+        gcloud artifacts repositories create $REPO_NAME `
+            --repository-format=docker `
+            --location=$REGION `
+            --description="SentinaAI Docker images" `
+            --project $PROJECT `
+            --quiet | Out-Null
+        Write-Host "    Created Artifact Registry repo: $REPO_NAME" -ForegroundColor Green
+    }
+    else {
+        Write-Host "    Artifact Registry repo already exists: $REPO_NAME" -ForegroundColor Green
+    }
+}
+
+function Build-Image($serviceName, $sourcePath, $imageTag) {
+    Write-Step "--- [Build] $serviceName"
+    Ensure-PathExists $sourcePath
+    gcloud builds submit $sourcePath --tag $imageTag --project $PROJECT
+}
+
+function Deploy-Service {
+    param(
+        [Parameter(Mandatory = $true)][string]$ServiceName,
+        [Parameter(Mandatory = $true)][string]$ImageTag,
+        [string[]]$ExtraArgs = @()
+    )
+
+    Write-Step "--- [Deploy] $ServiceName"
+
+    $args = @(
+        "run", "deploy", $ServiceName,
+        "--image", $ImageTag,
+        "--region", $REGION,
+        "--allow-unauthenticated",
+        "--port", "8080",
+        "--project", $PROJECT,
+        "--format=value(status.url)",
+        "--quiet"
+    ) + $ExtraArgs
+
+    $url = (& gcloud @args).Trim()
+
+    if (-not $url) {
+        throw "Deploy succeeded or partially succeeded, but no URL was returned for service: $ServiceName"
+    }
+
+    Write-Host "    $ServiceName URL: $url" -ForegroundColor Green
+    return $url
+}
+
+# =========================
+# START
+# =========================
 Write-Host ""
 Write-Host "=== SentinaAI GCP Deployment ===" -ForegroundColor Cyan
 Write-Host "Project : $PROJECT"
 Write-Host "Region  : $REGION"
+Write-Host "Repo    : $REPO"
 Write-Host ""
 
-# ── One-time setup ────────────────────────────────────────────
-Write-Host "--- [Setup] Configuring project..." -ForegroundColor Yellow
-gcloud config set project $PROJECT
+Ensure-Gcloud
 
-Write-Host "--- [Setup] Creating Artifact Registry repo (safe to re-run)..." -ForegroundColor Yellow
-gcloud artifacts repositories create sentina-ai `
-    --repository-format=docker `
-    --location=$REGION `
-    --quiet 2>$null
+Write-Step "--- [Setup] Configuring project..."
+gcloud config set project $PROJECT | Out-Null
 
-# ── Wave 1: Independent services ─────────────────────────────
-Write-Host ""
-Write-Host "=== Wave 1: Independent Services ===" -ForegroundColor Cyan
+# Enable required APIs up front so Google stops interrupting your life one API at a time
+Enable-Api "artifactregistry.googleapis.com"
+Enable-Api "cloudbuild.googleapis.com"
+Enable-Api "run.googleapis.com"
 
-Write-Host "--- [1/7] Building navigation-web..." -ForegroundColor Yellow
-gcloud builds submit apps/navigation_web/ --tag "$REPO/navigation-web"
-Write-Host "--- [1/7] Deploying navigation-web..." -ForegroundColor Yellow
-$navUrl = (gcloud run deploy navigation-web `
-    --image "$REPO/navigation-web" `
-    --region $REGION `
-    --allow-unauthenticated `
-    --port 8080 `
-    --format "value(status.url)" 2>&1 | Select-String "https://").Line.Trim()
-Write-Host "    navigation-web URL: $navUrl" -ForegroundColor Green
+Ensure-ArtifactRepo
 
-Write-Host "--- [2/7] Building ai-detection..." -ForegroundColor Yellow
-gcloud builds submit services/ai-detection/ --tag "$REPO/ai-detection"
-Write-Host "--- [2/7] Deploying ai-detection..." -ForegroundColor Yellow
-$aiUrl = (gcloud run deploy ai-detection `
-    --image "$REPO/ai-detection" `
-    --region $REGION `
-    --allow-unauthenticated `
-    --port 8080 `
-    --format "value(status.url)" 2>&1 | Select-String "https://").Line.Trim()
-Write-Host "    ai-detection URL: $aiUrl" -ForegroundColor Green
+# Validate required source folders before doing anything expensive
+Write-Step "--- [Check] Validating source paths..."
+$requiredPaths = @(
+    $NAV_PATH,
+    $AI_PATH,
+    $EXHIBITOR_PATH,
+    $REPORT_PATH,
+    $BACKEND_PATH,
+    $FRONTEND_PATH,
+    $TWIN_PATH
+)
+foreach ($p in $requiredPaths) {
+    Ensure-PathExists $p
+}
+Write-Host "    All required paths found." -ForegroundColor Green
 
-Write-Host "--- [3/7] Building exhibitor-ai..." -ForegroundColor Yellow
-gcloud builds submit services/exhibitor-ai-pipeline/ --tag "$REPO/exhibitor-ai"
-Write-Host "--- [3/7] Deploying exhibitor-ai..." -ForegroundColor Yellow
-$exhibitorUrl = (gcloud run deploy exhibitor-ai `
-    --image "$REPO/exhibitor-ai" `
-    --region $REGION `
-    --allow-unauthenticated `
-    --port 8080 `
-    --format "value(status.url)" 2>&1 | Select-String "https://").Line.Trim()
-Write-Host "    exhibitor-ai URL: $exhibitorUrl" -ForegroundColor Green
+# =========================
+# WAVE 1
+# =========================
+Write-Section "=== Wave 1: Independent Services ==="
 
-Write-Host "--- [4/7] Building report-export..." -ForegroundColor Yellow
-gcloud builds submit services/Report_export/ --tag "$REPO/report-export"
-Write-Host "--- [4/7] Deploying report-export..." -ForegroundColor Yellow
-gcloud run deploy report-export `
-    --image "$REPO/report-export" `
-    --region $REGION `
-    --allow-unauthenticated `
-    --port 8080
-Write-Host "    report-export deployed." -ForegroundColor Green
+$navImage = "$REPO/navigation-web"
+Build-Image "navigation-web" $NAV_PATH $navImage
+$navUrl = Deploy-Service "navigation-web" $navImage
 
-# ── Wave 2: Dashboard backend (needs wave 1 URLs) ─────────────
-Write-Host ""
-Write-Host "=== Wave 2: Dashboard Backend ===" -ForegroundColor Cyan
-Write-Host "--- [5/7] Building dashboard-backend..." -ForegroundColor Yellow
+$aiImage = "$REPO/ai-detection"
+Build-Image "ai-detection" $AI_PATH $aiImage
+$aiUrl = Deploy-Service "ai-detection" $aiImage
 
-# Prompt for JWT secret if not set
+$exhibitorImage = "$REPO/exhibitor-ai"
+Build-Image "exhibitor-ai" $EXHIBITOR_PATH $exhibitorImage
+$exhibitorUrl = Deploy-Service "exhibitor-ai" $exhibitorImage
+
+$reportImage = "$REPO/report-export"
+Build-Image "report-export" $REPORT_PATH $reportImage
+$reportUrl = Deploy-Service "report-export" $reportImage
+
+# =========================
+# WAVE 2
+# =========================
+Write-Section "=== Wave 2: Dashboard Backend ==="
+
 $jwtSecret = $env:JWT_SECRET
 if (-not $jwtSecret) {
     $jwtSecret = Read-Host "Enter JWT_SECRET value"
 }
+if (-not $jwtSecret) {
+    throw "JWT_SECRET cannot be empty."
+}
 
-gcloud builds submit "apps/main dashboard/backend/" --tag "$REPO/dashboard-backend"
-Write-Host "--- [5/7] Deploying dashboard-backend..." -ForegroundColor Yellow
-$backendUrl = (gcloud run deploy dashboard-backend `
-    --image "$REPO/dashboard-backend" `
-    --region $REGION `
-    --allow-unauthenticated `
-    --port 8080 `
-    --set-env-vars "NAVMESH_BASE_URL=$navUrl,AI_SERVICE_URL=$aiUrl,EXHIBITOR_AI_SERVICE_URL=$exhibitorUrl,JWT_SECRET=$jwtSecret" `
-    --format "value(status.url)" 2>&1 | Select-String "https://").Line.Trim()
-Write-Host "    dashboard-backend URL: $backendUrl" -ForegroundColor Green
+$backendImage = "$REPO/dashboard-backend"
+Build-Image "dashboard-backend" $BACKEND_PATH $backendImage
 
-# ── Wave 3: Frontends ─────────────────────────────────────────
-Write-Host ""
-Write-Host "=== Wave 3: Frontends ===" -ForegroundColor Cyan
+$backendEnv = @(
+    "--set-env-vars",
+    "NAVMESH_BASE_URL=$navUrl,AI_SERVICE_URL=$aiUrl,EXHIBITOR_AI_SERVICE_URL=$exhibitorUrl,JWT_SECRET=$jwtSecret"
+)
 
-Write-Host "--- [6/7] Building dashboard-frontend..." -ForegroundColor Yellow
-gcloud builds submit "apps/main dashboard/frontend/" --tag "$REPO/dashboard-frontend"
-Write-Host "--- [6/7] Deploying dashboard-frontend..." -ForegroundColor Yellow
-$frontendUrl = (gcloud run deploy dashboard-frontend `
-    --image "$REPO/dashboard-frontend" `
-    --region $REGION `
-    --allow-unauthenticated `
-    --port 8080 `
-    --format "value(status.url)" 2>&1 | Select-String "https://").Line.Trim()
-Write-Host "    dashboard-frontend URL: $frontendUrl" -ForegroundColor Green
+$backendUrl = Deploy-Service "dashboard-backend" $backendImage $backendEnv
 
-Write-Host "--- [7/7] Building digital-twin..." -ForegroundColor Yellow
-gcloud builds submit apps/digital_twin_web/ --tag "$REPO/digital-twin"
-Write-Host "--- [7/7] Deploying digital-twin..." -ForegroundColor Yellow
-$twinUrl = (gcloud run deploy digital-twin `
-    --image "$REPO/digital-twin" `
-    --region $REGION `
-    --allow-unauthenticated `
-    --port 8080 `
-    --format "value(status.url)" 2>&1 | Select-String "https://").Line.Trim()
-Write-Host "    digital-twin URL: $twinUrl" -ForegroundColor Green
+# =========================
+# WAVE 3
+# =========================
+Write-Section "=== Wave 3: Frontends ==="
 
-# ── Summary ───────────────────────────────────────────────────
-Write-Host ""
-Write-Host "=== Deployment Complete ===" -ForegroundColor Cyan
+$frontendImage = "$REPO/dashboard-frontend"
+Build-Image "dashboard-frontend" $FRONTEND_PATH $frontendImage
+$frontendUrl = Deploy-Service "dashboard-frontend" $frontendImage
+
+$twinImage = "$REPO/digital-twin"
+Build-Image "digital-twin" $TWIN_PATH $twinImage
+$twinUrl = Deploy-Service "digital-twin" $twinImage
+
+# =========================
+# SUMMARY
+# =========================
+Write-Section "=== Deployment Complete ==="
 Write-Host "navigation-web    : $navUrl"
 Write-Host "ai-detection      : $aiUrl"
 Write-Host "exhibitor-ai      : $exhibitorUrl"
+Write-Host "report-export     : $reportUrl"
 Write-Host "dashboard-backend : $backendUrl"
 Write-Host "dashboard-frontend: $frontendUrl"
 Write-Host "digital-twin      : $twinUrl"
 Write-Host ""
-Write-Host "now we have HTTPS lets goooooooo" -ForegroundColor Green
+Write-Host "HTTPS deployment complete." -ForegroundColor Green
