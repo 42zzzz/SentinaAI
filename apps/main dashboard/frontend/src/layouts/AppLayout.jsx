@@ -347,7 +347,7 @@ const handleLogout = (e) => {
       height: 28,
       padding: 0,
       borderRadius: 9,
-      border: "1.5px solid #2563eb",
+      border: "1.5px solid #d1d5db",
       background: "#ffffff",
       color: "#0f172a",
       boxShadow: "0 6px 16px rgba(15, 23, 42, 0.10)",

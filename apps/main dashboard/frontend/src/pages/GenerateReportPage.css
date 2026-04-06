@@ -105,8 +105,9 @@
 }
 
 .reportField textarea {
-  min-height: 200px;
+  min-height: 400px;
 }
+
 
 .multiSelectCard {
   border: 1px solid #d1d5db;
@@ -372,4 +373,8 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
+}
+
+.exhibitorReportPage .commentsTextarea {
+  min-height: 260px;
 }

@@ -354,11 +354,16 @@ export default function GenerateReportPage() {
   }
 
   if (loading) {
-    return <div className={`generateReportPage ${config.themeClass}`}>Loading report options…</div>;
+    return <div
+      className={`generateReportPage ${config.themeClass} ${domain === "exhibitors" ? "exhibitorReportPage" : ""}`}
+      style={{ "--report-accent": config.accent }}></div>;
   }
 
   return (
-    <div className={`generateReportPage ${config.themeClass}`} style={{ "--report-accent": config.accent }}>
+    <div
+        className={`generateReportPage ${config.themeClass} ${domain === "exhibitors" ? "exhibitorReportPage" : ""}`}
+        style={{ "--report-accent": config.accent }}
+      >
       <div className="generateReportShell">
         <div className="generateReportHeaderRow">
           <div>
@@ -532,7 +537,7 @@ export default function GenerateReportPage() {
 
               <label className="reportField">
                 <span>Custom Notes / Comments</span>
-                <textarea
+                <textarea className="commentsTextarea"
                   rows={9}
                   value={form.custom_notes}
                   onChange={(event) => updateField("custom_notes", event.target.value)}
