@@ -76,7 +76,7 @@ export default function NavigationPage() {
       setError("");
 
       try {
-        const res = await fetch(`${API_BASE}/nav/rooms`);
+        const res = await fetch(`${API_BASE}/api/rooms`);
         const data = await res.json();
         if (!alive) return;
 
@@ -112,7 +112,7 @@ export default function NavigationPage() {
     setPathPts([]);
 
     try {
-      const r = await fetch(`${API_BASE}/nav/pathfind`, {
+      const r = await fetch(`${API_BASE}/api/pathfind`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

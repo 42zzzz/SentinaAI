@@ -506,7 +506,7 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
       // ── data loading ─────────────────────────────────────────────────────
       async function loadNavmesh() {
         try {
-          const res  = await fetch(`${apiBase}/nav/navmesh`, { cache: "no-store" });
+          const res  = await fetch(`${apiBase}/api/navmesh`, { cache: "no-store" });
           const data = await res.json();
           if (!res.ok || !data?.nodes) return;
           navmeshRef.current = data;
@@ -517,7 +517,7 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
 
       async function loadIoT() {
         try {
-          const res  = await fetch(`${apiBase}/nav/iot/data`, { cache: "no-store" });
+          const res  = await fetch(`${apiBase}/api/iot/data`, { cache: "no-store" });
           const data = await res.json();
           if (data && typeof data === "object") {
             iotDataRealRef.current = data;
