@@ -84,3 +84,30 @@
   cursor: pointer;
   user-select: none;
 }
+
+/* MFA step */
+.login-mfa-hint {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.login-input--otp {
+  letter-spacing: 0.35em;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.login-back-link {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  background: none;
+  border: none;
+  color: #1f3a5c;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+}

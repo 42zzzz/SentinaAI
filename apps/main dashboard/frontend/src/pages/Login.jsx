@@ -15,6 +15,9 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
+
   const [flash, setFlash] = useState("");
 
   useEffect(() => {
@@ -34,23 +37,36 @@ export default function Login() {
     e.preventDefault();
     setError("");
 
-    if (!validateEmail(email)) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-
-    if (!password) {
-      setError("Password cannot be empty.");
-      return;
+    if (!mfaRequired) {
+      if (!validateEmail(email)) {
+        setError("Please enter a valid email address.");
+        return;
+      }
+      if (!password) {
+        setError("Password cannot be empty.");
+        return;
+      }
+    } else {
+      if (!totpCode || totpCode.length !== 6) {
+        setError("Please enter the 6-digit code from your authenticator app.");
+        return;
+      }
     }
 
     setLoading(true);
 
     try {
-      const res = await axios.post(`${API_BASE}/auth/login`, {
-        email,
-        password,
-      });
+      const payload = mfaRequired
+        ? { email, password, totp_code: totpCode }
+        : { email, password };
+
+      const res = await axios.post(`${API_BASE}/auth/login`, payload);
+
+      if (res.data.mfa_required) {
+        setMfaRequired(true);
+        setLoading(false);
+        return;
+      }
 
       const { token, role, full_name, employee_id, email: accountEmail, last_active_at, exhibitor_id, exhibitor_name } = res.data;
 
@@ -145,38 +161,73 @@ export default function Login() {
         )}
 
         <form onSubmit={handleLogin}>
-          <input
-            type="email"
-            placeholder="Email"
-            className="login-input"
-            value={email}
-            onChange={handleEmailChange}
-          />
+          {!mfaRequired ? (
+            <>
+              <input
+                type="email"
+                placeholder="Email"
+                className="login-input"
+                value={email}
+                onChange={handleEmailChange}
+              />
 
-          <div className="password-wrapper">
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              className="login-input"
-              value={password}
-              onChange={handlePasswordChange}
-            />
+              <div className="password-wrapper">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  className="login-input"
+                  value={password}
+                  onChange={handlePasswordChange}
+                />
 
-            <span
-              className="password-toggle"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? "Hide" : "Show"}
-            </span>
-          </div>
+                <span
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="login-mfa-hint">
+                Enter the 6-digit code from your authenticator app.
+              </p>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                placeholder="000000"
+                className="login-input login-input--otp"
+                value={totpCode}
+                onChange={(e) => {
+                  setTotpCode(e.target.value.replace(/\D/g, ""));
+                  if (error) setError("");
+                }}
+                autoFocus
+                autoComplete="one-time-code"
+              />
+            </>
+          )}
 
           <button
             type="submit"
             className="login-button"
             disabled={loading}
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "Logging in..." : mfaRequired ? "Verify" : "Login"}
           </button>
+
+          {mfaRequired && (
+            <button
+              type="button"
+              className="login-back-link"
+              onClick={() => { setMfaRequired(false); setTotpCode(""); setError(""); }}
+            >
+              Back
+            </button>
+          )}
         </form>
 
         {error && <div className="login-error">{error}</div>}

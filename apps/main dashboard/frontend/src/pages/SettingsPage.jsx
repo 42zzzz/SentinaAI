@@ -179,6 +179,16 @@ export default function SettingsPage({ section = "operations", onClose }) {
     confirmPassword: false,
   });
 
+  const [mfaModalOpen, setMfaModalOpen] = useState(false);
+  const [mfaState, setMfaState] = useState({
+    status: "idle",
+    message: "",
+    qr: null,
+    secret: null,
+    code: "",
+    enabled: false,
+  });
+
   useEffect(() => {
     setSettings(getStoredSettings(resolvedSection));
     setSaveState("idle");
@@ -188,6 +198,11 @@ export default function SettingsPage({ section = "operations", onClose }) {
     const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
+        if (mfaModalOpen) {
+          setMfaModalOpen(false);
+          setMfaState({ status: "idle", message: "", qr: null, secret: null, code: "", enabled: false });
+          return;
+        }
         if (passwordModalOpen) {
           setPasswordModalOpen(false);
           setPasswordState({ status: "idle", message: "" });
@@ -204,7 +219,7 @@ export default function SettingsPage({ section = "operations", onClose }) {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onClose, passwordModalOpen]);
+  }, [onClose, passwordModalOpen, mfaModalOpen]);
 
   useEffect(() => {
     let isMounted = true;
@@ -305,6 +320,49 @@ export default function SettingsPage({ section = "operations", onClose }) {
     setPasswordModalOpen(false);
     setPasswordVisibility({ newPassword: false, confirmPassword: false });
     setPasswordState({ status: "idle", message: "" });
+  };
+
+  const openMfaModal = async () => {
+    setMfaModalOpen(true);
+    setMfaState({ status: "loading", message: "", qr: null, secret: null, code: "", enabled: false });
+    try {
+      const { data: me } = await axios.get(`${API_BASE}/auth/me`);
+      if (me.mfa_enabled) {
+        setMfaState((s) => ({ ...s, status: "ready", enabled: true }));
+        return;
+      }
+      const { data } = await axios.get(`${API_BASE}/auth/mfa/setup`);
+      setMfaState((s) => ({ ...s, status: "ready", enabled: false, qr: data.qr, secret: data.secret }));
+    } catch {
+      setMfaState((s) => ({ ...s, status: "error", message: "Could not load MFA setup. Please try again." }));
+    }
+  };
+
+  const handleMfaVerify = async (e) => {
+    e.preventDefault();
+    if (!mfaState.code || mfaState.code.length !== 6) {
+      setMfaState((s) => ({ ...s, status: "error", message: "Enter the 6-digit code from your authenticator app." }));
+      return;
+    }
+    setMfaState((s) => ({ ...s, status: "submitting", message: "Verifying..." }));
+    try {
+      const { data } = await axios.post(`${API_BASE}/auth/mfa/verify`, { totp_code: mfaState.code });
+      setMfaState((s) => ({ ...s, status: "success", message: data.message, enabled: true }));
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Invalid code. Please try again.";
+      setMfaState((s) => ({ ...s, status: "error", message: msg, code: "" }));
+    }
+  };
+
+  const handleMfaDisable = async () => {
+    setMfaState((s) => ({ ...s, status: "disabling", message: "Disabling..." }));
+    try {
+      await axios.delete(`${API_BASE}/auth/mfa/disable`);
+      const { data } = await axios.get(`${API_BASE}/auth/mfa/setup`);
+      setMfaState((s) => ({ ...s, status: "ready", enabled: false, message: "", qr: data.qr, secret: data.secret, code: "" }));
+    } catch {
+      setMfaState((s) => ({ ...s, status: "error", message: "Could not disable MFA. Please try again." }));
+    }
   };
 
   const handlePasswordSubmit = async (event) => {
@@ -467,6 +525,13 @@ export default function SettingsPage({ section = "operations", onClose }) {
                 >
                   Change Password
                 </button>
+                <button
+                  type="button"
+                  className="settingsGhostButton"
+                  onClick={openMfaModal}
+                >
+                  Two-Factor Authentication
+                </button>
                 {accountState.status === "loading" ? (
                   <span className="settingsInlineStatus">Loading account…</span>
                 ) : null}
@@ -588,6 +653,148 @@ export default function SettingsPage({ section = "operations", onClose }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {mfaModalOpen ? (
+        <div
+          className="settingsSubModalOverlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && mfaState.status !== "submitting" && mfaState.status !== "disabling") {
+              setMfaModalOpen(false);
+              setMfaState({ status: "idle", message: "", qr: null, secret: null, code: "", enabled: false });
+            }
+          }}
+        >
+          <div className={`settingsSubModal ${meta.themeClass}`} role="dialog" aria-modal="true" aria-labelledby="mfa-modal-title">
+            <div className="settingsSubModalHeader">
+              <div>
+                <div className="settingsEyebrow">Account security</div>
+                <h2 id="mfa-modal-title">Two-Factor Authentication</h2>
+                <p>
+                  {mfaState.enabled
+                    ? "Your account is protected with an authenticator app."
+                    : "Scan the QR code with Google Authenticator or any TOTP app."}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="settingsModalClose"
+                onClick={() => {
+                  setMfaModalOpen(false);
+                  setMfaState({ status: "idle", message: "", qr: null, secret: null, code: "", enabled: false });
+                }}
+                aria-label="Close two-factor authentication dialog"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            <div className="settingsSubModalBody">
+              {mfaState.status === "loading" && (
+                <span className="settingsInlineStatus">Loading…</span>
+              )}
+
+              {/* Setup flow */}
+              {!mfaState.enabled && mfaState.status !== "loading" && mfaState.qr ? (
+                <form onSubmit={handleMfaVerify}>
+                  <div style={{ textAlign: "center", marginBottom: 16 }}>
+                    <img src={mfaState.qr} alt="Scan with your authenticator app" style={{ width: 180, height: 180 }} />
+                  </div>
+                  <p style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
+                    Manual entry key: <code style={{ userSelect: "all" }}>{mfaState.secret}</code>
+                  </p>
+                  <label className="settingsField">
+                    <span className="settingsLabel">Verification code</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="000000"
+                      className="settingsInput"
+                      style={{ letterSpacing: "0.3em", textAlign: "center", fontSize: 20 }}
+                      value={mfaState.code}
+                      onChange={(e) => setMfaState((s) => ({ ...s, code: e.target.value.replace(/\D/g, "") }))}
+                      autoFocus
+                      autoComplete="one-time-code"
+                    />
+                  </label>
+
+                  {mfaState.message ? (
+                    <div className={`settingsPasswordMessage settingsPasswordMessage--${mfaState.status}`}>
+                      {mfaState.message}
+                    </div>
+                  ) : null}
+
+                  <div className="settingsSubModalActions">
+                    <button
+                      type="button"
+                      className="settingsGhostButton"
+                      onClick={() => {
+                        setMfaModalOpen(false);
+                        setMfaState({ status: "idle", message: "", qr: null, secret: null, code: "", enabled: false });
+                      }}
+                      disabled={mfaState.status === "submitting"}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="settingsPrimaryButton"
+                      disabled={mfaState.status === "submitting"}
+                    >
+                      {mfaState.status === "submitting" ? "Verifying..." : "Activate 2FA"}
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+
+              {/* Error state before QR loads */}
+              {!mfaState.enabled && mfaState.status === "error" && !mfaState.qr ? (
+                <div className="settingsPasswordMessage settingsPasswordMessage--error">
+                  {mfaState.message}
+                </div>
+              ) : null}
+
+              {/* Enabled state */}
+              {mfaState.enabled && mfaState.status !== "loading" ? (
+                <div>
+                  <div className="settingsSecuritySummary">
+                    <div>
+                      <span className="settingsMiniLabel">Status</span>
+                      <strong>Active — authenticator app enrolled</strong>
+                    </div>
+                  </div>
+                  {mfaState.message ? (
+                    <div className={`settingsPasswordMessage settingsPasswordMessage--${mfaState.status}`}>
+                      {mfaState.message}
+                    </div>
+                  ) : null}
+                  <div className="settingsSubModalActions">
+                    <button
+                      type="button"
+                      className="settingsGhostButton"
+                      onClick={() => {
+                        setMfaModalOpen(false);
+                        setMfaState({ status: "idle", message: "", qr: null, secret: null, code: "", enabled: false });
+                      }}
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      className="settingsPrimaryButton"
+                      style={{ background: "#b91c1c" }}
+                      onClick={handleMfaDisable}
+                      disabled={mfaState.status === "disabling"}
+                    >
+                      {mfaState.status === "disabling" ? "Disabling..." : "Disable 2FA"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}

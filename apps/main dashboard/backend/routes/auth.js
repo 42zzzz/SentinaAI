@@ -1,6 +1,8 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const speakeasy = require("speakeasy");
+const QRCode = require("qrcode");
 const core = require("../dbs/core.db");
 const authenticate = require("../middleware/auth.middleware");
 const { validatePassword } = require("../security/passwordPolicy");
@@ -18,7 +20,7 @@ const LOCKOUT_MINUTES = 15;
    LOGIN
 ================================= */
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, totp_code } = req.body;
 
   req.audit = {
     eventType: "AUTH_ATTEMPT",
@@ -32,7 +34,7 @@ router.post("/login", async (req, res) => {
   try {
     const result = await core.query(
       `
-      SELECT 
+      SELECT
         u.user_id,
         u.full_name,
         u.email,
@@ -42,6 +44,8 @@ router.post("/login", async (req, res) => {
         u.locked_until,
         u.last_failed_login_at,
         u.last_active_at,
+        u.mfa_enabled,
+        u.mfa_secret,
         r.role_name
       FROM users u
       JOIN user_roles ur ON ur.user_id = u.user_id
@@ -138,6 +142,27 @@ router.post("/login", async (req, res) => {
       [user.user_id]
     );
 
+    // ── MFA check (after password verified, before JWT is issued) ──
+    if (user.mfa_enabled) {
+      if (!totp_code) {
+        return res.status(200).json({ mfa_required: true });
+      }
+      const valid = speakeasy.totp.verify({
+        secret: user.mfa_secret,
+        encoding: "base32",
+        token: totp_code,
+        window: 1,
+      });
+      if (!valid) {
+        req.audit.authResult = "FAILED";
+        req.audit.userId = user.user_id;
+        req.audit.role = user.role_name;
+        req.audit.failureReason = "TOTP_INVALID";
+        return res.status(401).json({ error: "Invalid authentication code." });
+      }
+    }
+    // ── end MFA check ──
+
     const token = jwt.sign(
       {
         user_id: user.user_id,
@@ -187,6 +212,7 @@ router.get("/me", authenticate, async (req, res) => {
         u.email,
         u.employee_id,
         u.last_active_at,
+        u.mfa_enabled,
         r.role_name
       FROM users u
       JOIN user_roles ur ON ur.user_id = u.user_id
@@ -216,6 +242,7 @@ router.get("/me", authenticate, async (req, res) => {
       employee_id: user.employee_id,
       role: user.role_name,
       last_active_at: user.last_active_at,
+      mfa_enabled: user.mfa_enabled,
       exhibitor_id: exhibitorContext?.exhibitor_id || null,
       exhibitor_name: exhibitorContext?.exhibitor_name || null,
     });
@@ -322,6 +349,76 @@ router.post("/change-password", authenticate, async (req, res) => {
 ================================= */
 router.get("/test", (req, res) => {
   res.json({ message: "Auth route works" });
+});
+
+/* ===============================
+   MFA — SETUP (generate QR)
+================================= */
+router.get("/mfa/setup", authenticate, async (req, res) => {
+  try {
+    const secret = speakeasy.generateSecret({ name: "SentinaAI", length: 20 });
+    await core.query(
+      `UPDATE users SET mfa_secret = $1 WHERE user_id = $2`,
+      [secret.base32, req.user.user_id]
+    );
+    const qr = await QRCode.toDataURL(secret.otpauth_url);
+    res.json({ secret: secret.base32, qr });
+  } catch (err) {
+    console.error("MFA setup error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ===============================
+   MFA — VERIFY (activate)
+================================= */
+router.post("/mfa/verify", authenticate, async (req, res) => {
+  const { totp_code } = req.body;
+  if (!totp_code) {
+    return res.status(400).json({ error: "totp_code is required." });
+  }
+  try {
+    const r = await core.query(
+      `SELECT mfa_secret FROM users WHERE user_id = $1 AND status = 'active'`,
+      [req.user.user_id]
+    );
+    if (!r.rows.length || !r.rows[0].mfa_secret) {
+      return res.status(400).json({ error: "No pending MFA setup. Call /auth/mfa/setup first." });
+    }
+    const valid = speakeasy.totp.verify({
+      secret: r.rows[0].mfa_secret,
+      encoding: "base32",
+      token: totp_code,
+      window: 1,
+    });
+    if (!valid) {
+      return res.status(400).json({ error: "Invalid code. Please try again." });
+    }
+    await core.query(
+      `UPDATE users SET mfa_enabled = TRUE, mfa_enabled_at = CURRENT_TIMESTAMP WHERE user_id = $1`,
+      [req.user.user_id]
+    );
+    res.json({ message: "Two-factor authentication enabled successfully." });
+  } catch (err) {
+    console.error("MFA verify error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ===============================
+   MFA — DISABLE
+================================= */
+router.delete("/mfa/disable", authenticate, async (req, res) => {
+  try {
+    await core.query(
+      `UPDATE users SET mfa_enabled = FALSE, mfa_secret = NULL, mfa_enabled_at = NULL WHERE user_id = $1`,
+      [req.user.user_id]
+    );
+    res.json({ message: "Two-factor authentication disabled." });
+  } catch (err) {
+    console.error("MFA disable error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 module.exports = router;
