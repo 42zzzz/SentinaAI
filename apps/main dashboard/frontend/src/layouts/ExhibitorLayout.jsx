@@ -11,6 +11,7 @@ import {
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const ACCENT = "#35005C";
 const SIDEBAR_STORAGE_KEY = "sentina.sidebarCollapsed";
+const EXHIBITOR_HELP_GUIDE_PATH = "/guides/exhibitor-user-guide.pdf";
 
 function buildQuery(params) {
   const qs = new URLSearchParams();
@@ -550,6 +551,10 @@ export default function ExhibitorLayout() {
     }
   };
 
+  const openHelpGuide = () => {
+    window.open(EXHIBITOR_HELP_GUIDE_PATH, "_blank", "noopener,noreferrer");
+  };
+
   const handleLogout = () => {
     sessionStorage.clear();
     localStorage.clear();
@@ -643,7 +648,12 @@ export default function ExhibitorLayout() {
             <span className="exhSideIcon"><SettingsIcon /></span>
             <span className="exhLinkText">Settings</span>
           </button>
-          <button type="button" title={sidebarCollapsed ? "Help" : undefined} className="exhSideLink isGhost">
+          <button
+            type="button"
+            title={sidebarCollapsed ? "Help" : undefined}
+            className="exhSideLink isGhost"
+            onClick={openHelpGuide}
+          >
             <span className="exhSideIcon"><HelpIcon /></span>
             <span className="exhLinkText">Help</span>
           </button>
