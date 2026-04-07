@@ -10,7 +10,7 @@ const role = localStorage.getItem("role");
 const roleDomainMap = {
     operations_manager: "OPERATIONS",
     sustainability_manager: "SUSTAINABILITY",
-    soc_analyst: "SOC",
+    soc_analyst: "SECURITY",
     exhibitor: "EXHIBITOR",
 };
 
@@ -102,21 +102,27 @@ export default function AlertDetailsPage() {
 
     };
 
-    const triggerActions = async () => {
+        const triggerActions = async () => {
 
-        const chosen = Object.keys(selectedActions)
-            .filter(k => selectedActions[k]);
+            const chosen = Object.keys(selectedActions)
+                .filter(k => selectedActions[k]);
 
-        if (chosen.length === 0) return;
+            if (chosen.length === 0) return;
 
-        await axios.post(`${API_BASE}/alerts/${id}/execute`, {
-            actions: chosen,
-            user_id: localStorage.getItem("user_id")
-        });
+            await axios.post(
+                `${API_BASE}/alerts/${id}/execute`,
+                {
+                    actions: chosen,
+                    user_id: localStorage.getItem("user_id")
+                },
+                {
+                    params: { domain }
+                }
+            );
 
-        window.location.reload();
+            window.location.reload();
 
-    };
+        };
 
     if (!alert) {
         return <div className="alertDetailsLoading">Loading...</div>;

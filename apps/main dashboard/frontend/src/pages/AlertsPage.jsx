@@ -14,7 +14,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const roleDomainMap = {
   operations_manager: "OPERATIONS",
   sustainability_manager: "SUSTAINABILITY",
-  soc_analyst: "SOC",
+  soc_analyst: "SECURITY",
   exhibitor: "EXHIBITOR",
 };
 
@@ -121,7 +121,7 @@ export default function AlertsPage() {
   const domain = isSustainability
     ? "SUSTAINABILITY"
     : isSoc
-    ? "SOC"
+    ? "SECURITY"
     : isExhibitor
     ? "EXHIBITOR"
     : "OPERATIONS";

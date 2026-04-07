@@ -1,4 +1,4 @@
-﻿// frontend/src/pages/NavigationPage.jsx
+// frontend/src/pages/NavigationPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import NavigationMap from "../components/NavigationMap.jsx";
@@ -34,6 +34,15 @@ function getTheme(pathname) {
       accentSoft: "rgba(0,128,43,0.12)",
       accentShadow: "rgba(0,128,43,0.30)",
       title: "Navigation",
+    };
+  }
+
+  if (pathname.startsWith("/soc")) {
+    return {
+      accent: "#123150",
+      accentSoft: "rgba(18,49,80,0.12)",
+      accentShadow: "rgba(18,49,80,0.30)",
+      title: "Map",
     };
   }
 

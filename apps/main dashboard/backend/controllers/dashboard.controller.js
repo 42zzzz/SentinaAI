@@ -331,6 +331,8 @@ exports.getDeviceStatusSummary = async (req, res) => {
 
 exports.getAlertsTrend = async (req, res) => {
   try {
+    const domain = (req.query.domain || "OPERATIONS").toUpperCase();
+
     const lifetime =
       String(req.query.lifetime || "").toLowerCase() === "1" ||
       String(req.query.lifetime || "").toLowerCase() === "true";
@@ -342,23 +344,24 @@ exports.getAlertsTrend = async (req, res) => {
     const hours = Number.isFinite(hoursRaw) ? Math.max(1, Math.min(72, hoursRaw)) : 6;
 
     const bucketMins = 15;
-
-    // precedence: lifetime > days > hours
     const mode = lifetime ? "lifetime" : days > 0 ? "days" : "hours";
 
     const timeClause =
       mode === "lifetime"
         ? ""
         : mode === "days"
-          ? "AND detected_at >= NOW() - ($1 || ' days')::interval"
-          : "AND detected_at >= NOW() - ($1 || ' hours')::interval";
+        ? "AND detected_at >= NOW() - ($2 || ' days')::interval"
+        : "AND detected_at >= NOW() - ($2 || ' hours')::interval";
 
-    // Trend query params
+    const bucketIdx = 1;
     const trendParams =
-      mode === "lifetime" ? [bucketMins] : mode === "days" ? [days, bucketMins] : [hours, bucketMins];
+      mode === "lifetime"
+        ? [bucketMins, domain]
+        : mode === "days"
+        ? [bucketMins, days, domain]
+        : [bucketMins, hours, domain];
 
-    // Determine which placeholder index holds bucketMins (1 if lifetime, else 2)
-    const bucketIdx = mode === "lifetime" ? 1 : 2;
+    const domainIdx = mode === "lifetime" ? 2 : 3;
 
     const r = await coreDb.query(
       `
@@ -368,7 +371,7 @@ exports.getAlertsTrend = async (req, res) => {
         ) AS ts,
         COUNT(*)::int AS value
       FROM alerts
-      WHERE domain = 'OPERATIONS'
+      WHERE domain = $${domainIdx}
       ${timeClause}
       GROUP BY 1
       ORDER BY 1 ASC;
@@ -376,20 +379,27 @@ exports.getAlertsTrend = async (req, res) => {
       trendParams
     );
 
-    // Total query (same time window)
-    const totalParams = mode === "lifetime" ? [] : mode === "days" ? [days] : [hours];
+    const totalParams =
+      mode === "lifetime"
+        ? [domain]
+        : mode === "days"
+        ? [days, domain]
+        : [hours, domain];
+
     const totalTimeClause =
       mode === "lifetime"
         ? ""
         : mode === "days"
-          ? "AND detected_at >= NOW() - ($1 || ' days')::interval"
-          : "AND detected_at >= NOW() - ($1 || ' hours')::interval";
+        ? "AND detected_at >= NOW() - ($1 || ' days')::interval"
+        : "AND detected_at >= NOW() - ($1 || ' hours')::interval";
+
+    const totalDomainIdx = mode === "lifetime" ? 1 : 2;
 
     const totalQ = await coreDb.query(
       `
       SELECT COUNT(*)::int AS total
       FROM alerts
-      WHERE domain = 'OPERATIONS'
+      WHERE domain = $${totalDomainIdx}
       ${totalTimeClause}
       `,
       totalParams
@@ -399,12 +409,183 @@ exports.getAlertsTrend = async (req, res) => {
       ok: true,
       metric: "alerts",
       unit: "alerts",
+      domain,
       range: mode === "lifetime" ? "lifetime" : mode === "days" ? `${days}d` : `${hours}h`,
       lifetime: mode === "lifetime",
       days: mode === "days" ? days : null,
       hours: mode === "hours" ? hours : null,
       total: Number(totalQ.rows?.[0]?.total || 0),
       points: (r.rows || []).map((x) => ({ ts: x.ts, value: Number(x.value || 0) })),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+};
+
+exports.getSocOverview = async (req, res) => {
+  try {
+    const domain = (req.query.domain || "SECURITY").toUpperCase();
+
+    const [
+      openRes,
+      criticalOpenRes,
+      totalTodayRes,
+      resolvedTodayRes,
+      quarantinedRes,
+      severityRes,
+      statusRes,
+      recentRes,
+      hotZonesRes,
+    ] = await Promise.all([
+      coreDb.query(
+        `
+        SELECT COUNT(*)::int AS total
+        FROM alerts
+        WHERE domain = $1
+          AND status IN ('NEW', 'ACKNOWLEDGED')
+        `,
+        [domain]
+      ),
+
+      coreDb.query(
+        `
+        SELECT COUNT(*)::int AS total
+        FROM alerts
+        WHERE domain = $1
+          AND status IN ('NEW', 'ACKNOWLEDGED')
+          AND severity = 'CRITICAL'
+        `,
+        [domain]
+      ),
+
+      coreDb.query(
+        `
+        SELECT COUNT(*)::int AS total
+        FROM alerts
+        WHERE domain = $1
+          AND detected_at >= date_trunc('day', NOW())
+        `,
+        [domain]
+      ),
+
+      coreDb.query(
+        `
+        SELECT COUNT(*)::int AS total
+        FROM alerts
+        WHERE domain = $1
+          AND status IN ('RESOLVED', 'CLOSED')
+          AND resolved_at >= date_trunc('day', NOW())
+        `,
+        [domain]
+      ),
+
+      coreDb.query(
+        `
+        SELECT COUNT(*)::int AS total
+        FROM devices
+        WHERE LOWER(COALESCE(status, '')) LIKE '%quarantin%'
+           OR LOWER(COALESCE(status, '')) LIKE '%isolat%'
+        `
+      ),
+
+      coreDb.query(
+        `
+        SELECT severity, COUNT(*)::int AS count
+        FROM alerts
+        WHERE domain = $1
+        GROUP BY severity
+        `,
+        [domain]
+      ),
+
+      coreDb.query(
+        `
+        SELECT status, COUNT(*)::int AS count
+        FROM alerts
+        WHERE domain = $1
+        GROUP BY status
+        `,
+        [domain]
+      ),
+
+      coreDb.query(
+        `
+        SELECT
+          a.alert_id,
+          a.rule_key,
+          COALESCE(r.rule_name, a.rule_key) AS rule_name,
+          a.severity,
+          a.status,
+          a.zone_id,
+          a.hall_id,
+          a.device_id,
+          a.message,
+          a.detected_at
+        FROM alerts a
+        LEFT JOIN rules r
+          ON r.rule_key = a.rule_key
+        WHERE a.domain = $1
+          AND a.status IN ('NEW', 'ACKNOWLEDGED')
+          AND a.severity IN ('CRITICAL', 'HIGH')
+        ORDER BY
+          CASE a.severity
+            WHEN 'CRITICAL' THEN 4
+            WHEN 'HIGH' THEN 3
+            WHEN 'MEDIUM' THEN 2
+            WHEN 'LOW' THEN 1
+            ELSE 0
+          END DESC,
+          a.detected_at DESC
+        LIMIT 5
+        `,
+        [domain]
+      ),
+
+      coreDb.query(
+        `
+        SELECT
+          zone_id,
+          COUNT(*)::int AS open_count
+        FROM alerts
+        WHERE domain = $1
+          AND status IN ('NEW', 'ACKNOWLEDGED')
+          AND zone_id IS NOT NULL
+        GROUP BY zone_id
+        ORDER BY open_count DESC, zone_id ASC
+        LIMIT 5
+        `,
+        [domain]
+      ),
+    ]);
+
+    const totalToday = Number(totalTodayRes.rows?.[0]?.total || 0);
+    const resolvedToday = Number(resolvedTodayRes.rows?.[0]?.total || 0);
+
+    const severityBreakdown = {};
+    for (const row of severityRes.rows || []) {
+      severityBreakdown[String(row.severity || "").toUpperCase()] = Number(row.count || 0);
+    }
+
+    const statusBreakdown = {};
+    for (const row of statusRes.rows || []) {
+      statusBreakdown[String(row.status || "").toUpperCase()] = Number(row.count || 0);
+    }
+
+    res.json({
+      ok: true,
+      domain,
+      kpis: {
+        open_alerts: Number(openRes.rows?.[0]?.total || 0),
+        critical_open_alerts: Number(criticalOpenRes.rows?.[0]?.total || 0),
+        quarantined_devices: Number(quarantinedRes.rows?.[0]?.total || 0),
+        containment_rate_pct: totalToday > 0 ? Math.round((resolvedToday / totalToday) * 100) : 0,
+      },
+      breakdowns: {
+        severity: severityBreakdown,
+        status: statusBreakdown,
+      },
+      recent_alerts: recentRes.rows || [],
+      hot_zones: hotZonesRes.rows || [],
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });

@@ -26,13 +26,12 @@ import AlertDetailsPage from "./pages/AlertDetailsPage";
 import SustainabilityHallDetails from "./pages/SustainabilityHallDetails";
 import EnergyPage from "./pages/EnergyPage";
 import EnvironmentalPage from "./pages/EnvironmentalPage";
-
-
-
 import ReportsPage from "./pages/ReportsPage";
 import GenerateReportPage from "./pages/GenerateReportPage";
 import DigitalTwinPage from "./pages/DigitalTwinPage";
-
+import SOCDashboardPage from "./pages/SOCDashboardPage";
+import SOCAnalyticsPage from "./pages/SOCAnalyticsPage";
+import SOCLogsPage from "./pages/SOCLogsPage";
 
 export default function App() {
   const role = sessionStorage.getItem("role");
@@ -92,17 +91,28 @@ export default function App() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="reports/new" element={<GenerateReportPage />} />
           <Route path="reports/:reportId/edit" element={<GenerateReportPage />} />
-
         </Route>
 
         <Route
           path="/soc/*"
           element={
             <ProtectedRoute allowedRoles={["soc_analyst"]}>
-              <div>SOC Dashboard Coming Soon</div>
+              <AppLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<SOCDashboardPage />} />
+          <Route path="devices" element={<DevicesPage />} />
+          <Route path="alerts" element={<AlertsPage />} />
+          <Route path="alerts/:id" element={<AlertDetailsPage />} />
+          <Route path="analytics" element={<SOCAnalyticsPage />} />
+          <Route path="map" element={<NavigationPage />} />
+          <Route path="logs" element={<SOCLogsPage />} />
+          <Route path="digital-twin" element={<DigitalTwinPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="reports/new" element={<GenerateReportPage />} />
+          <Route path="reports/:reportId/edit" element={<GenerateReportPage />} />
+        </Route>
 
         <Route
           path="/sustainability/*"
@@ -124,7 +134,6 @@ export default function App() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="reports/new" element={<GenerateReportPage />} />
           <Route path="reports/:reportId/edit" element={<GenerateReportPage />} />
-
         </Route>
 
         <Route
@@ -142,7 +151,6 @@ export default function App() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="reports/new" element={<GenerateReportPage />} />
           <Route path="reports/:reportId/edit" element={<GenerateReportPage />} />
-
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,8 +1,8 @@
 export const REPORT_DOMAIN_CONFIG = {
   operations: {
     title: "Generate Report",
-    themeClass: "opsTheme",
-    accent: "#E8486F",
+    themeClass: "socTheme",
+    accent: "#123150",
     listPath: "/operations/reports",
     sections: [
       { value: "hall_utilization", label: "Hall Utilization Ranking" },
@@ -44,11 +44,27 @@ export const REPORT_DOMAIN_CONFIG = {
     frequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
     requiresExhibitorScope: true,
   },
+  soc: {
+    title: "Generate Report",
+    themeClass: "socTheme",
+    accent: "#123150",
+    listPath: "/soc/reports",
+    sections: [
+      { value: "incident_summary", label: "Incident Summary" },
+      { value: "critical_alerts", label: "Critical Alerts Overview" },
+      { value: "device_health", label: "Device Health Snapshot" },
+      { value: "audit_activity", label: "Audit Activity Review" },
+    ],
+    defaultSections: ["incident_summary", "critical_alerts", "device_health", "audit_activity"],
+    frequencyOptions: ["Hourly", "Daily", "Weekly", "Monthly"],
+    requiresExhibitorScope: false,
+  },
 };
 
 export function getDomainFromPath(pathname = "") {
   if (pathname.startsWith("/sustainability")) return "sustainability";
   if (pathname.startsWith("/operations")) return "operations";
+  if (pathname.startsWith("/soc")) return "soc";
   if (pathname.startsWith("/exhibitor")) return "exhibitors";
   return "operations";
 }

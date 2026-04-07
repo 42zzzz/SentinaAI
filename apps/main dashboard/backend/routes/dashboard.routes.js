@@ -1,5 +1,7 @@
 const express = require("express");
 const dash = require("../controllers/dashboard.controller");
+const soc = require("../controllers/soc.controller");
+
 const router = express.Router();
 
 router.get("/overview", dash.getOverview);
@@ -10,5 +12,8 @@ router.get("/map", dash.getMapLayer);
 router.get("/debug-db", dash.debugDb);
 router.get("/device-status", dash.getDeviceStatusSummary);
 router.get("/alerts-trend", dash.getAlertsTrend);
+
+router.get("/soc-overview", soc.getSocOverview);
+router.get("/soc-logs", soc.getSocLogs);
 
 module.exports = router;

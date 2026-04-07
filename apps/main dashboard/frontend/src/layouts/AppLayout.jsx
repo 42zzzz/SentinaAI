@@ -47,7 +47,17 @@ function getPageTitle(pathname) {
   if (pathname.startsWith("/operations/reports/") && pathname.endsWith("/edit")) return "Edit Report Draft";
   if (pathname.startsWith("/operations/reports")) return "Reports";
 
-  if (pathname.startsWith("/soc")) return "SOC";
+  if (pathname === "/soc" || pathname === "/soc/") return "Dashboard";
+  if (pathname.startsWith("/soc/devices")) return "Devices";
+  if (pathname.startsWith("/soc/alerts/")) return "Alert Details";
+  if (pathname.startsWith("/soc/alerts")) return "Alerts";
+  if (pathname.startsWith("/soc/analytics")) return "Analytics";
+  if (pathname.startsWith("/soc/map")) return "Map";
+  if (pathname.startsWith("/soc/logs")) return "Logs";
+  if (pathname.startsWith("/soc/reports/new")) return "Generate Report";
+  if (pathname.startsWith("/soc/reports/") && pathname.endsWith("/edit")) return "Edit Report Draft";
+  if (pathname.startsWith("/soc/reports")) return "Reports";
+  if (pathname.startsWith("/soc/digital-twin")) return "Digital Twin";
   if (pathname.startsWith("/exhibitor")) return "Exhibitor Portal";
 
   if (pathname.startsWith("/sustainability/digital-twin")) return "Digital Twin";
@@ -240,7 +250,7 @@ export default function AppLayout() {
 
   const pathname = location.pathname;
   const section = getSectionFromPath(pathname);
-  const storedRole = localStorage.getItem("role") || "operations_manager";
+  const storedRole = localStorage.getItem("role") || sessionStorage.getItem("role") || "operations_manager";
 
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -270,6 +280,8 @@ export default function AppLayout() {
   const helpGuidePath =
     section === "sustainability"
       ? HELP_GUIDE_PATHS.sustainability
+      : section === "soc"
+      ? null
       : HELP_GUIDE_PATHS.operations;
 
   const openHelpGuide = () => {
@@ -278,9 +290,10 @@ export default function AppLayout() {
 
   const isSust = section === "sustainability";
   const isOperations = section === "operations";
+  const isSoc = section === "soc";
 
-  const ACCENT = isSust ? "#00802B" : "#E8486F";
-  const ACCENT_BG = isSust ? "rgba(0,128,43,0.08)" : "rgba(232,72,111,0.08)";
+  const ACCENT = isSust ? "#00802B" : isSoc ? "#123150" : "#E8486F";
+  const ACCENT_BG = isSust ? "rgba(0,128,43,0.08)" : isSoc ? "rgba(18,49,80,0.10)" : "rgba(232,72,111,0.08)";
 
   const navItemStyle = ({ isActive }) => ({
     display: "flex",
@@ -436,7 +449,7 @@ const handleLogout = (e) => {
   };
 
   return (
-    <div style={styles.shell}>
+    <div className={section === "soc" ? "socLayout" : ""} style={styles.shell}>
       <aside style={styles.sidebar}>
         <button
           type="button"
@@ -501,6 +514,39 @@ const handleLogout = (e) => {
           </SvgIcon>
           <SidebarText collapsed={sidebarCollapsed}>Alerts</SidebarText>
         </NavLink>
+
+        {isSoc && (
+          <>
+            <NavLink to={`${rolePrefix}/analytics`} style={navItemStyle} title={sidebarCollapsed ? "Analytics" : undefined}>
+              <SvgIcon>
+                <svg width={IconSize} height={IconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M4 19H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M7 16V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M12 16V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M17 16V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </SvgIcon>
+              <SidebarText collapsed={sidebarCollapsed}>Analytics</SidebarText>
+            </NavLink>
+
+            <NavLink to={`${rolePrefix}/map`} style={navItemStyle} title={sidebarCollapsed ? "Map" : undefined}>
+              <SvgIcon><NavigationNavIcon /></SvgIcon>
+              <SidebarText collapsed={sidebarCollapsed}>Map</SidebarText>
+            </NavLink>
+
+            <NavLink to={`${rolePrefix}/logs`} style={navItemStyle} title={sidebarCollapsed ? "Logs" : undefined}>
+              <SvgIcon>
+                <svg width={IconSize} height={IconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M8 7H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M8 17H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
+                </svg>
+              </SvgIcon>
+              <SidebarText collapsed={sidebarCollapsed}>Logs</SidebarText>
+            </NavLink>
+          </>
+        )}
 
         {isOperations && (
           <>
@@ -646,32 +692,34 @@ const handleLogout = (e) => {
           <SidebarText collapsed={sidebarCollapsed}>Settings</SidebarText>
         </button>
 
-        <button
-          type="button"
-          onClick={openHelpGuide}
-          style={{
-            ...navItemStyle({ isActive: false }),
-            width: "100%",
-            border: "none",
-            cursor: "pointer",
-            fontFamily: "inherit",
-          }}
-          title={sidebarCollapsed ? "Help" : undefined}
-          aria-label="Open help guide"
-        >
-          <SvgIcon>
-            <svg width="100%" height="100%" viewBox="0 0 28 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M10.6052 9.75033C10.8795 9.0263 11.4208 8.41577 12.1334 8.02689C12.846 7.638 13.6839 7.49584 14.4985 7.6256C15.3132 7.75535 16.0521 8.14864 16.5844 8.73581C17.1167 9.32299 17.4081 10.0661 17.4068 10.8337C17.4068 13.0003 13.9068 14.0837 13.9068 14.0837M14.0002 18.417H14.0118M25.6668 13.0003C25.6668 18.9834 20.4435 23.8337 14.0002 23.8337C7.55684 23.8337 2.3335 18.9834 2.3335 13.0003C2.3335 7.01724 7.55684 2.16699 14.0002 2.16699C20.4435 2.16699 25.6668 7.01724 25.6668 13.0003Z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </SvgIcon>
-          <SidebarText collapsed={sidebarCollapsed}>Help</SidebarText>
-        </button>
+        {section !== "soc" && (
+          <button
+            type="button"
+            onClick={openHelpGuide}
+            style={{
+              ...navItemStyle({ isActive: false }),
+              width: "100%",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+            title={sidebarCollapsed ? "Help" : undefined}
+            aria-label="Open help guide"
+          >
+            <SvgIcon>
+              <svg width="100%" height="100%" viewBox="0 0 28 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M10.6052 9.75033C10.8795 9.0263 11.4208 8.41577 12.1334 8.02689C12.846 7.638 13.6839 7.49584 14.4985 7.6256C15.3132 7.75535 16.0521 8.14864 16.5844 8.73581C17.1167 9.32299 17.4081 10.0661 17.4068 10.8337C17.4068 13.0003 13.9068 14.0837 13.9068 14.0837M14.0002 18.417H14.0118M25.6668 13.0003C25.6668 18.9834 20.4435 23.8337 14.0002 23.8337C7.55684 23.8337 2.3335 18.9834 2.3335 13.0003C2.3335 7.01724 7.55684 2.16699 14.0002 2.16699C20.4435 2.16699 25.6668 7.01724 25.6668 13.0003Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </SvgIcon>
+            <SidebarText collapsed={sidebarCollapsed}>Help</SidebarText>
+          </button>
+        )}
 
         <button
           type="button"
@@ -702,7 +750,7 @@ const handleLogout = (e) => {
               {isSust
                 ? "Sustainability Dashboard"
                 : section === "soc"
-                ? "SOC Dashboard"
+                ? "Security Operations Center"
                 : section === "exhibitor"
                 ? "Exhibitor Portal"
                 : "Operations Dashboard"}
@@ -713,17 +761,17 @@ const handleLogout = (e) => {
             <div style={styles.userCard}>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 13 }}>
-                  {localStorage.getItem("full_name") || "User"}
+                  {localStorage.getItem("full_name") || sessionStorage.getItem("full_name") || "User"}
                 </div>
                 <div style={{ fontSize: 12, opacity: 0.75 }}>
-                  Role: {localStorage.getItem("role")}
+                  Role: {localStorage.getItem("role") || sessionStorage.getItem("role")}
                 </div>
                 <div style={{ fontSize: 12, opacity: 0.75 }}>
-                  Employee ID: {localStorage.getItem("employee_id")}
+                  Employee ID: {localStorage.getItem("employee_id") || sessionStorage.getItem("employee_id")}
                 </div>
               </div>
               <div style={styles.avatar}>
-                {(localStorage.getItem("full_name") || "U").charAt(0).toUpperCase()}
+                {(localStorage.getItem("full_name") || sessionStorage.getItem("full_name") || "U").charAt(0).toUpperCase()}
               </div>
             </div>
           </div>
@@ -732,7 +780,38 @@ const handleLogout = (e) => {
         <div style={styles.content}>
           <Outlet />
         </div>
-          {settingsOpen ? (
+        {section === "soc" ? (
+          <style>{`
+            .socLayout .devicesPage.opsTheme,
+            .socLayout .alertsPage.opsTheme {
+              background: #f6f9ff;
+            }
+            .socLayout .devicesPage.opsTheme main h1:first-of-type,
+            .socLayout .alertsPage.opsTheme main h1:first-of-type {
+              color: #123150 !important;
+            }
+            .socLayout .devicesHeaderRight .devicesCountTop,
+            .socLayout .alertsHeaderRight .alertsCountTop {
+              color: #123150 !important;
+            }
+            .socLayout .devicesTable thead th {
+              color: #123150 !important;
+            }
+            .socLayout .alertsPage { --alerts-accent: #123150; }
+            .socLayout .alertsControlsCard .clearFiltersBtn,
+            .socLayout .devicesControlsCard .clearFiltersBtn {
+              color: #123150 !important;
+              border-color: #bfdbfe !important;
+              background: #eff6ff !important;
+            }
+            .socLayout .alertsControlsCard .clearFiltersBtn:hover,
+            .socLayout .devicesControlsCard .clearFiltersBtn:hover {
+              background: #dbeafe !important;
+              border-color: #93c5fd !important;
+            }
+          `}</style>
+        ) : null}
+        {settingsOpen ? (
             <SettingsPage
               section={isSust ? "sustainability" : "operations"}
               onClose={() => setSettingsOpen(false)}

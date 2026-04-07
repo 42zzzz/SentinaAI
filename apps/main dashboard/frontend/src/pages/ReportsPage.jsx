@@ -161,7 +161,7 @@ export default function ReportsPage() {
   const navigate = useNavigate();
 
   const domain = getDomainFromPath(location.pathname);
-  const themeClass = domain === "sustainability" ? "sustTheme" : domain === "exhibitors" ? "exhTheme" : "opsTheme";
+  const themeClass = domain === "sustainability" ? "sustTheme" : domain === "exhibitors" ? "exhTheme" : domain === "soc" ? "socTheme" : "opsTheme";
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -269,7 +269,16 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className={`reportsPage ${themeClass}`}>
+    <>
+      {domain === "soc" ? (
+        <style>{`
+          .reportsPage.socTheme .reportsCountTop { color: #123150; }
+          .reportsPage.socTheme .newReportBtn { background: #123150; }
+          .reportsPage.socTheme .reportsTable th { color: #123150; }
+          .reportsPage.socTheme .actionIconBtn.isPrimary { background: #123150; }
+        `}</style>
+      ) : null}
+      <div className={`reportsPage ${themeClass}`}>
       <div className="pageInner">
         <div className="reportsHeaderRow">
           <div />
@@ -468,6 +477,7 @@ export default function ReportsPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
