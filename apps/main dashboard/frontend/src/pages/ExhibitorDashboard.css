@@ -1445,3 +1445,104 @@
     justify-content 0.28s ease;
 }
 
+
+.exhStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.exhStatCard {
+  background: #fafafc;
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+  padding: 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.exhStatCard span {
+  color: var(--exh-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.exhStatCard strong {
+  color: var(--exh-ink);
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.exhStatCard small {
+  color: var(--exh-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.exhMiniPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--exh-accent-soft);
+  color: var(--exh-accent);
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.exhMiniMetaRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  color: var(--exh-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.exhSummaryStack {
+  display: grid;
+  gap: 12px;
+}
+
+.exhSummaryItem {
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--exh-line);
+}
+
+.exhSummaryItem label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--exh-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.exhSummaryItem strong {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+@media (max-width: 1280px) {
+  .exhStatsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .exhStatsGrid,
+  .exhMiniChartGrid {
+    grid-template-columns: 1fr;
+  }
+}
