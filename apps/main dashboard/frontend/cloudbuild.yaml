@@ -4,6 +4,8 @@ steps:
       - 'build'
       - '--build-arg'
       - 'VITE_API_BASE_URL=https://dashboard-backend-976861260438.me-central1.run.app'
+      - '--build-arg'
+      - 'VITE_NAV_URL=https://navigation-web-976861260438.me-central1.run.app'
       - '-t'
       - 'me-central1-docker.pkg.dev/sentina-ai-486321/sentina-ai/dashboard-frontend:latest'
       - '.'
