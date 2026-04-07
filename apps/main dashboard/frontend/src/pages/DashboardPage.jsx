@@ -5,6 +5,7 @@ import axios from "axios";
 import AiOpsPanel from "../components/AiOpsPanel";
 import AiSimulateSurge from "../components/AiSimulateSurge";
 import PredictedOccupancyChart from "../components/PredictedOccupancyChart";
+import InfoTooltip from "../components/InfoTooltip";
 
 import TrendPanel from "../components/TrendPanel";
 import TopHallsEnergyBar from "../components/TopHallsEnergyBar";
@@ -98,12 +99,17 @@ const IcoBusyHalls = () => (
   <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" clipRule="evenodd" d="M13 21C14.6579 21 16 19.6579 16 18C16 16.3421 14.6579 15 13 15C11.3421 15 10 16.3421 10 18C10 19.6579 11.3421 21 13 21ZM13 23C15.7625 23 18 20.7625 18 18C18 15.2375 15.7625 13 13 13C10.2375 13 8 15.2375 8 18C8 20.7625 10.2375 23 13 23Z" fill="white"/></svg>
 );
 
-function KpiCard({ title, value, sub, icon }) {
+function KpiCard({ title, tooltip, value, sub, icon }) {
   return (
     <div className="card">
       <div className="cardInner">
         <PinkIcon>{icon}</PinkIcon>
-        <p className="cardTitle">{title}</p>
+
+        <p className="cardTitle">
+          {title}
+          <InfoTooltip text={tooltip} color="#64748b" />
+        </p>
+
         <div className="cardValue">{value}</div>
         {sub ? (
           <div className="metricMetaRow">
@@ -117,13 +123,16 @@ function KpiCard({ title, value, sub, icon }) {
   );
 }
 
-function CardShell({ title, right, icon, children, noBodyPad = false }) {
+function CardShell({ title, tooltip, right, icon, children, noBodyPad = false }) {
   return (
     <div className="card">
       <div className="cardHeaderRow">
         <div className="cardHeaderLeft">
           {icon ? <div className="iconCircle iconCircleFloat">{icon}</div> : null}
-          <h3>{title}</h3>
+          <h3>
+            {title}
+            <InfoTooltip text={tooltip} color="#64748b" />
+          </h3>
         </div>
         {right ? <span className="hint">{right}</span> : null}
       </div>
@@ -236,6 +245,17 @@ export default function DashboardPage() {
     return congestionLatest.toFixed(2);
   }, [congestionLatest]);
 
+  const tooltipText = {
+    currentOccupancy: "Live people count detected across the venue for the latest interval.",
+    averageTemperature: "Average indoor temperature across the monitored venue in the latest interval.",
+    crowdFlow: "Flow efficiency derived from the congestion index. Higher values mean movement is smoother.",
+    congestion: "Latest congestion index from crowd movement analytics. Lower values mean less congestion.",
+    alerts: "Alert trend for the selected time range so you can spot spikes and recurring operational issues.",
+    devices: "Live breakdown of device health and status across the venue.",
+    comfortIndex: "Combined comfort score based on environmental conditions and crowd comfort penalties.",
+    busiestHalls: "Ranks halls by current occupancy ratio so the busiest areas are visible at a glance.",
+  };
+
   return (
     <div className="opsTheme">
       <div className="dashboardWrap">
@@ -251,28 +271,57 @@ export default function DashboardPage() {
         ) : null}
 
         <div className="topRow">
-          <KpiCard title="Current Occupancy" value={occupancyValue} sub={latestTsLabel} icon={<IcoPeople />} />
-          <KpiCard title="Average Temperature (°C)" value={tempValue} sub="Current interval" icon={<IcoThermo />} />
-          <KpiCard title="Crowd Flow" value={crowdFlowValue} sub="Derived from congestion index" icon={<IcoFlow />} />
-          <KpiCard title="Congestion" value={congestionValue} sub="Current interval" icon={<IcoAlert />} />
+          <KpiCard
+            title="Current Occupancy"
+            tooltip={tooltipText.currentOccupancy}
+            value={occupancyValue}
+            sub={latestTsLabel}
+            icon={<IcoPeople />}
+          />
+          <KpiCard
+            title="Average Temp (°C)"
+            tooltip={tooltipText.averageTemperature}
+            value={tempValue}
+            sub="Current interval"
+            icon={<IcoThermo />}
+          />
+          <KpiCard
+            title="Crowd Flow"
+            tooltip={tooltipText.crowdFlow}
+            value={crowdFlowValue}
+            sub="Derived from congestion index"
+            icon={<IcoFlow />}
+          />
+          <KpiCard
+            title="Congestion"
+            tooltip={tooltipText.congestion}
+            value={congestionValue}
+            sub="Current interval"
+            icon={<IcoAlert />}
+          />
         </div>
 
         <div className="grid3">
-          <CardShell title="Alerts" right={<AlertsRangeSelect value={alertsRange} onChange={setAlertsRange} />} icon={<IcoAlert />}>
+          <CardShell
+            title="Alerts"
+            tooltip={tooltipText.alerts}
+            right={<AlertsRangeSelect value={alertsRange} onChange={setAlertsRange} />}
+            icon={<IcoAlert />}
+          >
             <AlertsTrendPanel embedded range={alertsRange} />
           </CardShell>
 
-          <CardShell title="Devices" right="Now" icon={<IcoDevices />}>
+          <CardShell title="Devices" tooltip={tooltipText.devices} right="Now" icon={<IcoDevices />}>
             <DevicesStatusBars embedded />
           </CardShell>
 
-          <CardShell title="Comfort Index" right="Current interval" icon={<IcoComfort />}>
+          <CardShell title="Comfort Index" tooltip={tooltipText.comfortIndex} right="Current interval" icon={<IcoComfort />}>
             <ComfortGauge value={k ? k.comfortIndex : null} embedded />
           </CardShell>
         </div>
 
         <div className="floatRow">
-          <CardShell title="Busiest Halls" icon={<IcoBusyHalls />}>
+          <CardShell title="Busiest Halls" tooltip={tooltipText.busiestHalls} icon={<IcoBusyHalls />}>
             <TopHallsBar title={null} limit={8} embedded />
           </CardShell>
         </div>

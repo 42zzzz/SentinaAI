@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import InfoTooltip from "./InfoTooltip";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -85,7 +86,13 @@ export default function AiSimulateSurge({ onSimulated }) {
     <div className="card">
       <div className="cardHeaderRow">
         <div className="cardHeaderLeft">
-          <h3 className="cardTitleBig">AI Simulator: Trigger Crowd Surge</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+            <h3 className="cardTitleBig">AI Simulator: Trigger Crowd Surge</h3>
+            <InfoTooltip
+              text="Use this simulator to test how the dashboard reacts to a manual crowd surge scenario for a selected hall."
+              color="#64748b"
+            />
+          </div>
         </div>
         <div className="hint">Halls source: /ai/ops-live</div>
       </div>

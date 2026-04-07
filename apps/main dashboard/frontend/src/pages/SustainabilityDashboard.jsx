@@ -6,7 +6,8 @@ import axios from "axios";
 import TrendPanel from "../components/TrendPanel";
 import ComfortGauge from "../components/ComfortGauge";
 import TopHallsEnergyBar from "../components/TopHallsEnergyBar";
-import AiSustPanel from "../components/AiSustPanel"; // ✅ NEW (from the sust AI pipeline)
+import AiSustPanel from "../components/AiSustPanel";
+import InfoTooltip from "../components/InfoTooltip";
 import {
   getDashboardRefreshMs,
   useDashboardSettings,
@@ -78,12 +79,17 @@ const ElectricityIcon = () => (
   </svg>
 );
 
-function KpiCard({ title, value, sub, icon }) {
+function KpiCard({ title, tooltip, value, sub, icon }) {
   return (
     <div className="card">
       <div className="cardInner">
         <IconCircle>{icon}</IconCircle>
-        <p className="cardTitle">{title}</p>
+
+        <p className="cardTitle">
+          {title}
+          <InfoTooltip text={tooltip} color="#64748b" />
+        </p>
+
         <div className="cardValue">{value}</div>
 
         {sub ? (
@@ -98,13 +104,16 @@ function KpiCard({ title, value, sub, icon }) {
   );
 }
 
-function CardShell({ title, right, icon, children }) {
+function CardShell({ title, tooltip, right, icon, children }) {
   return (
     <div className="card">
       <div className="cardHeaderRow">
         <div className="cardHeaderLeft">
           {icon ? <div className="iconCircle iconCircleFloat">{icon}</div> : null}
-          <h3>{title}</h3>
+          <h3>
+            {title}
+            <InfoTooltip text={tooltip} color="#64748b" />
+          </h3>
         </div>
 
         {right ? <span className="hint">{right}</span> : null}
@@ -130,7 +139,6 @@ export default function SustainabilityDashboard() {
 
     const load = async () => {
       try {
-        // ✅ NEW: sustainability AI KPI endpoint (node backend)
         const r = await axios.get(`${API_BASE}/ai/sust-kpis`);
         if (!alive) return;
 
@@ -173,20 +181,49 @@ export default function SustainabilityDashboard() {
     return Number.isFinite(n) ? `${Math.round(n)}%` : "—";
   }, [hvacEfficiency]);
 
+  const tooltipText = {
+    currentEnergyUsage: "Total energy consumption shown for the latest interval.",
+    carbonEmissionEstimate: "Estimated carbon output calculated from the latest energy usage data.",
+    hvacEfficiency: "HVAC efficiency score based on current sustainability analytics.",
+    automationStatus: "Current AI recommendation or automation state for sustainability controls.",
+    electricityConsumption: "Six-hour electricity consumption trend for the monitored venue data.",
+    carbonForecastSnapshot: "Six-hour carbon trend snapshot based on current sustainability readings.",
+    topHallsByEnergyUse: "Ranks halls by energy use so the most energy-intensive areas are visible quickly.",
+    environmentHealthScore: "Gauge view of the overall environment health and comfort score.",
+  };
+
   return (
     <div className="sustTheme">
       <div className="dashboardWrap">
-        {/* KPI ROW */}
         <div className="topRow">
-          <KpiCard title="Current Energy Usage" value={energyValue} sub="Latest interval" icon={<CurrentEnergyIcon />} />
+          <KpiCard
+            title="Current Energy Usage"
+            tooltip={tooltipText.currentEnergyUsage}
+            value={energyValue}
+            sub="Latest interval"
+            icon={<CurrentEnergyIcon />}
+          />
 
-          <KpiCard title="Carbon Emission Estimate" value={carbonValue} sub="Latest interval" icon={<CarbonEmissionIcon />} />
+          <KpiCard
+            title="Carbon Emission Estimate"
+            tooltip={tooltipText.carbonEmissionEstimate}
+            value={carbonValue}
+            sub="Latest interval"
+            icon={<CarbonEmissionIcon />}
+          />
 
-          <KpiCard title="HVAC Efficiency" value={hvacValue} sub="AI/analytics score" icon={<HVACIcon />} />
+          <KpiCard
+            title="HVAC Efficiency"
+            tooltip={tooltipText.hvacEfficiency}
+            value={hvacValue}
+            sub="AI/analytics score"
+            icon={<HVACIcon />}
+          />
 
           <div onClick={() => setShowAiModal(true)} style={{ cursor: "pointer" }}>
             <KpiCard
               title="Automation Status"
+              tooltip={tooltipText.automationStatus}
               value={automationStatus}
               sub="AI recommendation"
               icon={<AutomationIcon />}
@@ -194,48 +231,42 @@ export default function SustainabilityDashboard() {
           </div>
         </div>
 
-        {/* TREND CHARTS */}
         <div className="grid2">
-          <CardShell title="Electricity Consumption" right="6h" icon={<ElectricityIcon />}>
+          <CardShell title="Electricity Consumption" tooltip={tooltipText.electricityConsumption} right="6h" icon={<ElectricityIcon />}>
             <TrendPanel metric="energy" unit="kWh" hours={6} embedded accent="#00802B" />
           </CardShell>
 
-          <CardShell title="Carbon Forecast Snapshot" right="6h" icon={<CarbonEmissionIcon />}>
+          <CardShell title="Carbon Forecast Snapshot" tooltip={tooltipText.carbonForecastSnapshot} right="6h" icon={<CarbonEmissionIcon />}>
             <TrendPanel metric="carbon" unit="kgCO2" hours={6} embedded accent="#00802B" />
           </CardShell>
         </div>
 
-        {/* ENERGY ANALYTICS */}
         <div className="grid2">
-          <CardShell title="Top Halls by Energy Use" icon={<ElectricityIcon />}>
+          <CardShell title="Top Halls by Energy Use" tooltip={tooltipText.topHallsByEnergyUse} icon={<ElectricityIcon />}>
             <TopHallsEnergyBar title={null} limit={5} embedded />
           </CardShell>
 
-          <CardShell title="Environment Health Score" icon={<CarbonEmissionIcon />}>
-            {/* ✅ ComfortGauge should use var(--sust-accent) internally after your update;
-                passing accent is safe even if ignored */}
+          <CardShell title="Environment Health Score" tooltip={tooltipText.environmentHealthScore} icon={<CarbonEmissionIcon />}>
             <ComfortGauge title={null} value={hvacEfficiency} embedded accent="var(--sust-accent)" />
           </CardShell>
         </div>
 
-        {/* ✅ AI LIVE TABLE (new sustainability pipeline) */}
         <div className="floatRow">
           <AiSustPanel />
         </div>
       </div>
+
       {showAiModal && (
         <div className="aiModalOverlay" onClick={() => setShowAiModal(false)}>
           <div className="aiModalCard" onClick={(e) => e.stopPropagation()}>
-
             <div className="aiModalHeader">
-              <h2>AI Sustainability – Live Status</h2>
+              <h2>AI Sustainability - Live Status</h2>
               <button onClick={() => setShowAiModal(false)}>Close</button>
             </div>
 
             <div className="aiModalBody">
               <AiSustPanel />
             </div>
-
           </div>
         </div>
       )}

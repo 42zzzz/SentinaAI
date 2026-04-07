@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Sparkline from "../components/Sparkline";
 import "./EnvironmentalPage.css";
+import InfoTooltip from "../components/InfoTooltip";
 import {
   getDashboardRefreshMs,
   useDashboardSettings,
 } from "../utils/dashboardSettings";
+
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -257,6 +259,15 @@ export default function EnvironmentalPage() {
     a.click();
     URL.revokeObjectURL(url);
   };
+    const tooltipText = {
+      liveEnvironmentalSignal: "Live trend for the selected environmental metric and zone.",
+      averageByZone: "Average metric value by zone across the latest 24 hours.",
+      anomaliesAlerts: "Latest environmental anomalies and alerts detected in the past 24 hours.",
+      totalCarbon24h: "Total estimated carbon emissions across the latest 24 hours.",
+      avgIndoorTemp24h: "Average indoor temperature across the latest 24 hours.",
+      avgHumidity24h: "Average humidity across the latest 24 hours.",
+      airQualityScore24h: "Composite air quality score derived from environmental conditions over the latest 24 hours.",
+    };
 
   return (
     <div className="sustTheme envPage">
@@ -313,7 +324,10 @@ export default function EnvironmentalPage() {
         <div className="envGridTop">
           <div className="envCard">
             <div className="envCardHead">
-              <div className="envCardTitle">Live Environmental Signal</div>
+              <div className="envCardTitle">
+                Live Environmental Signal
+                <InfoTooltip text={tooltipText.liveEnvironmentalSignal} color="#64748b" />
+              </div>
             </div>
             <div className="envCardBody">
               {loading ? <div className="envMuted">Loading…</div> : <BarTrend points={trendSelected} />}
@@ -322,7 +336,10 @@ export default function EnvironmentalPage() {
 
           <div className="envCard">
             <div className="envCardHead">
-              <div className="envCardTitle">Average by Zone (24h)</div>
+              <div className="envCardTitle">
+                Average by Zone (24h)
+                <InfoTooltip text={tooltipText.averageByZone} color="#64748b" />
+              </div>
             </div>
             <div className="envCardBody">
               {loading ? (
@@ -351,7 +368,10 @@ export default function EnvironmentalPage() {
 
           <div className="envCard">
             <div className="envCardHead">
-              <div className="envCardTitle">Anomalies / Alerts</div>
+              <div className="envCardTitle">
+                Anomalies / Alerts
+                <InfoTooltip text={tooltipText.anomaliesAlerts} color="#64748b" />
+              </div>
               <div className="envPillMini">Last 24h</div>
             </div>
             <div className="envCardBody">
@@ -376,7 +396,10 @@ export default function EnvironmentalPage() {
         <div className="envGridBottom">
           <div className="envKpi">
             <div className="envKpiTop">
-              <div className="envKpiLabel">Total Carbon (24h)</div>
+              <div className="envKpiLabel">
+                Total Carbon (24h)
+                <InfoTooltip text={tooltipText.totalCarbon24h} color="#64748b" />
+              </div>
               <div className="envKpiValue">
                 {overview ? fmt(overview.total_carbon_kgco2, 0) : "—"} <span className="envUnit">kgCO2</span>
               </div>
@@ -389,7 +412,10 @@ export default function EnvironmentalPage() {
 
           <div className="envKpi">
             <div className="envKpiTop">
-              <div className="envKpiLabel">Avg Indoor Temp (24h)</div>
+              <div className="envKpiLabel">
+                Avg Indoor Temp (24h)
+                <InfoTooltip text={tooltipText.avgIndoorTemp24h} color="#64748b" />
+              </div>
               <div className="envKpiValue">
                 {overview ? fmt(overview.avg_temp_c, 1) : "—"} <span className="envUnit">°C</span>
               </div>
@@ -404,7 +430,10 @@ export default function EnvironmentalPage() {
 
           <div className="envKpi">
             <div className="envKpiTop">
-              <div className="envKpiLabel">Avg Humidity (24h)</div>
+             <div className="envKpiLabel">
+                Avg Humidity (24h)
+                <InfoTooltip text={tooltipText.avgHumidity24h} color="#64748b" />
+              </div>
               <div className="envKpiValue">
                 {overview ? fmt(overview.avg_humidity_pct, 0) : "—"} <span className="envUnit">%</span>
               </div>
@@ -417,7 +446,10 @@ export default function EnvironmentalPage() {
 
           <div className="envKpi">
             <div className="envKpiTop">
-              <div className="envKpiLabel">Air Quality Score (24h)</div>
+              <div className="envKpiLabel">
+                Air Quality Score (24h)
+                <InfoTooltip text={tooltipText.airQualityScore24h} color="#64748b" />
+              </div>
               <div className="envKpiValue">
                 {overview ? fmt(overview.air_quality_score, 0) : "—"} <span className="envUnit">/100</span>
               </div>

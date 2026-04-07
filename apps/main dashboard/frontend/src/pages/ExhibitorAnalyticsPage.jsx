@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import Sparkline from "../components/Sparkline";
+import InfoTooltip from "../components/InfoTooltip";
 
 function maxPoint(points) {
   return points.reduce((best, point) => {
@@ -45,10 +46,13 @@ function trendLabel(points) {
   return delta > 0 ? "Rising" : "Cooling";
 }
 
-function StatCard({ label, value, hint }) {
+function StatCard({ label, tooltip, value, hint }) {
   return (
     <div className="exhStatCard">
-      <span>{label}</span>
+      <span>
+        {label}
+        <InfoTooltip text={tooltip} color="#64748b" />
+      </span>
       <strong>{value}</strong>
       {hint ? <small>{hint}</small> : null}
     </div>
@@ -90,6 +94,21 @@ export default function ExhibitorAnalyticsPage() {
   const topHall = latestHallSnapshot[0] || null;
   const bottomHall = latestHallSnapshot.length ? latestHallSnapshot[latestHallSnapshot.length - 1] : null;
   const primaryEvent = Array.isArray(events) && events.length ? events[0] : null;
+  const tooltipText = {
+      engagementAnalytics: "Expanded runtime exhibitor insights based on live booth engagement and nearby hall activity.",
+      catchmentHallsTracked: "Number of nearby halls included in the current exhibitor catchment analysis.",
+      timeBucketsAnalysed: "Number of time windows used in the current engagement analysis.",
+      peakEngagement: "Highest predicted engagement score observed in the current series.",
+      peakCompetition: "Highest nearby competitive density observed in the current series.",
+      engagementMovement: "Average bucket-to-bucket movement in engagement level.",
+      currentTrend: "Overall direction of the latest competitive density trend.",
+      averageCatchmentEngagement: "Average engagement level across the tracked catchment area.",
+      competitiveDensityScore: "Latest competitive density score around the exhibitor catchment area.",
+      hallRanking: "Hall-by-hall engagement ranking for the latest time bucket.",
+      snapshotSummary: "Current runtime summary of strongest and weakest nearby halls plus linked event context.",
+      recentLinkedEvents: "Most recent event records currently linked to this exhibitor.",
+      quickInsights: "Short AI-generated observations based on the latest runtime exhibitor analytics.",
+    };
 
   return (
     <div className="exhPageWrap">
@@ -97,7 +116,10 @@ export default function ExhibitorAnalyticsPage() {
         <div className="exhCardHeaderRow">
           <div className="exhCardHeaderLeft">
             <div>
-              <h3>Engagement analytics</h3>
+              <h3>
+                Engagement analytics
+                <InfoTooltip text={tooltipText.engagementAnalytics} color="#64748b" />
+              </h3>
               <p>Expanded insights derived from the same live exhibitor AI responses already powering the portal.</p>
             </div>
           </div>
@@ -108,31 +130,37 @@ export default function ExhibitorAnalyticsPage() {
           <div className="exhStatsGrid">
             <StatCard
               label="Catchment halls tracked"
+              tooltip={tooltipText.catchmentHallsTracked}
               value={hallCount || "—"}
               hint={heatmap?.meta?.hallName ? `Centred on ${heatmap.meta.hallName}` : "Current surrounding halls"}
             />
             <StatCard
               label="Time buckets analysed"
+              tooltip={tooltipText.timeBucketsAnalysed}
               value={bucketCount || "—"}
               hint={heatmap?.meta?.intervalMinutes ? `${heatmap.meta.intervalMinutes}-minute windows` : "Latest forecast windows"}
             />
             <StatCard
               label="Peak engagement"
+              tooltip={tooltipText.peakEngagement}
               value={peakEngagementPoint ? formatMetric(peakEngagementPoint.value, 3) : "—"}
               hint={peakEngagementPoint?.ts ? formatDateTime(peakEngagementPoint.ts) : "Highest predicted period"}
             />
             <StatCard
               label="Peak competition"
+              tooltip={tooltipText.peakCompetition}
               value={peakDensityPoint ? formatMetric(peakDensityPoint.value, 3) : "—"}
               hint={peakDensityPoint?.ts ? formatDateTime(peakDensityPoint.ts) : "Highest nearby density"}
             />
             <StatCard
               label="Engagement movement"
+              tooltip={tooltipText.engagementMovement}
               value={engagementVolatility !== null ? formatMetric(engagementVolatility, 3) : "—"}
               hint="Average bucket-to-bucket change"
             />
             <StatCard
               label="Current trend"
+              tooltip={tooltipText.currentTrend}
               value={densityTrendLabel}
               hint={densityLatest ? `Latest score ${formatMetric(densityLatest.competitive_density_score, 3)}` : "Trend needs more data"}
             />
@@ -144,7 +172,10 @@ export default function ExhibitorAnalyticsPage() {
             <div className="exhMiniChartCard">
               <div className="exhMiniHeader">
                 <div>
-                  <strong>Average catchment engagement</strong>
+                  <strong>
+                    Average catchment engagement
+                    <InfoTooltip text={tooltipText.averageCatchmentEngagement} color="#64748b" />
+                  </strong>
                   <span>
                     {avgCatchmentEngagement !== null ? formatMetric(avgCatchmentEngagement, 3) : "—"}
                   </span>
@@ -167,7 +198,10 @@ export default function ExhibitorAnalyticsPage() {
             <div className="exhMiniChartCard">
               <div className="exhMiniHeader">
                 <div>
-                  <strong>Competitive density score</strong>
+                  <strong>
+                    Competitive density score
+                    <InfoTooltip text={tooltipText.competitiveDensityScore} color="#64748b" />
+                  </strong>
                   <span>{densityLatest ? formatMetric(densityLatest.competitive_density_score, 3) : "—"}</span>
                 </div>
                 <span className="exhMiniPill">
@@ -188,7 +222,10 @@ export default function ExhibitorAnalyticsPage() {
           <div className="exhBottomGrid">
             <div className="exhTableCard">
               <div className="exhMiniHeader">
-                <strong>Hall ranking</strong>
+                <strong>
+                  Hall ranking
+                  <InfoTooltip text={tooltipText.hallRanking} color="#64748b" />
+                </strong>
                 <span>Latest bucket</span>
               </div>
               {!latestHallSnapshot.length ? (
@@ -215,7 +252,10 @@ export default function ExhibitorAnalyticsPage() {
 
             <div className="exhTableCard">
               <div className="exhMiniHeader">
-                <strong>Snapshot summary</strong>
+                <strong>
+                  Snapshot summary
+                  <InfoTooltip text={tooltipText.snapshotSummary} color="#64748b" />
+                </strong>
                 <span>Current runtime view</span>
               </div>
               <div className="exhSummaryStack">
@@ -244,7 +284,10 @@ export default function ExhibitorAnalyticsPage() {
           <div className="exhBottomGrid">
             <div className="exhTableCard">
               <div className="exhMiniHeader">
-                <strong>Recent linked events</strong>
+                <strong>
+                  Recent linked events
+                  <InfoTooltip text={tooltipText.recentLinkedEvents} color="#64748b" />
+                </strong>
                 <span>{events?.length || 0} record{events?.length === 1 ? "" : "s"}</span>
               </div>
               {!events?.length ? (
@@ -276,7 +319,10 @@ export default function ExhibitorAnalyticsPage() {
 
             <div className="exhTableCard">
               <div className="exhMiniHeader">
-                <strong>Quick insights</strong>
+                <strong>
+                  Quick insights
+                  <InfoTooltip text={tooltipText.quickInsights} color="#64748b" />
+                </strong>
               </div>
               <div className="exhInsightList">
                 {quickInsights.length ? (

@@ -1,4 +1,5 @@
 import { useOutletContext } from "react-router-dom";
+import InfoTooltip from "../components/InfoTooltip";
 
 function BoothIcon() {
   return (
@@ -40,12 +41,17 @@ function PurpleIcon({ children }) {
   return <div className="exhIconCircle">{children}</div>;
 }
 
-function KpiCard({ title, value, sub, icon, tone = "default", valueClassName = "" }) {
+function KpiCard({ title, tooltip, value, sub, icon, tone = "default", valueClassName = "" }) {
   return (
     <div className="exhCard exhKpiCard">
       <div className="exhCardInner">
         <PurpleIcon>{icon}</PurpleIcon>
-        <p className="exhCardTitle">{title}</p>
+
+        <p className="exhCardTitle">
+          {title}
+          <InfoTooltip text={tooltip} color="#64748b" />
+        </p>
+
         <div className={`exhCardValue ${valueClassName}`.trim()}>{value}</div>
         <div className="exhCardMetaRow">
           {sub ? <p className="exhCardSub">{sub}</p> : null}
@@ -82,11 +88,21 @@ export default function ExhibitorDashboard() {
       : "good"
     : "default";
 
+  const tooltipText = {
+    assignedBooth: "Current booth assignment for this exhibitor in the linked event.",
+    aiConfidence: "Model confidence level for the current exhibitor analytics and heatmap output.",
+    competitionDensity: "How busy the surrounding competitive area is around the booth catchment.",
+    eventsLinked: "Number of event records currently linked to this exhibitor.",
+    overview: "High-level summary of exhibitor performance, traffic and engagement insights.",
+    profile: "Core exhibitor details and average engagement summary.",
+  };
+
   return (
     <div className="exhPageWrap">
       <div className="exhTopRow">
         <KpiCard
           title="Assigned Booth"
+          tooltip={tooltipText.assignedBooth}
           value={boothText}
           valueClassName="isBoothCode"
           sub={
@@ -99,6 +115,7 @@ export default function ExhibitorDashboard() {
 
         <KpiCard
           title="AI Confidence"
+          tooltip={tooltipText.aiConfidence}
           value={confidencePct === null ? "—" : formatPercent(confidencePct, 0)}
           sub={
             heatmap?.meta?.aiConfidence?.avgStd !== undefined
@@ -111,6 +128,7 @@ export default function ExhibitorDashboard() {
 
         <KpiCard
           title="Competition Density"
+          tooltip={tooltipText.competitionDensity}
           value={densityLatest?.competitive_density_label || "—"}
           sub={densityLatest ? `Score ${formatMetric(densityLatest.competitive_density_score, 3)}` : "Latest catchment comparison"}
           icon={<DensityIcon />}
@@ -119,6 +137,7 @@ export default function ExhibitorDashboard() {
 
         <KpiCard
           title="Events Linked"
+          tooltip={tooltipText.eventsLinked}
           value={String(events.length || 0)}
           sub={events.length ? `Latest ${events[0]?.event_name || events[0]?.event_id}` : "No linked event records"}
           icon={<EventsIcon />}
@@ -130,7 +149,10 @@ export default function ExhibitorDashboard() {
           <div className="exhCardHeaderRow">
             <div className="exhCardHeaderLeft">
               <div>
-                <h3>Overview</h3>
+                <h3>
+                  Overview
+                  <InfoTooltip text={tooltipText.overview} color="#64748b" />
+                </h3>
                 <p>High-level exhibitor performance snapshot.</p>
               </div>
             </div>
@@ -155,7 +177,10 @@ export default function ExhibitorDashboard() {
           <div className="exhCardHeaderRow">
             <div className="exhCardHeaderLeft">
               <div>
-                <h3>Profile</h3>
+                <h3>
+                  Profile
+                  <InfoTooltip text={tooltipText.profile} color="#64748b" />
+                </h3>
                 <p>Current exhibitor summary.</p>
               </div>
             </div>

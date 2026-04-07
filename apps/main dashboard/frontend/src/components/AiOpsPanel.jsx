@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import axios from "axios";
+import InfoTooltip from "./InfoTooltip";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -55,9 +56,15 @@ export default function AiOpsPanel() {
     <div className="card" style={{ overflowX: "auto" }}>
       <div className="cardHeaderRow">
         <div className="cardHeaderLeft">
-          <h3 className="cardTitleBig" style={{ margin: 0 }}>
-            AI Operations: Live Status
-          </h3>
+          <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+            <h3 className="cardTitleBig" style={{ margin: 0 }}>
+              AI Operations: Live Status
+            </h3>
+            <InfoTooltip
+              text="Live hall-level AI summary showing occupancy, CO₂, congestion, recommended action and anomaly status."
+              color="#64748b"
+            />
+          </div>
         </div>
         <div className="hint">Source: /ai/ops-live</div>
       </div>
@@ -73,12 +80,12 @@ export default function AiOpsPanel() {
         <table className="opsTable">
           <thead>
             <tr>
-              <th>Hall</th>
-              <th>Occupancy</th>
-              <th>CO₂</th>
-              <th>Congestion</th>
-              <th>AI Action</th>
-              <th>Anomaly</th>
+              <th title="Hall name and hall ID.">Hall</th>
+              <th title="Current occupancy ratio for the hall.">Occupancy</th>
+              <th title="Latest CO₂ reading in parts per million.">CO₂</th>
+              <th title="Latest flow congestion index for the hall.">Congestion</th>
+              <th title="Recommended AI action for this hall.">AI Action</th>
+              <th title="Whether the AI flagged an anomaly for this hall.">Anomaly</th>
             </tr>
           </thead>
 

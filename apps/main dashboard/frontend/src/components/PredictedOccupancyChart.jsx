@@ -1,11 +1,11 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import InfoTooltip from "./InfoTooltip";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const ACCENT = "#E8486F";
 
 function LineChart({ points }) {
-  // points: [{ offsetMinutes, predictedOccupancy }]
   const w = 520;
   const h = 160;
   const pad = 18;
@@ -18,7 +18,6 @@ function LineChart({ points }) {
   const yRawMin = Math.min(...ys);
   const yRawMax = Math.max(...ys);
 
-  // ✅ pad Y range slightly so line doesn't hug edges
   const yMin = Math.max(0, Math.floor(yRawMin - (yRawMax - yRawMin) * 0.08));
   const yMax = Math.ceil(yRawMax + (yRawMax - yRawMin) * 0.08);
 
@@ -35,7 +34,6 @@ function LineChart({ points }) {
     .map((p, i) => `${i === 0 ? "M" : "L"} ${xScale(p.offsetMinutes)} ${yScale(Number(p.predictedOccupancy || 0))}`)
     .join(" ");
 
-  // ✅ area fill under line to baseline (y=0 axis line)
   const baselineY = h - pad;
   const areaD = `${lineD} L ${xScale(points[points.length - 1].offsetMinutes)} ${baselineY} L ${xScale(points[0].offsetMinutes)} ${baselineY} Z`;
 
@@ -45,17 +43,13 @@ function LineChart({ points }) {
 
   return (
     <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ display: "block" }}>
-      {/* axes */}
       <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} stroke="#e5e7eb" />
       <line x1={pad} y1={pad} x2={pad} y2={h - pad} stroke="#e5e7eb" />
 
-      {/* soft area fill */}
       <path d={areaD} fill={ACCENT} opacity="0.12" />
 
-      {/* pink line */}
       <path d={lineD} fill="none" stroke={ACCENT} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
 
-      {/* points */}
       {points.map((p) => (
         <circle
           key={p.offsetMinutes}
@@ -68,10 +62,8 @@ function LineChart({ points }) {
         />
       ))}
 
-      {/* last point emphasis */}
       <circle cx={lastX} cy={lastY} r="3.8" fill={ACCENT} stroke="#ffffff" strokeWidth="2" />
 
-      {/* labels (keep minimal like your other charts) */}
       <text x={pad} y={pad - 4} fontSize="10" fill="#6b7280">
         {yRawMax} ppl
       </text>
@@ -88,7 +80,6 @@ export default function PredictedOccupancyChart({ refreshSignal }) {
   const [forecast, setForecast] = useState(null);
   const [err, setErr] = useState("");
 
-  // Load halls from ops-live (telemetry-driven)
   useEffect(() => {
     let alive = true;
     const load = async () => {
@@ -110,7 +101,6 @@ export default function PredictedOccupancyChart({ refreshSignal }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshSignal]);
 
-  // Load forecast for selected hall
   useEffect(() => {
     let alive = true;
     const loadForecast = async () => {
@@ -143,6 +133,10 @@ export default function PredictedOccupancyChart({ refreshSignal }) {
         <div className="cardHeaderLeft">
           <h3 className="cardTitleBig" style={{ margin: 0 }}>
             Predicted Occupancy (Next 60 min)
+            <InfoTooltip
+              text="Short-term AI forecast for the selected hall over the next 60 minutes."
+              color="#64748b"
+            />
           </h3>
         </div>
         <div className="hint">Source: /ai/occupancy-forecast</div>

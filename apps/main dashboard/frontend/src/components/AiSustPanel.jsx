@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import InfoTooltip from "./InfoTooltip";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -46,7 +47,13 @@ export default function AiSustPanel() {
     <div className="card" style={{ overflowX: "auto" }}>
       <div className="cardHeaderRow">
         <div className="cardHeaderLeft">
-          <h3 style={{ margin: 0 }}>AI Sustainability: Live Status</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+            <h3 style={{ margin: 0 }}>AI Sustainability: Live Status</h3>
+            <InfoTooltip
+              text="Live hall-level sustainability view showing HVAC energy, carbon, efficiency, AI action and anomaly status."
+              color="#64748b"
+            />
+          </div>
         </div>
         <div className="hint">Source: /ai/sust-live</div>
       </div>
@@ -62,13 +69,13 @@ export default function AiSustPanel() {
         <table className="tableLike">
           <thead>
             <tr>
-              <th>Hall</th>
-              <th className="rowRight">HVAC Energy</th>
-              <th className="rowRight">Carbon</th>
-              <th className="rowRight">Efficiency</th>
-              <th>Status</th>
-              <th>AI Action</th>
-              <th>Anomaly</th>
+              <th title="Hall name and hall ID.">Hall</th>
+              <th className="rowRight" title="Latest HVAC energy usage for the hall.">HVAC Energy</th>
+              <th className="rowRight" title="Estimated carbon output for the hall.">Carbon</th>
+              <th className="rowRight" title="Current energy efficiency score for the hall.">Efficiency</th>
+              <th title="Current sustainability status label for the hall.">Status</th>
+              <th title="Recommended AI action for sustainability optimisation.">AI Action</th>
+              <th title="Whether the sustainability pipeline flagged an anomaly.">Anomaly</th>
             </tr>
           </thead>
           <tbody>
@@ -110,4 +117,4 @@ export default function AiSustPanel() {
       </div>
     </div>
   );
-}
+} 

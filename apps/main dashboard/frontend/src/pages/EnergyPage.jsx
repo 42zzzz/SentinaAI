@@ -3,6 +3,7 @@ import "./EnergyPage.css";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Sparkline from "../components/Sparkline";
+import InfoTooltip from "../components/InfoTooltip";
 import {
   getDashboardRefreshMs,
   useDashboardSettings,
@@ -11,11 +12,14 @@ import {
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const SUST_GREEN = "#00802B";
 
-function CardShell({ title, right, children }) {
+function CardShell({ title, tooltip, right, children }) {
   return (
     <div className="energyCard">
       <div className="energyCardHeader">
-        <div className="energyCardTitle">{title}</div>
+        <div className="energyCardTitle">
+          {title}
+          <InfoTooltip text={tooltip} color="#64748b" />
+        </div>
         {right ? <div className="energyCardRight">{right}</div> : null}
       </div>
       <div className="energyCardBody">{children}</div>
@@ -60,11 +64,14 @@ function HorizontalBars({ rows = [] }) {
   );
 }
 
-function KpiMiniCard({ label, value, sub, points }) {
+function KpiMiniCard({ label, tooltip, value, sub, points }) {
   return (
     <div className="kpiMini" style={{ overflow: "hidden" }}>
       <div className="kpiMiniTop">
-        <div className="kpiMiniLabel">{label}</div>
+        <div className="kpiMiniLabel">
+          {label}
+          <InfoTooltip text={tooltip} color="#64748b" />
+        </div>
         <div className="kpiMiniValue">{value}</div>
       </div>
       {sub ? <div className="kpiMiniSub">{sub}</div> : null}
@@ -207,6 +214,16 @@ export default function EnergyPage() {
 
   const barsPoints = useMemo(() => energyPoints24h.slice(-36), [energyPoints24h]);
 
+  const tooltipText = {
+    liveEnergyUsage: "Live energy trend for the selected metric and zone over the latest time window.",
+    avgConsumptionZone: "Average energy consumption by zone for the selected filter set.",
+    energyByDeviceType: "Energy usage grouped by device or source type.",
+    totalEnergy24h: "Total recorded energy consumption across the latest 24 hours.",
+    peakInterval24h: "Highest single 15-minute energy interval recorded in the latest 24 hours.",
+    hvacShare24h: "HVAC contribution as a share of total energy consumption over the latest 24 hours.",
+    anomaliesAlerts: "Latest anomaly and alert summary for energy-related signals in the past 24 hours.",
+  };
+
   return (
     <div className="sustTheme">
       <div className="energyPage">
@@ -260,26 +277,32 @@ export default function EnergyPage() {
 
           {/* Top 3 cards */}
           <div className="energyGridTop">
-            <CardShell title="Live Energy Usage">
+            <CardShell title="Live Energy Usage" tooltip={tooltipText.liveEnergyUsage}>
               <div className="liveChart">
                 <BarsMiniChart points={barsPoints} />
               </div>
             </CardShell>
 
-            <CardShell title="Average Consumption Per Zone (kWh)">
+            <CardShell
+              title="Average Consumption Per Zone (kWh)"
+              tooltip={tooltipText.avgConsumptionZone}
+            >
               <HorizontalBars rows={zonesFiltered} />
             </CardShell>
 
-            <CardShell title="Energy Consumption By Device Type">
+            <CardShell
+              title="Energy Consumption By Device Type"
+              tooltip={tooltipText.energyByDeviceType}
+            >
               <HorizontalBars rows={sourcesFiltered} />
             </CardShell>
           </div>
 
-          {/* KPI row + anomalies */}
           <div className="energyGridBottom">
             <div className="kpiRow">
               <KpiMiniCard
                 label="Total Energy (24h)"
+                tooltip={tooltipText.totalEnergy24h}
                 value={`${kpis.totalKwh24h.toFixed(0)} kWh`}
                 sub="Sum of all intervals"
                 points={sparkEnergy6h}
@@ -287,6 +310,7 @@ export default function EnergyPage() {
 
               <KpiMiniCard
                 label="Peak Interval (24h)"
+                tooltip={tooltipText.peakInterval24h}
                 value={`${kpis.peakKwhInterval.toFixed(1)} kWh`}
                 sub="Max 15-min interval"
                 points={sparkEnergy6h}
@@ -294,13 +318,18 @@ export default function EnergyPage() {
 
               <KpiMiniCard
                 label="HVAC Share (24h)"
+                tooltip={tooltipText.hvacShare24h}
                 value={`${kpis.hvacSharePct.toFixed(0)}%`}
                 sub={`${kpis.hvacKwh24h.toFixed(0)} kWh HVAC`}
                 points={sparkEnergy6h}
               />
             </div>
 
-            <CardShell title="Anomalies / Alerts" right={<span className="hintPill">Last 24h</span>}>
+            <CardShell
+              title="Anomalies / Alerts"
+              tooltip={tooltipText.anomaliesAlerts}
+              right={<span className="hintPill">Last 24h</span>}
+            >
               <div className="anomList">
                 {!anoms.length ? (
                   <div className="anomEmpty">No anomalies found.</div>
@@ -315,6 +344,8 @@ export default function EnergyPage() {
               </div>
             </CardShell>
           </div>
+          
+          
         </div>
       </div>
     </div>
