@@ -14,6 +14,8 @@ const formatRole = (role) =>
 const formatDate = (date) =>
     date ? new Date(date).toLocaleString() : "—";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
 export default function Admin() {
     const token =
         localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -96,7 +98,7 @@ export default function Admin() {
                 return;
             }
 
-            const res = await fetch("http://localhost:8080/users", {
+            const res = await fetch(`${API_BASE}/users`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
@@ -134,7 +136,7 @@ export default function Admin() {
                 return;
             }
 
-            const res = await fetch("http://localhost:8080/users/roles", {
+            const res = await fetch(`${API_BASE}/users/roles`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
@@ -205,7 +207,7 @@ export default function Admin() {
         if (Object.keys(newErrors).length > 0) return;
 
         try {
-            const res = await fetch("http://localhost:8080/users", {
+            const res = await fetch(`${API_BASE}/users`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -238,7 +240,7 @@ export default function Admin() {
 
     const handleUpdateUser = async () => {
         try {
-            const res = await fetch(`http://localhost:8080/users/${selectedUser.user_id}`, {
+            const res = await fetch(`${API_BASE}/users/${selectedUser.user_id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -276,7 +278,7 @@ export default function Admin() {
     const handleDeleteUser = async () => {
         try {
             const res = await fetch(
-                `http://localhost:8080/users/${selectedUser.user_id}`,
+                `${API_BASE}/users/${selectedUser.user_id}`,
                 {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${token}` },
