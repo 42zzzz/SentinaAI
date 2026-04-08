@@ -52,7 +52,7 @@ function getPageTitle(pathname) {
   if (pathname.startsWith("/soc/alerts/")) return "Alert Details";
   if (pathname.startsWith("/soc/alerts")) return "Alerts";
   if (pathname.startsWith("/soc/analytics")) return "Analytics";
-  if (pathname.startsWith("/soc/map")) return "Map";
+  if (pathname.startsWith("/soc/map")) return "Digital Twin";
   if (pathname.startsWith("/soc/logs")) return "Security Logs";
   if (pathname.startsWith("/soc/reports/new")) return "Generate Report";
   if (pathname.startsWith("/soc/reports/") && pathname.endsWith("/edit")) return "Edit Report Draft";
@@ -529,9 +529,9 @@ const handleLogout = (e) => {
               <SidebarText collapsed={sidebarCollapsed}>Analytics</SidebarText>
             </NavLink>
 
-            <NavLink to={`${rolePrefix}/map`} style={navItemStyle} title={sidebarCollapsed ? "Map" : undefined}>
-              <SvgIcon><NavigationNavIcon /></SvgIcon>
-              <SidebarText collapsed={sidebarCollapsed}>Map</SidebarText>
+            <NavLink to={`${rolePrefix}/map`} style={navItemStyle} title={sidebarCollapsed ? "Digital Twin" : undefined}>
+              <SvgIcon><DigitalTwinNavIcon /></SvgIcon>
+              <SidebarText collapsed={sidebarCollapsed}>Digital Twin</SidebarText>
             </NavLink>
 
             <NavLink to={`${rolePrefix}/logs`} style={navItemStyle} title={sidebarCollapsed ? "Security Logs" : undefined}>

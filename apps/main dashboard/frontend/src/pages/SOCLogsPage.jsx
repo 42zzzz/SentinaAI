@@ -10,17 +10,29 @@ function fmtTs(value) {
   return d.toLocaleString();
 }
 
-function normalize(value) {
-  return String(value || "").toLowerCase();
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M21 21L16.65 16.65M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 export default function SOCLogsPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
   const [search, setSearch] = useState("");
-  const [eventFilter, setEventFilter] = useState("all");
-  const [outcomeFilter, setOutcomeFilter] = useState("all");
+  const [outcomeFilter, setOutcomeFilter] = useState("ALL");
+  const [eventTypeFilter, setEventTypeFilter] = useState("ALL");
+  const [methodFilter, setMethodFilter] = useState("ALL");
 
   useEffect(() => {
     let alive = true;
@@ -49,21 +61,38 @@ export default function SOCLogsPage() {
     };
   }, []);
 
-  const eventOptions = useMemo(() => {
-    const values = Array.from(new Set(rows.map((row) => row.event_type).filter(Boolean)));
-    return ["all", ...values];
+  const eventTypeOptions = useMemo(() => {
+    const vals = Array.from(
+      new Set(rows.map((row) => String(row.event_type || "").trim()).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    return ["ALL", ...vals];
   }, [rows]);
 
-  const outcomeOptions = useMemo(() => {
-    const values = Array.from(new Set(rows.map((row) => row.outcome).filter(Boolean)));
-    return ["all", ...values];
+  const methodOptions = useMemo(() => {
+    const vals = Array.from(
+      new Set(rows.map((row) => String(row.http_method || "").trim().toUpperCase()).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    return ["ALL", ...vals];
   }, [rows]);
 
   const filteredRows = useMemo(() => {
-    const q = normalize(search).trim();
+    const q = search.trim().toLowerCase();
+
     return rows.filter((row) => {
-      if (eventFilter !== "all" && row.event_type !== eventFilter) return false;
-      if (outcomeFilter !== "all" && row.outcome !== outcomeFilter) return false;
+      const outcomeOk =
+        outcomeFilter === "ALL" ||
+        String(row.outcome || "").toUpperCase() === outcomeFilter;
+
+      const eventTypeOk =
+        eventTypeFilter === "ALL" ||
+        String(row.event_type || "").trim() === eventTypeFilter;
+
+      const methodOk =
+        methodFilter === "ALL" ||
+        String(row.http_method || "").trim().toUpperCase() === methodFilter;
+
+      if (!outcomeOk || !eventTypeOk || !methodOk) return false;
+
       if (!q) return true;
 
       const haystack = [
@@ -78,166 +107,215 @@ export default function SOCLogsPage() {
         row.ip_address,
         row.reason,
       ]
-        .map((value) => normalize(value))
-        .join(" ");
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
       return haystack.includes(q);
     });
-  }, [rows, search, eventFilter, outcomeFilter]);
+  }, [rows, search, outcomeFilter, eventTypeFilter, methodFilter]);
 
   return (
-    <div style={wrap}>
-      <div style={headerBar}>
-        <div style={{ color: "#123150", fontSize: 22, fontWeight: 900 }}>Security Logs</div>
-        <div style={{ color: "#6b7280", fontSize: 13, fontWeight: 700 }}>
-          {loading ? "Refreshing..." : `${filteredRows.length} of ${rows.length} records`}
+    <div
+      style={{
+        display: "grid",
+        gap: 14,
+      }}
+    >
+      <div
+        style={{
+          background: "#ffffff",
+          border: "1px solid #dbeafe",
+          borderRadius: 18,
+          overflow: "hidden",
+          boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        }}
+      >
+        <div
+          style={{
+            padding: "16px 18px",
+            borderBottom: "1px solid #e5e7eb",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+              alignItems: "center",
+              flex: 1,
+            }}
+          >
+            <div
+              style={{
+                position: "relative",
+                minWidth: 260,
+                flex: "1 1 300px",
+              }}
+            >
+              <span
+                style={{
+                  position: "absolute",
+                  left: 12,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 16,
+                  height: 16,
+                  color: "#64748b",
+                  pointerEvents: "none",
+                }}
+              >
+                <SearchIcon />
+              </span>
+
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search logs"
+                style={{
+                  width: "100%",
+                  height: 40,
+                  borderRadius: 12,
+                  border: "1px solid #dbeafe",
+                  padding: "0 12px 0 38px",
+                  fontSize: 14,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            <select
+              value={outcomeFilter}
+              onChange={(e) => setOutcomeFilter(e.target.value)}
+              style={selectStyle}
+            >
+              <option value="ALL">All outcomes</option>
+              <option value="SUCCESS">Success</option>
+              <option value="FAILED">Failed</option>
+            </select>
+
+            <select
+              value={eventTypeFilter}
+              onChange={(e) => setEventTypeFilter(e.target.value)}
+              style={selectStyle}
+            >
+              {eventTypeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option === "ALL" ? "All event types" : option}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={methodFilter}
+              onChange={(e) => setMethodFilter(e.target.value)}
+              style={selectStyle}
+            >
+              {methodOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option === "ALL" ? "All methods" : option}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ color: "#6b7280", fontSize: 13, fontWeight: 700 }}>
+            {loading ? "Refreshing..." : `${filteredRows.length} records`}
+          </div>
         </div>
-      </div>
 
-      <div style={controlsWrap}>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search logs"
-          style={searchInput}
-        />
+        {error ? (
+          <div
+            style={{
+              margin: 16,
+              padding: 12,
+              borderRadius: 12,
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              color: "#1d4ed8",
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            {error}
+          </div>
+        ) : null}
 
-        <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} style={selectInput}>
-          {eventOptions.map((option) => (
-            <option key={option} value={option}>
-              {option === "all" ? "All events" : option}
-            </option>
-          ))}
-        </select>
-
-        <select value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value)} style={selectInput}>
-          {outcomeOptions.map((option) => (
-            <option key={option} value={option}>
-              {option === "all" ? "All outcomes" : option}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {error ? (
-        <div style={errorBox}>{error}</div>
-      ) : null}
-
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", minWidth: 1100, borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ background: "#f8fafc" }}>
-              <th style={th}>Time</th>
-              <th style={th}>Event</th>
-              <th style={th}>Outcome</th>
-              <th style={th}>User</th>
-              <th style={th}>Email</th>
-              <th style={th}>Path</th>
-              <th style={th}>Method</th>
-              <th style={th}>Status</th>
-              <th style={th}>IP</th>
-              <th style={th}>Reason</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.length ? (
-              filteredRows.map((row) => (
-                <tr key={row.log_id} style={{ borderTop: "1px solid #eef2f7" }}>
-                  <td style={td}>{fmtTs(row.created_at)}</td>
-                  <td style={tdStrong}>{row.event_type || "-"}</td>
-                  <td style={td}>
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        padding: "4px 8px",
-                        borderRadius: 999,
-                        fontSize: 11,
-                        fontWeight: 800,
-                        background: row.outcome === "SUCCESS" ? "#dbeafe" : "#fee2e2",
-                        color: row.outcome === "SUCCESS" ? "#1d4ed8" : "#b91c1c",
-                      }}
-                    >
-                      {row.outcome || "-"}
-                    </span>
-                  </td>
-                  <td style={td}>{row.full_name || row.user_id || "-"}</td>
-                  <td style={td}>{row.email || "-"}</td>
-                  <td style={tdMono}>{row.request_path || "-"}</td>
-                  <td style={td}>{row.http_method || "-"}</td>
-                  <td style={td}>{row.http_status ?? "-"}</td>
-                  <td style={tdMono}>{row.ip_address || "-"}</td>
-                  <td style={td}>{row.reason || "-"}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="10" style={{ padding: 22, color: "#6b7280", textAlign: "center" }}>
-                  No audit logs available.
-                </td>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+            <thead>
+              <tr style={{ background: "#f8fafc" }}>
+                <th style={th}>Time</th>
+                <th style={th}>Event</th>
+                <th style={th}>Outcome</th>
+                <th style={th}>User</th>
+                <th style={th}>Email</th>
+                <th style={th}>Path</th>
+                <th style={th}>Method</th>
+                <th style={th}>Status</th>
+                <th style={th}>IP</th>
+                <th style={th}>Reason</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredRows.length ? (
+                filteredRows.map((row) => (
+                  <tr key={row.log_id} style={{ borderTop: "1px solid #eef2f7" }}>
+                    <td style={td}>{fmtTs(row.created_at)}</td>
+                    <td style={tdStrong}>{row.event_type || "-"}</td>
+                    <td style={td}>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          padding: "4px 8px",
+                          borderRadius: 999,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          background: row.outcome === "SUCCESS" ? "#dbeafe" : "#fee2e2",
+                          color: row.outcome === "SUCCESS" ? "#1d4ed8" : "#b91c1c",
+                        }}
+                      >
+                        {row.outcome || "-"}
+                      </span>
+                    </td>
+                    <td style={td}>{row.full_name || row.user_id || "-"}</td>
+                    <td style={td}>{row.email || "-"}</td>
+                    <td style={tdMono}>{row.request_path || "-"}</td>
+                    <td style={td}>{row.http_method || "-"}</td>
+                    <td style={td}>{row.http_status ?? "-"}</td>
+                    <td style={tdMono}>{row.ip_address || "-"}</td>
+                    <td style={td}>{row.reason || "-"}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="10" style={{ padding: 22, color: "#6b7280", textAlign: "center" }}>
+                    No audit logs available.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 }
 
-const wrap = {
-  background: "#ffffff",
-  border: "1px solid #dbeafe",
-  borderRadius: 18,
-  overflow: "hidden",
-  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-};
-
-const headerBar = {
-  padding: "18px 20px 12px",
-  borderBottom: "1px solid #e5e7eb",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-};
-
-const controlsWrap = {
-  display: "flex",
-  gap: 12,
-  flexWrap: "wrap",
-  padding: "14px 20px 16px",
-  borderBottom: "1px solid #e5e7eb",
-  background: "#f8fbff",
-};
-
-const searchInput = {
-  minWidth: 240,
-  flex: "1 1 280px",
-  height: 38,
-  borderRadius: 10,
-  border: "1px solid #cbd5e1",
-  padding: "0 12px",
-  fontSize: 14,
-};
-
-const selectInput = {
-  minWidth: 180,
-  height: 38,
-  borderRadius: 10,
-  border: "1px solid #cbd5e1",
-  padding: "0 12px",
-  fontSize: 14,
-  background: "#ffffff",
-};
-
-const errorBox = {
-  margin: 16,
-  padding: 12,
+const selectStyle = {
+  height: 40,
   borderRadius: 12,
-  background: "#eff6ff",
-  border: "1px solid #bfdbfe",
-  color: "#1d4ed8",
-  fontSize: 13,
-  fontWeight: 700,
+  border: "1px solid #dbeafe",
+  padding: "0 12px",
+  fontSize: 14,
+  outline: "none",
+  background: "#fff",
 };
 
 const th = {
@@ -245,7 +323,7 @@ const th = {
   padding: "12px 14px",
   fontSize: 12,
   fontWeight: 900,
-  color: "#123150",
+  color: "#64748b",
 };
 
 const td = {

@@ -115,9 +115,48 @@ function fmtTs(value) {
   return d.toLocaleString();
 }
 
+function severityStyle(severity) {
+  const s = String(severity || "").toUpperCase();
+
+  if (s === "CRITICAL") {
+    return {
+      background: "#fee2e2",
+      color: "#b91c1c",
+    };
+  }
+
+  if (s === "HIGH") {
+    return {
+      background: "#fee2e2",
+      color: "#dc2626",
+    };
+  }
+
+  if (s === "MEDIUM") {
+    return {
+      background: "#fef3c7",
+      color: "#b45309",
+    };
+  }
+
+  return {
+    background: "#e5e7eb",
+    color: "#374151",
+  };
+}
+
+const quickActionBtn = {
+  border: "1px solid #e5e7eb",
+  background: "#fff",
+  borderRadius: 12,
+  padding: "12px",
+  cursor: "pointer",
+  fontWeight: 800,
+};
+
 export default function SOCDashboardPage() {
   const navigate = useNavigate();
-  const settings = useDashboardSettings("soc");
+  const settings = useDashboardSettings("operations");
   const refreshMs = getDashboardRefreshMs(settings);
 
   const [overview, setOverview] = useState(null);
@@ -161,20 +200,62 @@ export default function SOCDashboardPage() {
   return (
     <div className="opsTheme socTheme">
       <style>{`
+        .socTheme .dashboardWrap{
+          display:flex;
+          flex-direction:column;
+          gap:22px;
+          padding-top:24px;
+        }
+
+        .socTheme .topRow{
+          display:grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap:22px;
+          overflow: visible;
+        }
+
+        .socTheme .grid2{
+          display:grid;
+          grid-template-columns: 1fr 1fr;
+          gap:22px;
+          padding-top:0;
+          align-items:start;
+        }
+
         .socTheme .cardTitle,
         .socTheme .cardHeaderRow h3 {
           color: #123150 !important;
         }
+
         .socTheme .iconCircle,
         .socTheme .iconCircleFloat {
           background: #123150 !important;
         }
+
+        @media (max-width: 1200px){
+          .socTheme .topRow{
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 1100px){
+          .socTheme .grid2{
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 700px){
+          .socTheme .topRow{
+            grid-template-columns: 1fr;
+          }
+        }
       `}</style>
+
       <div className="dashboardWrap">
         {error ? (
           <div
             style={{
-              marginBottom: 16,
+              marginBottom: 0,
               padding: 12,
               borderRadius: 12,
               background: "#eff6ff",
@@ -207,7 +288,7 @@ export default function SOCDashboardPage() {
 
         <div className="grid2">
           <CardShell title="Recent Critical Activity" icon={<ShieldIcon />}>
-            <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ display: "grid", gap: 12 }}>
               {recentAlerts.length ? (
                 recentAlerts.map((alert) => (
                   <button
@@ -223,7 +304,7 @@ export default function SOCDashboardPage() {
                       cursor: "pointer",
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
                       <div style={{ fontWeight: 800, color: "#111827" }}>
                         {alert.rule_name || alert.rule_key}
                       </div>
@@ -233,18 +314,7 @@ export default function SOCDashboardPage() {
                           borderRadius: 999,
                           fontSize: 11,
                           fontWeight: 800,
-                          background:
-                            alert.severity === "CRITICAL"
-                              ? "#fee2e2"
-                              : alert.severity === "HIGH"
-                              ? "#fef2f2"
-                              : "#f3f4f6",
-                          color:
-                            alert.severity === "CRITICAL"
-                              ? "#991b1b"
-                              : alert.severity === "HIGH"
-                              ? "#b91c1c"
-                              : "#374151",
+                          ...severityStyle(alert.severity),
                         }}
                       >
                         {alert.severity}
@@ -270,8 +340,8 @@ export default function SOCDashboardPage() {
           </CardShell>
 
           <CardShell title="Hot Zones & Quick Actions" icon={<ZoneIcon />}>
-            <div style={{ display: "grid", gap: 12 }}>
-              <div style={{ display: "grid", gap: 8 }}>
+            <div style={{ display: "grid", gap: 16 }}>
+              <div style={{ display: "grid", gap: 10 }}>
                 {hotZones.length ? (
                   hotZones.map((zone) => (
                     <div
@@ -280,6 +350,7 @@ export default function SOCDashboardPage() {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
+                        gap: 12,
                         padding: "10px 12px",
                         border: "1px solid #dbeafe",
                         borderRadius: 12,
@@ -287,10 +358,11 @@ export default function SOCDashboardPage() {
                     >
                       <div>
                         <div style={{ fontWeight: 800 }}>{zone.zone_id || "Unknown zone"}</div>
-                        <div style={{ fontSize: 12, color: "#6b7280" }}>
+                        <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
                           {zone.open_count} open alert{Number(zone.open_count) === 1 ? "" : "s"}
                         </div>
                       </div>
+
                       <button
                         type="button"
                         onClick={() => navigate(`/soc/alerts`)}
@@ -302,6 +374,7 @@ export default function SOCDashboardPage() {
                           padding: "8px 12px",
                           cursor: "pointer",
                           fontWeight: 700,
+                          flexShrink: 0,
                         }}
                       >
                         Review
@@ -317,77 +390,31 @@ export default function SOCDashboardPage() {
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  gap: 10,
-                  marginTop: 4,
+                  gap: 12,
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => navigate("/soc/alerts")}
-                  style={{
-                    border: "1px solid #e5e7eb",
-                    background: "#fff",
-                    borderRadius: 12,
-                    padding: "12px",
-                    cursor: "pointer",
-                    fontWeight: 800,
-                  }}
-                >
+                <button type="button" onClick={() => navigate("/soc/alerts")} style={quickActionBtn}>
                   Open Alerts
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => navigate("/soc/devices")}
-                  style={{
-                    border: "1px solid #e5e7eb",
-                    background: "#fff",
-                    borderRadius: 12,
-                    padding: "12px",
-                    cursor: "pointer",
-                    fontWeight: 800,
-                  }}
-                >
+                <button type="button" onClick={() => navigate("/soc/devices")} style={quickActionBtn}>
                   Device Overview
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => navigate("/soc/map")}
-                  style={{
-                    border: "1px solid #e5e7eb",
-                    background: "#fff",
-                    borderRadius: 12,
-                    padding: "12px",
-                    cursor: "pointer",
-                    fontWeight: 800,
-                  }}
-                >
-                  Open Map
+                <button type="button" onClick={() => navigate("/soc/map")} style={quickActionBtn}>
+                  Open Digital Twin
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => navigate("/soc/logs")}
-                  style={{
-                    border: "1px solid #e5e7eb",
-                    background: "#fff",
-                    borderRadius: 12,
-                    padding: "12px",
-                    cursor: "pointer",
-                    fontWeight: 800,
-                  }}
-                >
+                <button type="button" onClick={() => navigate("/soc/logs")} style={quickActionBtn}>
                   Open Logs
                 </button>
               </div>
 
               <div
                 style={{
-                  marginTop: 6,
                   display: "grid",
                   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  gap: 8,
+                  gap: 10,
                   fontSize: 13,
                   color: "#4b5563",
                 }}

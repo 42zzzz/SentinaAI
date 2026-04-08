@@ -106,7 +106,7 @@ export default function App() {
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="alerts/:id" element={<AlertDetailsPage />} />
           <Route path="analytics" element={<SOCAnalyticsPage />} />
-          <Route path="map" element={<NavigationPage />} />
+          <Route path="map" element={<DigitalTwinPage />} />
           <Route path="logs" element={<SOCLogsPage />} />
           <Route path="digital-twin" element={<DigitalTwinPage />} />
           <Route path="reports" element={<ReportsPage />} />
