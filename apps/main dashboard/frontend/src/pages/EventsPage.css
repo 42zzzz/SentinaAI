@@ -78,6 +78,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  color: #64748b;
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.55),
     0 1px 0 rgba(15,23,42,0.04);
@@ -125,15 +126,26 @@
   border: 0;
   outline: none;
   background: transparent;
-  font-size: 15px;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  font-size: 13px;
   font-weight: 500;
-  color: #0f172a;
+  font-family: inherit;
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
 }
 
 .opsTheme .eventsPage .pillInput::placeholder,
 .eventsPage .pillInput::placeholder{
-  color: #6b7280;
+  color: #64748b;
+  font-size: 13px;
   font-weight: 500;
+  font-family: inherit;
+  line-height: 1;
+  opacity: 1;
 }
 
 /* datetime-local inputs need tighter baseline to avoid clipping */
@@ -168,7 +180,9 @@
   padding-right: 26px;
   font-size: 13px;
   font-weight: 500;
-  color: #0f172a;
+  font-family: inherit;
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
   line-height: 30px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -417,3 +431,32 @@
   color: #E8486F !important;
 }
 
+.opsTheme .eventsPage .pillDate,
+.eventsPage .pillDate{
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.opsTheme .eventsPage .pillDate .pillInput,
+.eventsPage .pillDate .pillInput,
+.opsTheme .eventsPage .pillDate input,
+.eventsPage .pillDate input{
+  width: 100%;
+  min-width: 0;
+  padding-right: 30px;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* keep the native date picker icon inside the pill */
+.opsTheme .eventsPage .pillDate input::-webkit-calendar-picker-indicator,
+.eventsPage .pillDate input::-webkit-calendar-picker-indicator{
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  right: 10px;
+  cursor: pointer;
+}

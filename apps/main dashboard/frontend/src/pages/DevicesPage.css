@@ -87,6 +87,7 @@
   height: 30px;
   border-radius: 10px;
   background: #d9d9d9;
+  color: #64748b;
   border: 1px solid #d2d7dc;
   padding: 0 12px 1px;
   display: inline-flex;
@@ -139,10 +140,12 @@
   -webkit-appearance: none;
   padding: 0;
   margin: 0;
+  line-height: 1;
   font-size: 13px;
   font-weight: 500;
-  color: #0f172a;
-  line-height: 1;
+  font-family: inherit;
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
 }
 
 /* input reset */
@@ -152,15 +155,26 @@
   border: 0;
   outline: none;
   background: transparent;
-  font-size: 15px;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  font-size: 13px;
   font-weight: 500;
-  color: #0f172a;
+  font-family: inherit;
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
 }
 
 .opsTheme .devicesFiltersRow .pillInput::placeholder,
 .devicesFiltersRow .pillInput::placeholder{
-  color: #6b7280;
+  color: #64748b;
+  font-size: 13px;
   font-weight: 500;
+  font-family: inherit;
+  line-height: 1;
+  opacity: 1;
 }
 
 /* search icon slot on right */

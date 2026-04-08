@@ -128,8 +128,6 @@ export default function BoothsPage() {
       <div className="pageInner">
 
         <div className="boothsHeaderRow">
-          <h1>Booths & Assignments</h1>
-
           <div className="boothsHeaderRight">
             <div className="boothsCountTop">
               {loading ? "Loading…" : `${total} booths`}

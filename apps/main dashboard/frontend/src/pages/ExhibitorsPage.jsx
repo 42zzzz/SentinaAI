@@ -119,7 +119,6 @@ export default function ExhibitorsPage() {
       <div className="pageInner">
 
         <div className="exhibitorsHeaderRow">
-          <h1>Exhibitors</h1>
 
           <div className="exhibitorsHeaderRight">
             <div className="exhibitorsCountTop">

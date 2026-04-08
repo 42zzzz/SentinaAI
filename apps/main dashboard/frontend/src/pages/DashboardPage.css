@@ -33,10 +33,12 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
-  align-items: start;
-  padding-top: 24px;
+  align-items: stretch;
 }
 
+.opsTheme .grid3 > .card{
+  height: 100%;
+}
 .opsTheme .floatRow{
   display: grid;
   grid-template-columns: 1fr;
