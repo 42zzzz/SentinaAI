@@ -150,8 +150,6 @@ export default function NavigationPage() {
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <div style={card}>
-        <div style={{ ...titleStyle, color: theme.accent }}>{theme.title}</div>
-
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <select value={start} onChange={(e) => setStart(e.target.value)} style={sel} disabled={loading}>
             <option value="">{loading ? "Loading..." : "Start"}</option>

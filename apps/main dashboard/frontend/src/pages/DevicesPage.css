@@ -112,7 +112,6 @@
 }
 
 /* left icon slot */
-/* left icon slot */
 .opsTheme .devicesFiltersRow .pillLeftIcon,
 .sustTheme .devicesFiltersRow .pillLeftIcon,
 .devicesFiltersRow .pillLeftIcon{
@@ -128,6 +127,7 @@
 .opsTheme .devicesFiltersRow .pillLeftIcon{ color: #E8486F; }
 .sustTheme .devicesFiltersRow .pillLeftIcon{ color: #00802B; }
 .devicesFiltersRow .pillLeftIcon{ color: #64748b; } /* fallback */
+
 /* select reset */
 .opsTheme .devicesFiltersRow .pillSelect,
 .devicesFiltersRow .pillSelect{
@@ -386,10 +386,6 @@
 }
 
 /* =========================
-   PINK ACCENTS (force win)
-   ========================= */
-
-/* =========================
    ACCENTS (Ops = pink, Sust = green)
    ========================= */
 
@@ -410,7 +406,7 @@
   color: #ffffff !important;
 }
 .sustTheme .devicesControlsCard .clearFiltersBtn:hover{
-  background: #006b24 !important;   /* slightly darker hover */
+  background: #006b24 !important;
   border-color: #006b24 !important;
 }
 
@@ -428,12 +424,8 @@
 .opsTheme .devicesTable thead th{ color: #E8486F !important; }
 .sustTheme .devicesTable thead th{ color: #00802B !important; }
 
-/* remove this old global override (it was forcing pink everywhere) */
-/* .opsTheme main h1:first-of-type{ color: #E8486F !important; } */
-
 /* =========================
    FINAL SELECT + CARET BEHAVIOUR
-   (thin caret, absolute positioning, clickable, rotate via .isOpen)
    ========================= */
 
 .opsTheme .pillSelectWrap,
@@ -486,4 +478,77 @@
 .opsTheme .pillSelectWrap.isOpen .pillRightCaret,
 .pillSelectWrap.isOpen .pillRightCaret{
   transform: translateY(-35%) rotate(180deg);
+}
+
+/* =========================================================
+   SOC OVERRIDES
+   Keeps teammate work, fixes SOC colors + table fit only
+   ========================================================= */
+
+.socTheme .devicesPage{
+  background: #f5f7fb;
+  min-height: 100%;
+}
+
+.socTheme .devicesPage .pageInner{
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  padding: 22px 26px;
+}
+
+.socTheme .devicesTableCard{
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #e6ebf2;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+}
+
+.socTheme .devicesTableScroll{
+  width: 100%;
+  overflow-x: auto;
+}
+
+.socTheme .devicesTable{
+  width: 100%;
+  min-width: 1200px;
+  border-collapse: collapse;
+}
+
+.socTheme .devicesControlsCard{
+  border: 1px solid #e6ebf2;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+}
+
+.socTheme .devicesFiltersRow .pillLeftIcon{
+  color: #133250 !important;
+}
+
+.socTheme .devicesFiltersRow .pillSearchIcon{
+  background: #133250 !important;
+  color: #ffffff !important;
+}
+
+.socTheme .devicesHeaderRight .devicesCountTop{
+  color: #133250 !important;
+  font-weight: 700;
+}
+
+.socTheme .devicesTable thead th{
+  color: #133250 !important;
+}
+
+.socTheme .devicesControlsCard .clearFiltersBtn{
+  background: #133250 !important;
+  border-color: #133250 !important;
+  color: #ffffff !important;
+}
+
+.socTheme .devicesControlsCard .clearFiltersBtn:hover{
+  background: #0f2740 !important;
+  border-color: #0f2740 !important;
+}
+
+.socTheme .pillSelectWrap .pillRightCaret{
+  border-top-color: #133250 !important;
 }

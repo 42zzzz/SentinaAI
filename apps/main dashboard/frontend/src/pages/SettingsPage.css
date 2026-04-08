@@ -16,6 +16,12 @@
   min-width: 0;
 }
 
+.settingsSoc {
+  --settings-accent: #123150;
+  --settings-accent-soft: rgba(18, 49, 80, 0.1);
+  --settings-accent-border: rgba(18, 49, 80, 0.2);
+}
+
 .settingsSust {
   --settings-accent: #00802b;
   --settings-accent-soft: rgba(0, 128, 43, 0.1);

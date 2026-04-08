@@ -5,6 +5,7 @@ export const SETTINGS_EVENT = "sentina:dashboard-settings-updated";
 export const SETTINGS_KEYS = {
   operations: "sentina.settings.operations",
   sustainability: "sentina.settings.sustainability",
+  soc: "sentina.settings.soc",
   exhibitor: "sentina.settings.exhibitor",
 };
 
@@ -15,6 +16,10 @@ const DEFAULTS = {
   },
   sustainability: {
     refreshInterval: "30",
+    exportFormat: "xlsx",
+  },
+  soc: {
+    refreshInterval: "15",
     exportFormat: "xlsx",
   },
   exhibitor: {

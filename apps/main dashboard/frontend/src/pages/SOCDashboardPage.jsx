@@ -117,7 +117,7 @@ function fmtTs(value) {
 
 export default function SOCDashboardPage() {
   const navigate = useNavigate();
-  const settings = useDashboardSettings("operations");
+  const settings = useDashboardSettings("soc");
   const refreshMs = getDashboardRefreshMs(settings);
 
   const [overview, setOverview] = useState(null);
@@ -235,15 +235,15 @@ export default function SOCDashboardPage() {
                           fontWeight: 800,
                           background:
                             alert.severity === "CRITICAL"
-                              ? "#dbeafe"
+                              ? "#fee2e2"
                               : alert.severity === "HIGH"
-                              ? "#e0f2fe"
+                              ? "#fef2f2"
                               : "#f3f4f6",
                           color:
                             alert.severity === "CRITICAL"
-                              ? "#1d4ed8"
+                              ? "#991b1b"
                               : alert.severity === "HIGH"
-                              ? "#0369a1"
+                              ? "#b91c1c"
                               : "#374151",
                         }}
                       >
@@ -296,7 +296,7 @@ export default function SOCDashboardPage() {
                         onClick={() => navigate(`/soc/alerts`)}
                         style={{
                           border: "none",
-                          background: "#2563eb",
+                          background: "#123150",
                           color: "#fff",
                           borderRadius: 10,
                           padding: "8px 12px",

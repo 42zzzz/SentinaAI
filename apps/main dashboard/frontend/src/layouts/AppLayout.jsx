@@ -53,7 +53,7 @@ function getPageTitle(pathname) {
   if (pathname.startsWith("/soc/alerts")) return "Alerts";
   if (pathname.startsWith("/soc/analytics")) return "Analytics";
   if (pathname.startsWith("/soc/map")) return "Map";
-  if (pathname.startsWith("/soc/logs")) return "Logs";
+  if (pathname.startsWith("/soc/logs")) return "Security Logs";
   if (pathname.startsWith("/soc/reports/new")) return "Generate Report";
   if (pathname.startsWith("/soc/reports/") && pathname.endsWith("/edit")) return "Edit Report Draft";
   if (pathname.startsWith("/soc/reports")) return "Reports";
@@ -534,7 +534,7 @@ const handleLogout = (e) => {
               <SidebarText collapsed={sidebarCollapsed}>Map</SidebarText>
             </NavLink>
 
-            <NavLink to={`${rolePrefix}/logs`} style={navItemStyle} title={sidebarCollapsed ? "Logs" : undefined}>
+            <NavLink to={`${rolePrefix}/logs`} style={navItemStyle} title={sidebarCollapsed ? "Security Logs" : undefined}>
               <SvgIcon>
                 <svg width={IconSize} height={IconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <path d="M8 7H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -543,7 +543,7 @@ const handleLogout = (e) => {
                   <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
                 </svg>
               </SvgIcon>
-              <SidebarText collapsed={sidebarCollapsed}>Logs</SidebarText>
+              <SidebarText collapsed={sidebarCollapsed}>Security Logs</SidebarText>
             </NavLink>
           </>
         )}
@@ -786,10 +786,6 @@ const handleLogout = (e) => {
             .socLayout .alertsPage.opsTheme {
               background: #f6f9ff;
             }
-            .socLayout .devicesPage.opsTheme main h1:first-of-type,
-            .socLayout .alertsPage.opsTheme main h1:first-of-type {
-              color: #123150 !important;
-            }
             .socLayout .devicesHeaderRight .devicesCountTop,
             .socLayout .alertsHeaderRight .alertsCountTop {
               color: #123150 !important;
@@ -797,23 +793,42 @@ const handleLogout = (e) => {
             .socLayout .devicesTable thead th {
               color: #123150 !important;
             }
-            .socLayout .alertsPage { --alerts-accent: #123150; }
-            .socLayout .alertsControlsCard .clearFiltersBtn,
-            .socLayout .devicesControlsCard .clearFiltersBtn {
+            .socLayout .devicesPage .devicesControlsCard .clearFiltersBtn,
+            .socLayout .alertsPage .alertsControlsCard .clearFiltersBtn {
               color: #123150 !important;
               border-color: #bfdbfe !important;
               background: #eff6ff !important;
             }
-            .socLayout .alertsControlsCard .clearFiltersBtn:hover,
-            .socLayout .devicesControlsCard .clearFiltersBtn:hover {
+            .socLayout .devicesPage .devicesControlsCard .clearFiltersBtn:hover,
+            .socLayout .alertsPage .alertsControlsCard .clearFiltersBtn:hover {
               background: #dbeafe !important;
               border-color: #93c5fd !important;
+            }
+            .socLayout .alertsPage {
+              --alerts-accent: #123150;
+              --alerts-accent-bg: rgba(18,49,80,0.08);
+              --alerts-accent-hover: #0f2740;
+            }
+            .socLayout .devicesPage .pillLeftIcon,
+            .socLayout .devicesPage .pillRightCaret,
+            .socLayout .alertsPage .pillLeftIcon,
+            .socLayout .alertsPage .pillRightCaret {
+              color: #123150 !important;
+              border-top-color: #123150 !important;
+            }
+            .socLayout .devicesPage .pillSearchIcon {
+              background: #123150 !important;
+              color: #ffffff !important;
+            }
+            .socLayout .alertInfoCard h2,
+            .socLayout .alertActionsTop h2 {
+              color: #123150 !important;
             }
           `}</style>
         ) : null}
         {settingsOpen ? (
             <SettingsPage
-              section={isSust ? "sustainability" : "operations"}
+              section={section === "soc" ? "soc" : isSust ? "sustainability" : "operations"}
               onClose={() => setSettingsOpen(false)}
             />
           ) : null}

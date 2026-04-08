@@ -1,606 +1,386 @@
-/* frontend/src/pages/AlertDetailsPage.css
-   Goal: match your ops dashboard look, fix spacing, full width, readable actions,
-   and make AUTOMATED toggles look "ON but grey + disabled".
-*/
-
-.opsTheme.alertDetailsPage,
 .alertDetailsPage {
-    width: 100%;
-    max-width: none;
-    padding: 22px 26px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+  width: 100%;
+  max-width: none;
+  padding: 22px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-/* ---------- Header ---------- */
-.opsTheme .alertHeaderTitleWrap {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+.socTheme {
+  --alert-accent: #123150;
+  --alert-accent-soft: rgba(18, 49, 80, 0.12);
+  --alert-accent-border: #dbeafe;
+  --alert-bg: #f6f9ff;
 }
 
-.opsTheme .statusPill {
-    margin-left: 6px;
-    /* remove auto push */
+.opsTheme {
+  --alert-accent: #e8486f;
+  --alert-accent-soft: rgba(232, 72, 111, 0.12);
+  --alert-accent-border: #fecdd3;
+  --alert-bg: #fff7f9;
 }
 
-.opsTheme .alertHeader,
+.alertHeaderTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.statusPill {
+  margin-left: 6px;
+}
+
 .alertHeader {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
 }
 
-.opsTheme .alertBack,
 .alertBack {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    border: 1px solid rgba(15, 23, 42, 0.10);
-    background: #ffffff;
-    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 18px;
-    font-weight: 900;
-    color: #0f172a;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 900;
+  color: #0f172a;
 }
 
-.opsTheme .alertBack:hover,
 .alertBack:hover {
-    background: #fbfbfc;
+  background: #fbfbfc;
 }
 
-.opsTheme .alertHeaderTitle,
 .alertHeaderTitle {
-    font-size: 22px;
-    font-weight: 900;
-    color: #0f172a;
+  font-size: 22px;
+  font-weight: 900;
+  color: #0f172a;
 }
 
-/* ---------- KPI Row (match your screenshot vibes) ---------- */
-.opsTheme .alertMetricsRow,
 .alertMetricsRow {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
-    margin-top: 4px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 4px;
 }
 
 @media (max-width: 980px) {
-
-    .opsTheme .alertMetricsRow,
-    .alertMetricsRow {
-        grid-template-columns: 1fr;
-    }
+  .alertMetricsRow {
+    grid-template-columns: 1fr;
+  }
 }
 
-.opsTheme .metricCard,
 .metricCard {
-    border-radius: 16px;
-    border: 1px solid #eef0f2;
-    background: #ffffff;
-    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
-    padding: 18px 18px 16px;
-    min-height: 92px;
+  border-radius: 16px;
+  border: 1px solid #eef0f2;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  padding: 18px 18px 16px;
+  min-height: 92px;
 }
 
-.opsTheme .metricTitle,
 .metricTitle {
-    font-size: 13px;
-    font-weight: 800;
-    color: #6b7280;
-    margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #6b7280;
+  margin-bottom: 10px;
 }
 
-.opsTheme .metricValue,
 .metricValue {
-    font-size: 34px;
-    font-weight: 950;
-    color: #0f172a;
-    line-height: 1;
+  font-size: 34px;
+  font-weight: 950;
+  color: #0f172a;
+  line-height: 1;
 }
 
-.opsTheme .metricCard.aiMetric,
+.metricValue--text {
+  font-size: 26px;
+}
+
 .metricCard.aiMetric {
-    background: #16324f;
-    /* deep navy */
-    border-color: rgba(255, 255, 255, 0.10);
+  background: #16324f;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
-.opsTheme .metricCard.aiMetric .metricTitle,
-.metricCard.aiMetric .metricTitle {
-    color: rgba(255, 255, 255, 0.85);
-}
-
-.opsTheme .metricCard.aiMetric .metricValue,
+.metricCard.aiMetric .metricTitle,
 .metricCard.aiMetric .metricValue {
-    color: #ffffff;
+  color: #ffffff;
 }
 
-.opsTheme .metricCard.red,
 .metricCard.red {
-    background: #b3261e;
-    /* readable red */
-    border-color: rgba(255, 255, 255, 0.10);
+  background: #b3261e;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
-.opsTheme .metricCard.red .metricTitle,
-.metricCard.red .metricTitle {
-    color: rgba(255, 255, 255, 0.85);
-}
-
-.opsTheme .metricCard.red .metricValue,
+.metricCard.red .metricTitle,
 .metricCard.red .metricValue {
-    color: #ffffff;
+  color: #ffffff;
 }
 
-/* ---------- Main Body ---------- */
-.opsTheme .alertBody,
 .alertBody {
-    display: grid;
-    grid-template-columns: 1.35fr 1fr;
-    gap: 16px;
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 16px;
 }
 
 @media (max-width: 1100px) {
-
-    .opsTheme .alertBody,
-    .alertBody {
-        grid-template-columns: 1fr;
-    }
+  .alertBody {
+    grid-template-columns: 1fr;
+  }
 }
 
-/* Cards */
-.opsTheme .alertInfoCard,
-.opsTheme .alertActionsCard,
 .alertInfoCard,
 .alertActionsCard {
-    border-radius: 16px;
-    border: 1px solid #eef0f2;
-    background: #ffffff;
-    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  border-radius: 16px;
+  border: 1px solid #eef0f2;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
 }
 
-/* Left card */
-.opsTheme .alertInfoCard,
 .alertInfoCard {
-    padding: 22px 22px 18px;
+  padding: 22px 22px 18px;
 }
 
-.opsTheme .alertInfoCard h2,
-.alertInfoCard h2 {
-    margin: 0 0 16px 0;
-    font-size: 28px;
-    font-weight: 950;
-    color: #E8486F;
-    letter-spacing: -0.2px;
+.alertInfoCard h2,
+.alertActionsTop h2 {
+  margin: 0 0 16px 0;
+  font-size: 28px;
+  font-weight: 950;
+  color: var(--alert-accent);
+  letter-spacing: -0.2px;
 }
 
-.opsTheme .alertGrid,
 .alertGrid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px 26px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 26px;
 }
 
 @media (max-width: 680px) {
-
-    .opsTheme .alertGrid,
-    .alertGrid {
-        grid-template-columns: 1fr;
-    }
+  .alertGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
-.opsTheme .alertGrid label,
 .alertGrid label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: #6b7280;
-    margin-bottom: 6px;
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 6px;
 }
 
-.opsTheme .alertGrid>div>div,
-.alertGrid>div>div {
-    color: #0f172a;
-    font-size: 16px;
-    font-weight: 600;
+.alertGrid > div > div {
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 600;
 }
 
-/* Priority badge */
-.opsTheme .priorityBadge,
 .priorityBadge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 14px;
-    border-radius: 999px;
-    font-weight: 700;
-    font-size: 14px;
-    border: 1px solid transparent;
-    text-transform: lowercase;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+  border: 1px solid transparent;
+  text-transform: lowercase;
 }
 
-/* severity color mapping (uses lowercased impact/severity like "medium") */
-.opsTheme .priorityBadge.low,
 .priorityBadge.low {
-    background: rgba(34, 197, 94, .12);
-    border-color: rgba(34, 197, 94, .25);
-    color: #166534;
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.25);
+  color: #166534;
 }
 
-.opsTheme .priorityBadge.medium,
 .priorityBadge.medium {
-    background: rgba(245, 158, 11, .16);
-    border-color: rgba(245, 158, 11, .30);
-    color: #92400e;
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #92400e;
 }
 
-.opsTheme .priorityBadge.high,
 .priorityBadge.high {
-    background: rgba(239, 68, 68, .12);
-    border-color: rgba(239, 68, 68, .25);
-    color: #991b1b;
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #991b1b;
 }
 
-.opsTheme .priorityBadge.critical,
 .priorityBadge.critical {
-    background: rgba(239, 68, 68, .18);
-    border-color: rgba(239, 68, 68, .35);
-    color: #7f1d1d;
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #7f1d1d;
 }
 
-/* Right card */
-.opsTheme .alertActionsCard,
-.alertActionsCard {
-    padding: 18px 18px 10px;
+.alertActionsInner {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.opsTheme .alertActionsCard h3,
-.alertActionsCard h3 {
-    margin: 0 0 10px 0;
-    font-size: 22px;
-    font-weight: 950;
-    color: #0f172a;
+.alertActionsTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
 }
 
-/* ---------- Actions Table ---------- */
-.opsTheme .actionsTable,
-.actionsTable {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-    /* makes columns behave */
+.alertActionsTop p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 440px;
 }
 
-.opsTheme .actionsTable thead th,
-.actionsTable thead th {
-    text-align: left;
-    font-size: 13px;
-    font-weight: 900;
-    color: #6b7280;
-    padding: 12px 10px;
-    border-bottom: 1px solid #e5e7eb;
+.actionsList {
+  display: grid;
+  gap: 12px;
 }
 
-.opsTheme .actionsTable thead th:nth-child(1),
-.actionsTable thead th:nth-child(1) {
-    width: 80%;
+.actionRow {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 14px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
-.opsTheme .actionsTable thead th:nth-child(2),
-.actionsTable thead th:nth-child(2) {
-    width: 20%;
-    text-align: center;
+.actionRow:hover:not(:disabled) {
+  border-color: var(--alert-accent-border);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
 }
 
-
-.opsTheme .actionsTable td,
-.actionsTable td {
-    padding: 16px 10px;
-    border-bottom: 1px solid #f1f3f5;
-    vertical-align: middle;
+.actionRow.isSelected {
+  border-color: var(--alert-accent);
+  background: var(--alert-accent-soft);
 }
 
-.opsTheme .actionsTable td:nth-child(2),
-.opsTheme .actionsTable td:nth-child(3),
-.actionsTable td:nth-child(2),
-.actionsTable td:nth-child(3) {
-    text-align: center;
+.actionRow:disabled {
+  cursor: not-allowed;
+  opacity: 0.74;
 }
 
-/* Action text readable, wraps nicely */
-.opsTheme .actionsTable td:first-child,
-.actionsTable td:first-child {
-    font-size: 15px;
-    font-weight: 600;
-    color: #0f172a;
-    white-space: normal;
-    word-break: break-word;
-    line-height: 1.45;
+.actionRowLeft {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
 }
 
-/* Impact pill */
-.opsTheme .impact,
-.impact {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px 12px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 700;
-    border: 1px solid transparent;
-    text-transform: lowercase;
+.actionCheckbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid #cbd5e1;
+  background: #ffffff;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
-.opsTheme .impact.low,
+.actionCheckbox.isChecked {
+  background: var(--alert-accent);
+  border-color: var(--alert-accent);
+  box-shadow: inset 0 0 0 4px #ffffff;
+}
+
+.actionName {
+  font-weight: 800;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.actionMetaRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.impact,
+.automationBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .impact.low {
-    background: rgba(34, 197, 94, .12);
-    border-color: rgba(34, 197, 94, .25);
-    color: #166534;
+  background: rgba(34, 197, 94, 0.12);
+  color: #166534;
 }
 
-.opsTheme .impact.medium,
 .impact.medium {
-    background: rgba(245, 158, 11, .16);
-    border-color: rgba(245, 158, 11, .30);
-    color: #92400e;
+  background: rgba(245, 158, 11, 0.14);
+  color: #92400e;
 }
 
-.opsTheme .impact.high,
-.impact.high {
-    background: rgba(239, 68, 68, .12);
-    border-color: rgba(239, 68, 68, .25);
-    color: #991b1b;
-}
-
-.opsTheme .impact.critical,
+.impact.high,
 .impact.critical {
-    background: rgba(239, 68, 68, .18);
-    border-color: rgba(239, 68, 68, .35);
-    color: #7f1d1d;
+  background: rgba(239, 68, 68, 0.12);
+  color: #991b1b;
 }
 
-/* ---------- Switch ---------- */
-.opsTheme .switch,
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 48px;
-    height: 26px;
+.automationBadge.on {
+  background: #e5e7eb;
+  color: #475569;
 }
 
-.opsTheme .switch input,
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
+.automationBadge.off {
+  background: #dbeafe;
+  color: #123150;
 }
 
-.opsTheme .slider,
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: #cbd5e1;
-    border-radius: 999px;
-    transition: 160ms ease;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+.alertActionsFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.opsTheme .slider:before,
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 20px;
-    width: 20px;
-    left: 3px;
-    top: 3px;
-    background: #ffffff;
-    border-radius: 999px;
-    transition: 160ms ease;
-    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+.primaryBtn,
+.secondaryBtn {
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 0 16px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
-/* ON (normal) */
-.opsTheme .switch input:checked+.slider,
-.switch input:checked+.slider {
-    background: #84cc16;
+.primaryBtn {
+  border: 1px solid var(--alert-accent);
+  background: var(--alert-accent);
+  color: #ffffff;
 }
 
-.opsTheme .switch input:checked+.slider:before,
-.switch input:checked+.slider:before {
-    transform: translateX(22px);
+.secondaryBtn {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
 }
 
-/* Disabled look */
-.opsTheme .switch input:disabled+.slider,
-.switch input:disabled+.slider {
-    cursor: not-allowed;
-    opacity: 0.9;
+.primaryBtn:disabled,
+.secondaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-/* AUTOMATED: ON but greyed */
-.opsTheme .switch input:checked:disabled+.slider,
-.switch input:checked:disabled+.slider {
-    background: #84cc16;
-    /* keep green even when disabled */
-}
-
-
-.opsTheme .switch input:checked:disabled+.slider:before,
-.switch input:checked:disabled+.slider:before {
-    background: #ffffff;
-}
-
-/* ---------- Footer ---------- */
-.opsTheme .alertFooter,
-.alertFooter {
-    display: flex;
-    justify-content: flex-end;
-    gap: 14px;
-    margin-top: 2px;
-}
-
-.opsTheme .cancelBtn,
-.cancelBtn {
-    height: 44px;
-    padding: 0 22px;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
-    background: #f3f4f6;
-    font-weight: 900;
-    cursor: pointer;
-    color: #0f172a;
-}
-
-.opsTheme .cancelBtn:hover,
-.cancelBtn:hover {
-    background: #eef2f7;
-}
-
-.opsTheme .triggerBtn,
-.triggerBtn {
-    height: 44px;
-    padding: 0 22px;
-    border-radius: 12px;
-    border: 1px solid rgba(232, 72, 111, .25);
-    background: #E8486F;
-    color: #ffffff;
-    font-weight: 950;
-    cursor: pointer;
-    box-shadow: 0 12px 24px rgba(232, 72, 111, .18);
-}
-
-.opsTheme .triggerBtn:hover,
-.triggerBtn:hover {
-    background: #d93f65;
-    border-color: #d93f65;
-}
-
-.opsTheme .triggerBtn:disabled,
-.triggerBtn:disabled {
-    opacity: 0.65;
-    cursor: not-allowed;
-}
-
-/* Loading */
-.opsTheme .alertDetailsLoading,
 .alertDetailsLoading {
-    padding: 22px 26px;
-    color: #6b7280;
-    font-weight: 800;
-}
-
-.opsTheme .statusPill,
-.statusPill {
-    margin-left: auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 14px;
-    border-radius: 999px;
-    font-weight: 950;
-    font-size: 13px;
-    border: 1px solid transparent;
-}
-
-.opsTheme .statusPill.new,
-.statusPill.new {
-    background: rgba(59, 130, 246, .12);
-    border-color: rgba(59, 130, 246, .25);
-    color: #1d4ed8;
-}
-
-.opsTheme .statusPill.acknowledged,
-.statusPill.acknowledged {
-    background: rgba(245, 158, 11, .16);
-    border-color: rgba(245, 158, 11, .30);
-    color: #92400e;
-}
-
-.opsTheme .statusPill.resolved,
-.statusPill.resolved,
-.opsTheme .statusPill.closed,
-.statusPill.closed {
-    background: rgba(34, 197, 94, .12);
-    border-color: rgba(34, 197, 94, .25);
-    color: #166534;
-}
-
-/* ===== Devices-style pills ===== */
-.opsTheme .priorityBadge,
-.priorityBadge,
-.opsTheme .statusPill,  
-.statusPill{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  height:22px;
-  padding:0 10px;
-  border-radius:999px;
-  font-size:13px;
-  font-weight:800;
-  line-height:1;
-  border:none;
-  text-transform:lowercase;
-}
-
-/* keep header badge from stretching weirdly */
-.opsTheme .statusPill,
-.statusPill{
-  margin-left:auto;
-}
-
-/* ===== Priority colours ===== */
-.opsTheme .priorityBadge.low,
-.priorityBadge.low{
-  background:rgba(34,197,94,.12);
-  color:#166534;
-}
-
-.opsTheme .priorityBadge.medium,
-.priorityBadge.medium{
-  background:rgba(245,158,11,.14);
-  color:#92400e;
-}
-
-.opsTheme .priorityBadge.high,
-.priorityBadge.high{
-  background:rgba(239,68,68,.12);
-  color:#991b1b;
-}
-
-.opsTheme .priorityBadge.critical,
-.priorityBadge.critical{
-  background:rgba(239,68,68,.18);
-  color:#7f1d1d;
-}
-
-/* ===== Status colours ===== */
-.opsTheme .statusPill.new,
-.statusPill.new{
-  background:#dfe7ff;
-  color:#1d4ed8;
-}
-
-.opsTheme .statusPill.acknowledged,
-.statusPill.acknowledged{
-  background:rgba(245,158,11,.16);
-  color:#92400e;
-}
-
-.opsTheme .statusPill.resolved,
-.statusPill.resolved{
-  background:#d9f3e4;
-  color:#166534;
+  padding: 26px;
+  font-size: 14px;
+  color: #6b7280;
 }

@@ -24,6 +24,13 @@ const SECTION_META = {
     subtitle: "Control live refresh behaviour for the sustainability dashboard.",
     roleLabel: "Sustainability Manager",
   },
+  soc: {
+    themeClass: "settingsSoc",
+    accentLabel: "SOC",
+    title: "Dashboard Settings",
+    subtitle: "Control live refresh behaviour for the security dashboard.",
+    roleLabel: "SOC Analyst",
+  },
   exhibitor: {
     themeClass: "settingsExhibitor",
     accentLabel: "Exhibitor",
