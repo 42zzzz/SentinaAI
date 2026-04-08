@@ -94,7 +94,6 @@ export default function AiSimulateSurge({ onSimulated }) {
             />
           </div>
         </div>
-        <div className="hint">Halls source: /ai/ops-live</div>
       </div>
 
       <div className="cardBody">

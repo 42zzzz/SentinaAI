@@ -66,7 +66,6 @@ export default function AiOpsPanel() {
             />
           </div>
         </div>
-        <div className="hint">Source: /ai/ops-live</div>
       </div>
 
       {err ? (

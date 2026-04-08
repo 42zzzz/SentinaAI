@@ -509,3 +509,20 @@
   color: #475569;
 }
 
+.opsTheme .iconCircle img,
+.opsTheme .iconCircleFloat img{
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+}
+
+.opsTheme .opsAiStack{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 22px;
+}
+
+.opsTheme .opsAiStack > .card{
+  width: 100%;
+}

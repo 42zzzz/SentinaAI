@@ -136,13 +136,25 @@ function formatDateTime(value) {
 
 function statusPill(status) {
   const s = String(status || "").toUpperCase();
+
   if (s === "DRAFT") {
-    return { background: "#facc15", color: "#5b4300" };
+    return {
+      background: "#fef3c7",
+      color: "#8a4b00",
+    };
   }
+
   if (s === "GENERATED") {
-    return { background: "#0a8a36", color: "#ffffff" };
+    return {
+      background: "#dff4e4",
+      color: "#0b7a2a",
+    };
   }
-  return { background: "#e5e7eb", color: "#475569" };
+
+  return {
+    background: "#f1f5f9",
+    color: "#475569",
+  };
 }
 
 function buildDateMatches(dateFilter, timestamp) {

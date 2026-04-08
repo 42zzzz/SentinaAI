@@ -139,7 +139,6 @@ export default function PredictedOccupancyChart({ refreshSignal }) {
             />
           </h3>
         </div>
-        <div className="hint">Source: /ai/occupancy-forecast</div>
       </div>
 
       <div className="cardBody">

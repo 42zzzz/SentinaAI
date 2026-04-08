@@ -8,8 +8,10 @@
 
 .opsTheme .exhibitorsPage .pageInner,
 .exhibitorsPage .pageInner{
-  padding:22px 26px;
-  max-width:1300px;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  padding: 22px 26px;
 }
 
 /* ===== header ===== */

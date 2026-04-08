@@ -19,6 +19,8 @@ import {
   useDashboardSettings,
 } from "../utils/dashboardSettings";
 
+import busyHallsIcon from "../assets/icons/busy_halls.svg";
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 /** Small helpers for Figma-like icon circles */
@@ -96,7 +98,7 @@ const IcoComfort = () => (
 );
 
 const IcoBusyHalls = () => (
-  <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" clipRule="evenodd" d="M13 21C14.6579 21 16 19.6579 16 18C16 16.3421 14.6579 15 13 15C11.3421 15 10 16.3421 10 18C10 19.6579 11.3421 21 13 21ZM13 23C15.7625 23 18 20.7625 18 18C18 15.2375 15.7625 13 13 13C10.2375 13 8 15.2375 8 18C8 20.7625 10.2375 23 13 23Z" fill="white"/></svg>
+  <img src={busyHallsIcon} alt="" aria-hidden="true" className="iconAsset" />
 );
 
 function KpiCard({ title, tooltip, value, sub, icon }) {
@@ -328,9 +330,9 @@ export default function DashboardPage() {
 
         <AiSimulateSurge onSimulated={() => setSimTick((t) => t + 1)} />
 
-        <div className="grid2">
-          <AiOpsPanel />
+        <div className="opsAiStack">
           <PredictedOccupancyChart refreshSignal={simTick} />
+          <AiOpsPanel />
         </div>
       </div>
     </div>
