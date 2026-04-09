@@ -2022,3 +2022,85 @@ body.assistant-embedded .saved-view-item__top {
     border-radius: 0;
   }
 }
+
+
+/* ---- Final patch: saved-view panel trash svg + top tab close icon ---- */
+.saved-view-delete,
+.tab-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  line-height: 0;
+  flex: 0 0 auto;
+}
+
+.saved-view-delete {
+  width: 18px;
+  height: 18px;
+  color: #ef4b73;
+  opacity: 0.95;
+}
+
+.saved-view-delete:hover {
+  opacity: 1;
+  transform: translateY(-0.5px);
+}
+
+.saved-view-delete svg,
+.tab-close svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.tab-chip--saved-open {
+  gap: 8px;
+}
+
+.tab-close {
+  width: 14px;
+  height: 14px;
+  color: #8aa0bf;
+  opacity: 0.95;
+}
+
+.tab-close:hover {
+  color: #48627f;
+  opacity: 1;
+}
+
+body.assistant-embedded .saved-view-delete {
+  width: 16px;
+  height: 16px;
+}
+
+body.assistant-embedded .tab-close {
+  width: 12px;
+  height: 12px;
+}
+
+body.assistant-embedded .tab-chip--saved-open {
+  gap: 6px;
+}
+
+/* ---- Lock exhibitor assistant dates only ---- */
+body.assistant-embedded .guided-input--locked,
+.guided-input--locked {
+  background: #f2f5fa !important;
+  border-color: #d7dfec !important;
+  color: #7b8da8 !important;
+  cursor: not-allowed !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+}
+
+body.assistant-embedded .guided-input--locked::-webkit-calendar-picker-indicator,
+.guided-input--locked::-webkit-calendar-picker-indicator {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

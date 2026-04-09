@@ -753,18 +753,59 @@ function renderSelect(label, value, options, onChange) {
   return wrap;
 }
 
-function renderDateField(label, value, onChange, minDate = '', maxDate = '') {
+function renderDateField(label, fieldKey, value, minDate = '', maxDate = '') {
   const wrap = document.createElement('div');
   wrap.className = 'field';
   wrap.innerHTML = `<label>${label}</label>`;
 
   const input = document.createElement('input');
   input.type = 'date';
-  input.className = 'guided-input';
-  input.value = toInputDate(value);
-  input.min = minDate || '';
-  input.max = maxDate || '';
-  input.onchange = e => onChange(e.target.value);
+  input.autocomplete = 'off';
+  input.className = 'guided-input guided-input--date';
+  input.value = value || '';
+  input.dataset.dateField = fieldKey;
+  input.setAttribute('aria-label', label);
+
+  if (minDate) {
+    input.min = minDate;
+    input.dataset.minDate = minDate;
+  }
+  if (maxDate) {
+    input.max = maxDate;
+    input.dataset.maxDate = maxDate;
+  }
+
+  const isLockedForExhibitor = state.role === 'EXHIBITOR';
+
+  if (isLockedForExhibitor) {
+    input.disabled = true;
+    input.classList.add('guided-input--locked');
+    input.setAttribute('aria-disabled', 'true');
+    input.title = 'Date is locked to the selected event.';
+  } else {
+    const commitCurrentValue = target => {
+      commitDateDraft(fieldKey, target.value, minDate, maxDate);
+    };
+
+    input.oninput = e => {
+      setDateDraft(fieldKey, e.target.value);
+      state.validationMessage = '';
+      state.saveIntent = 'idle';
+    };
+
+    input.onblur = e => {
+      commitCurrentValue(e.target);
+    };
+
+    input.onkeydown = e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commitCurrentValue(e.target);
+        e.target.blur();
+      }
+    };
+  }
+
   wrap.appendChild(input);
   return wrap;
 }
@@ -1651,27 +1692,36 @@ function renderDateField(label, fieldKey, value, minDate = '', maxDate = '') {
     input.dataset.maxDate = maxDate;
   }
 
-  const commitCurrentValue = target => {
-    commitDateDraft(fieldKey, target.value, minDate, maxDate);
-  };
+  const isLockedForExhibitor = state.role === 'EXHIBITOR';
 
-  input.oninput = e => {
-    setDateDraft(fieldKey, e.target.value);
-    state.validationMessage = '';
-    state.saveIntent = 'idle';
-  };
+  if (isLockedForExhibitor) {
+    input.disabled = true;
+    input.classList.add('guided-input--locked');
+    input.setAttribute('aria-disabled', 'true');
+    input.title = 'Date is locked to the selected event.';
+  } else {
+    const commitCurrentValue = target => {
+      commitDateDraft(fieldKey, target.value, minDate, maxDate);
+    };
 
-  input.onblur = e => {
-    commitCurrentValue(e.target);
-  };
+    input.oninput = e => {
+      setDateDraft(fieldKey, e.target.value);
+      state.validationMessage = '';
+      state.saveIntent = 'idle';
+    };
 
-  input.onkeydown = e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
+    input.onblur = e => {
       commitCurrentValue(e.target);
-      e.target.blur();
-    }
-  };
+    };
+
+    input.onkeydown = e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commitCurrentValue(e.target);
+        e.target.blur();
+      }
+    };
+  }
 
   wrap.appendChild(input);
   return wrap;
@@ -2093,5 +2143,133 @@ if (!window.__sentinaQuickActionsOutsideCloseBound) {
     if (state.quickActionsCollapsed) return;
     if (event.target.closest('.quick-card')) return;
     toggleQuickActions(true);
+  });
+}
+
+
+/* ---- Final patch: side-panel-only delete, opened saved-view tabs only, top-tab close icon ---- */
+
+function trashIconSvg() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M9 7V5.8c0-.9.7-1.6 1.6-1.6h2.8c.9 0 1.6.7 1.6 1.6V7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M7.2 7l.8 11.1c.1.9.8 1.5 1.7 1.5h4.6c.9 0 1.6-.7 1.7-1.5L16.8 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10 10.2v6.2M14 10.2v6.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+  `;
+}
+
+function closeIconSvg() {
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+    </svg>
+  `;
+}
+
+function syncTabs() {
+  const fixed = { id: 'draft', name: 'Current analysis', type: 'draft' };
+  const activeSavedView = state.savedViews.find(view => view.view_id === state.activeTabId);
+
+  state.tabs = activeSavedView
+    ? [fixed, { id: activeSavedView.view_id, name: activeSavedView.name, type: 'saved-open' }]
+    : [fixed];
+
+  const allowed = new Set(['draft', ...state.savedViews.map(view => view.view_id)]);
+  Object.keys(state.analysisByTab).forEach(tabId => {
+    if (!allowed.has(tabId)) delete state.analysisByTab[tabId];
+  });
+
+  if (state.activeTabId !== 'draft' && !state.savedViews.some(view => view.view_id === state.activeTabId)) {
+    state.activeTabId = 'draft';
+  }
+}
+
+function closeSavedViewTab(tabId) {
+  if (state.activeTabId === tabId) {
+    state.activeTabId = 'draft';
+  }
+  state.validationMessage = '';
+  state.saveIntent = 'idle';
+  hideSaveViewBar();
+  syncTabs();
+  render();
+}
+
+function switchTab(tabId) {
+  state.activeTabId = tabId;
+  state.validationMessage = '';
+  state.saveIntent = 'idle';
+  hideSaveViewBar();
+
+  if (tabId !== 'draft') {
+    const view = state.savedViews.find(item => item.view_id === tabId);
+    ensureSavedAnalysis(view);
+  }
+
+  syncTabs();
+  render();
+}
+
+function loadSavedView(view) {
+  ensureSavedAnalysis(view);
+  state.activeTabId = view.view_id;
+  syncTabs();
+  render();
+}
+
+function renderTabs() {
+  el.tabBar.innerHTML = '';
+
+  state.tabs.forEach(tab => {
+    const btn = document.createElement('button');
+    btn.className = `tab-chip ${tab.id === state.activeTabId ? 'active' : ''}${tab.type === 'saved-open' ? ' tab-chip--saved-open' : ''}`;
+    btn.innerHTML = `<span class="tab-chip__label">${tab.name}</span>`;
+    btn.onclick = () => switchTab(tab.id);
+
+    if (tab.type === 'saved-open') {
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'tab-close';
+      closeBtn.setAttribute('aria-label', `Close ${tab.name}`);
+      closeBtn.setAttribute('title', `Close ${tab.name}`);
+      closeBtn.innerHTML = closeIconSvg();
+      closeBtn.onclick = event => {
+        event.stopPropagation();
+        closeSavedViewTab(tab.id);
+      };
+      btn.appendChild(closeBtn);
+    }
+
+    el.tabBar.appendChild(btn);
+  });
+}
+
+function renderSavedViewsPanel() {
+  el.savedViewsList.innerHTML = '';
+
+  state.savedViews.forEach(view => {
+    const card = document.createElement('div');
+    card.className = `saved-view-item ${view.view_id === state.activeTabId ? 'saved-view-item--active' : ''}`;
+    card.innerHTML = `
+      <div class="saved-view-item__top">
+        <h4>${view.name}</h4>
+        <button type="button" class="saved-view-delete" aria-label="Delete saved view" title="Delete saved view">
+          ${trashIconSvg()}
+        </button>
+      </div>
+      <p>${(view.view_payload?.results?.[0]?.title) || (view.view_payload?.action) || 'Saved analysis'}</p>
+    `;
+
+    card.onclick = () => loadSavedView(view);
+
+    const deleteBtn = card.querySelector('.saved-view-delete');
+    deleteBtn.onclick = event => {
+      event.stopPropagation();
+      deleteSavedView(view.view_id);
+    };
+
+    el.savedViewsList.appendChild(card);
   });
 }
