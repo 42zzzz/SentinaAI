@@ -87,11 +87,13 @@ def widget_bootstrap(user_id: str, user_name: str = 'Operator', role: str = 'OPE
         )
 
     if role.upper() == 'EXHIBITOR':
-        assignment = exhibitor_service.resolve_assignment(user_id)
+        assignments = exhibitor_service.resolve_assignments(user_id)
+        assignment = assignments[0]
         return build_exhibitor_bootstrap(
             user_id=user_id,
             user_name=user_name,
             assignment=assignment,
+            assignments=assignments,
         )
 
     return build_bootstrap(
@@ -133,6 +135,7 @@ def widget_action(req: GuidedActionRequest):
         build_action_log(
             session_id=req.session_id,
             user_id=req.user_id,
+            user_name=req.user_name,
             role=req.role,
             action_payload=req.model_dump(),
             intent=result.get('intent', req.analysis_type),

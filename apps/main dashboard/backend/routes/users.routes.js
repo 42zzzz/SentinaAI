@@ -5,6 +5,8 @@ const authenticate = require("../middleware/auth.middleware");
 const { validatePassword } = require("../security/passwordPolicy");
 
 const router = express.Router();
+const ASSISTANT_SERVICE_URL =
+  process.env.ASSISTANT_SERVICE_URL || "http://127.0.0.1:8002";
 
 /* ===============================
    SUPER ADMIN CHECK
@@ -15,6 +17,46 @@ const requireSuperAdmin = (req, res, next) => {
   }
   next();
 };
+
+function buildLogKey(row = {}, index = 0) {
+  return [row.timestamp || "", row.session_id || "", row.user_id || "", index].join("::");
+}
+
+function normalizeLog(row = {}, index = 0, userNameMap = new Map(), exhibitorNameMap = new Map()) {
+  const payload = row.entities && typeof row.entities === "object" ? row.entities : {};
+  const resolvedUserName =
+    row.user_name ||
+    userNameMap.get(String(row.user_id || "")) ||
+    exhibitorNameMap.get(String(row.user_id || "")) ||
+    null;
+
+  return {
+    log_key: buildLogKey(row, index),
+    timestamp: row.timestamp || null,
+    session_id: row.session_id || "—",
+    user_id: row.user_id || "—",
+    user_name: resolvedUserName,
+    display_user: resolvedUserName
+      ? `${resolvedUserName} (${row.user_id || "—"})`
+      : (row.user_id || "Unknown user"),
+    role: row.role || "—",
+    raw_query: row.raw_query || payload.analysis_type || "guided_action",
+    analysis_type: payload.analysis_type || row.raw_query || "guided_action",
+    intent: row.intent || payload.analysis_type || "—",
+    response_status: row.response_status || "unknown",
+    response_type: row.response_type || "—",
+    summary: row.summary || "—",
+    latency_ms: row.latency_ms ?? null,
+    entities: payload,
+    date_range:
+      payload.start_date && payload.end_date
+        ? `${payload.start_date} → ${payload.end_date}`
+        : "—",
+    scope_type: payload.scope_type || "—",
+    zone_ids: Array.isArray(payload.zone_ids) ? payload.zone_ids : [],
+    hall_ids: Array.isArray(payload.hall_ids) ? payload.hall_ids : [],
+  };
+}
 
 /* ===============================
    GET ALL USERS
@@ -42,6 +84,57 @@ router.get("/", authenticate, requireSuperAdmin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ===============================
+   GET ASSISTANT LOGS
+================================= */
+router.get("/assistant-logs", authenticate, requireSuperAdmin, async (req, res) => {
+  try {
+    const [assistantRes, usersRes, exhibitorsRes] = await Promise.all([
+      fetch(`${ASSISTANT_SERVICE_URL}/admin/ai/logs`),
+      core.query(`
+        SELECT employee_id, full_name
+        FROM users
+        WHERE employee_id IS NOT NULL
+      `),
+      core.query(`
+        SELECT exhibitor_id::text AS external_id, exhibitor_name
+        FROM exhibitors
+      `).catch(() => ({ rows: [] })),
+    ]);
+
+    if (!assistantRes.ok) {
+      const errorText = await assistantRes.text();
+      return res.status(502).json({
+        error: "Failed to load assistant logs",
+        detail: errorText || `Assistant service returned ${assistantRes.status}`,
+      });
+    }
+
+    const payload = await assistantRes.json();
+    const rawLogs = Array.isArray(payload) ? payload : (payload?.rows || []);
+
+    const userNameMap = new Map(
+      (usersRes.rows || []).map((row) => [String(row.employee_id || ""), row.full_name])
+    );
+    const exhibitorNameMap = new Map(
+      (exhibitorsRes.rows || []).map((row) => [String(row.external_id || ""), row.exhibitor_name])
+    );
+
+    const rows = rawLogs
+      .map((row, index) => normalizeLog(row, index, userNameMap, exhibitorNameMap))
+      .sort((a, b) => {
+        const aTs = new Date(a.timestamp || 0).getTime();
+        const bTs = new Date(b.timestamp || 0).getTime();
+        return bTs - aTs;
+      });
+
+    res.json({ ok: true, rows });
+  } catch (err) {
+    console.error("Failed to fetch assistant logs:", err);
+    res.status(500).json({ error: "Failed to load assistant logs" });
   }
 });
 

@@ -2104,3 +2104,20 @@ body.assistant-embedded .guided-input--locked::-webkit-calendar-picker-indicator
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+/* ---- Exhibitor event-locked date styling ---- */
+body.assistant-embedded .guided-input--locked,
+.guided-input--locked {
+  background: #f2f5fa !important;
+  border-color: #d7dfec !important;
+  color: #7b8da8 !important;
+  cursor: not-allowed !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+}
+
+body.assistant-embedded .guided-input--locked::-webkit-calendar-picker-indicator,
+.guided-input--locked::-webkit-calendar-picker-indicator {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

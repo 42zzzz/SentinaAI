@@ -135,6 +135,24 @@ def build_sustainability_flow_config(
     }
 
 
+def _serialize_exhibitor_assignment(assignment: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        'exhibitor_id': assignment['effectiveExhibitorId'],
+        'exhibitor_name': assignment['exhibitorName'],
+        'event_id': assignment['eventId'],
+        'event_name': assignment['eventName'],
+        'event_start_date': assignment['eventStartDate'],
+        'event_end_date': assignment['eventEndDate'],
+        'booth_id': assignment['boothId'],
+        'booth_code': assignment['boothCode'],
+        'hall_id': assignment['hallId'],
+        'hall_name': assignment['hallName'],
+        'zone_id': assignment['zoneId'],
+        'package_tier': assignment.get('packageTier'),
+        'amount_paid_aed': assignment.get('amountPaidAed'),
+    }
+
+
 EXHIBITOR_PRIMARY_ACTIONS: List[Dict[str, Any]] = [
     {'id': 'exh_overview', 'label': 'Overview', 'analysis_type': 'exh_overview', 'icon': 'layout-dashboard'},
     {'id': 'exh_traffic_context', 'label': 'Traffic Context', 'analysis_type': 'exh_traffic_context', 'icon': 'move-right'},
@@ -159,13 +177,16 @@ def build_exhibitor_bootstrap(
     user_id: str,
     user_name: str,
     assignment: Dict[str, Any],
+    assignments: List[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
+    serialized_assignments = [_serialize_exhibitor_assignment(item) for item in (assignments or [assignment])]
+    selected_assignment = _serialize_exhibitor_assignment(assignment)
     return {
         'status': 'success',
         'role': 'EXHIBITOR',
         'greeting': {
             'title': f'Hi {user_name} 👋',
-            'message': 'Your booth analytics are locked to your assigned event and booth. Narrow the date range inside the event window only.',
+            'message': 'Choose the event you want to analyze. Booth and dates lock automatically to the selected event assignment.',
             'tooltip': 'Senti Exhibitor',
         },
         'assistant_name': 'Senti Exhibitor',
@@ -173,21 +194,8 @@ def build_exhibitor_bootstrap(
         'latest_available_date': assignment['eventEndDate'],
         'earliest_available_date': assignment['eventStartDate'],
         'saved_views': SavedViewRepository.list_by_user(user_id),
-        'assignment': {
-            'exhibitor_id': assignment['effectiveExhibitorId'],
-            'exhibitor_name': assignment['exhibitorName'],
-            'event_id': assignment['eventId'],
-            'event_name': assignment['eventName'],
-            'event_start_date': assignment['eventStartDate'],
-            'event_end_date': assignment['eventEndDate'],
-            'booth_id': assignment['boothId'],
-            'booth_code': assignment['boothCode'],
-            'hall_id': assignment['hallId'],
-            'hall_name': assignment['hallName'],
-            'zone_id': assignment['zoneId'],
-            'package_tier': assignment.get('packageTier'),
-            'amount_paid_aed': assignment.get('amountPaidAed'),
-        },
+        'assignment': selected_assignment,
+        'assignments': serialized_assignments,
     }
 
 

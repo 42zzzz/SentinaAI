@@ -2273,3 +2273,408 @@ function renderSavedViewsPanel() {
     el.savedViewsList.appendChild(card);
   });
 }
+
+/* ---- Final patch: exhibitor multi-event selection with locked dates per selected event ---- */
+state.assignments = Array.isArray(state.assignments) ? state.assignments : [];
+
+function normalizeExhibitorAssignment(raw) {
+  if (!raw) return null;
+  return {
+    exhibitor_id: String(raw.exhibitor_id ?? raw.exhibitorId ?? ''),
+    exhibitor_name: String(raw.exhibitor_name ?? raw.exhibitorName ?? ''),
+    event_id: String(raw.event_id ?? raw.eventId ?? ''),
+    event_name: String(raw.event_name ?? raw.eventName ?? ''),
+    event_start_date: String(raw.event_start_date ?? raw.eventStartDate ?? ''),
+    event_end_date: String(raw.event_end_date ?? raw.eventEndDate ?? ''),
+    booth_id: String(raw.booth_id ?? raw.boothId ?? ''),
+    booth_code: String(raw.booth_code ?? raw.boothCode ?? ''),
+    hall_id: String(raw.hall_id ?? raw.hallId ?? ''),
+    hall_name: String(raw.hall_name ?? raw.hallName ?? ''),
+    zone_id: String(raw.zone_id ?? raw.zoneId ?? ''),
+    package_tier: raw.package_tier ?? raw.packageTier ?? null,
+    amount_paid_aed: raw.amount_paid_aed ?? raw.amountPaidAed ?? null,
+  };
+}
+
+function getExhibitorAssignments() {
+  return Array.isArray(state.assignments) ? state.assignments : [];
+}
+
+function findExhibitorAssignment(eventId) {
+  return getExhibitorAssignments().find(item => String(item.event_id) === String(eventId)) || null;
+}
+
+function getSelectedExhibitorAssignment() {
+  if (state.role !== 'EXHIBITOR') return null;
+  return normalizeExhibitorAssignment(state.assignment) || getExhibitorAssignments()[0] || null;
+}
+
+function getAssignmentForRequest(request) {
+  if (state.role !== 'EXHIBITOR') return null;
+  return findExhibitorAssignment(request?.event_id) || getSelectedExhibitorAssignment();
+}
+
+function syncSelectedAssignmentFromRequest(request) {
+  const assignment = getAssignmentForRequest(request);
+  if (assignment) {
+    state.assignment = assignment;
+  }
+  return assignment;
+}
+
+async function boot() {
+  state.bootstrap = await api(
+    `/assistant/widget/bootstrap?user_id=${encodeURIComponent(state.userId)}&user_name=${encodeURIComponent(state.userName)}&role=${encodeURIComponent(state.role)}`
+  );
+  state.flowConfig = await api(`/assistant/widget/flow-config?role=${encodeURIComponent(state.role)}&user_id=${encodeURIComponent(state.userId)}`);
+  state.assignments = state.role === 'EXHIBITOR'
+    ? (state.bootstrap.assignments || []).map(normalizeExhibitorAssignment).filter(Boolean)
+    : [];
+  state.assignment = state.role === 'EXHIBITOR'
+    ? (normalizeExhibitorAssignment(state.bootstrap.assignment) || state.assignments[0] || null)
+    : (state.bootstrap.assignment || null);
+  state.analysisByTab = { draft: makeEmptyAnalysisState() };
+  await refreshSavedViews();
+  applyRoleBranding();
+  applyExpandedState();
+  render();
+}
+
+function defaultRequest(actionLabel) {
+  const assignment = state.role === 'EXHIBITOR'
+    ? (getSelectedExhibitorAssignment() || {})
+    : (state.bootstrap?.assignment || {});
+
+  return {
+    user_id: state.userId,
+    user_name: state.userName,
+    role: state.role,
+    session_id: state.sessionId,
+    analysis_type: analysisTypeForAction(actionLabel),
+    metric: actionLabel === 'Trends' ? 'occupancy_trend' : null,
+    scope_type: state.role === 'EXHIBITOR' ? 'assignment' : 'full_venue',
+    zone_ids: state.role === 'EXHIBITOR' && assignment.zone_id ? [assignment.zone_id] : [],
+    hall_ids: state.role === 'EXHIBITOR' && assignment.hall_id ? [assignment.hall_id] : [],
+    time_range: 'custom',
+    start_date: state.role === 'EXHIBITOR' ? assignment.event_start_date : state.bootstrap.earliest_available_date,
+    end_date: state.role === 'EXHIBITOR' ? assignment.event_end_date : state.bootstrap.latest_available_date,
+    compare_with: state.role === 'EXHIBITOR' && actionLabel === 'Comparison' ? 'event_average' : 'none',
+    aggregation: 'hourly',
+    event_id: state.role === 'EXHIBITOR' ? assignment.event_id : null,
+    booth_id: state.role === 'EXHIBITOR' ? assignment.booth_id : null,
+    limit: 5,
+  };
+}
+
+function applyExhibitorEventSelection(eventId) {
+  const assignment = findExhibitorAssignment(eventId);
+  if (!assignment) return;
+
+  state.assignment = assignment;
+  updateRequest({
+    scope_type: 'assignment',
+    event_id: assignment.event_id,
+    booth_id: assignment.booth_id,
+    zone_ids: assignment.zone_id ? [assignment.zone_id] : [],
+    hall_ids: assignment.hall_id ? [assignment.hall_id] : [],
+    start_date: assignment.event_start_date,
+    end_date: assignment.event_end_date,
+  });
+}
+
+function switchTab(tabId) {
+  state.activeTabId = tabId;
+  state.validationMessage = '';
+  state.saveIntent = 'idle';
+  hideSaveViewBar();
+
+  if (tabId !== 'draft') {
+    const view = state.savedViews.find(item => item.view_id === tabId);
+    const savedAnalysis = ensureSavedAnalysis(view);
+    syncSelectedAssignmentFromRequest(savedAnalysis?.request);
+  }
+
+  render();
+}
+
+function buildInitialUserMessage(action) {
+  const assignment = getSelectedExhibitorAssignment();
+  if (state.role === 'EXHIBITOR' && assignment) {
+    return `${action || 'Overview'} for ${assignment.booth_code} in ${assignment.event_name}`;
+  }
+  return action || 'Overview';
+}
+
+function buildRunUserMessage(action, request) {
+  const parts = [];
+  const assignment = getAssignmentForRequest(request);
+
+  parts.push(action);
+
+  if (request.scope_type === 'assignment' && assignment) {
+    parts.push(`for booth ${assignment.booth_code}`);
+  } else if (request.scope_type === 'full_venue') {
+    parts.push('for full venue');
+  } else {
+    const zones = request.zone_ids?.length ? request.zone_ids.join(', ') : '';
+    const halls = request.hall_ids?.length ? request.hall_ids.join(', ') : '';
+
+    const scopeBits = [];
+    if (zones) scopeBits.push(`zones ${zones}`);
+    if (halls) scopeBits.push(`halls ${halls}`);
+
+    if (scopeBits.length) {
+      parts.push(`for ${scopeBits.join(' and ')}`);
+    }
+  }
+
+  if (request.start_date && request.end_date) {
+    parts.push(`from ${fmtDate(request.start_date)} to ${fmtDate(request.end_date)}`);
+  }
+
+  if (action === 'Trends' && request.metric) {
+    parts.push(`using ${humanizeMetric(request.metric).toLowerCase()}`);
+  }
+
+  if (request.aggregation && state.role === 'EXHIBITOR') {
+    parts.push(`with ${request.aggregation}`);
+  }
+
+  if (request.compare_with && request.compare_with !== 'none') {
+    parts.push(`compared with ${request.compare_with.replaceAll('_', ' ')}`);
+  }
+
+  return parts.join(' ');
+}
+
+function buildRunSubtitle(request) {
+  const assignment = getAssignmentForRequest(request);
+  const scope = request.scope_type === 'assignment' && assignment
+    ? `Booth ${assignment.booth_code}`
+    : request.scope_type === 'custom'
+      ? `${request.zone_ids?.length || 0} zone(s) · ${request.hall_ids?.length || 0} hall(s)`
+      : 'Full venue';
+  const dates = `${fmtDate(request.start_date)} → ${fmtDate(request.end_date)}`;
+  const compare = request.compare_with && request.compare_with !== 'none'
+    ? ` · Compared with ${request.compare_with.replaceAll('_', ' ')}`
+    : '';
+  return `${scope} · ${dates}${compare}`;
+}
+
+function renderConversation() {
+  el.conversation.innerHTML = '';
+  const view = getActiveAnalysis();
+  const currentAssignment = state.role === 'EXHIBITOR'
+    ? (getAssignmentForRequest(view.request) || getSelectedExhibitorAssignment())
+    : null;
+
+  const intro = document.createElement('div');
+  intro.className = 'card intro-card assistant-card';
+  intro.innerHTML = `
+    <h3>${state.bootstrap.greeting.title}</h3>
+    <p>${state.bootstrap.greeting.message}</p>
+    <p class="helper">Choose one to begin.</p>
+  `;
+  const chips = document.createElement('div');
+  chips.className = 'chip-row large-gap';
+  state.bootstrap.primary_actions.forEach(action => {
+    const btn = document.createElement('button');
+    btn.className = 'chip';
+    btn.textContent = action.label;
+    btn.onclick = () => startAction(action.label);
+    chips.appendChild(btn);
+  });
+  intro.appendChild(chips);
+  el.conversation.appendChild(intro);
+
+  if (state.role === 'EXHIBITOR' && currentAssignment) {
+    const assignmentCard = document.createElement('div');
+    assignmentCard.className = 'card assistant-card';
+    assignmentCard.innerHTML = `
+      <h3>Selected booth</h3>
+      <p><strong>${currentAssignment.event_name}</strong> · Booth ${currentAssignment.booth_code}</p>
+      <p>${currentAssignment.hall_name} · ${currentAssignment.zone_id} · ${fmtDate(currentAssignment.event_start_date)} to ${fmtDate(currentAssignment.event_end_date)}</p>
+    `;
+    el.conversation.appendChild(assignmentCard);
+  }
+
+  if (!view.action || !view.request) return;
+  el.conversation.appendChild(renderUserBubble(buildInitialUserMessage(view.action)));
+
+  if (view.loadedMessage) {
+    const loaded = document.createElement('div');
+    loaded.className = 'status-inline status-inline--success';
+    loaded.textContent = view.loadedMessage;
+    el.conversation.appendChild(loaded);
+  }
+
+  if (view.isEditingForm) {
+    el.conversation.appendChild(renderFormCard(view));
+  }
+
+  view.runs.forEach((run, index) => {
+    el.conversation.appendChild(renderUserBubble(buildRunUserMessage(view.action, run.request)));
+    run.results.forEach(result => {
+      el.conversation.appendChild(renderResultCard(result, index));
+    });
+  });
+}
+
+function renderFormCard(view) {
+  const card = document.createElement('div');
+  card.className = 'card form-card assistant-card';
+  card.id = 'activeFormCard';
+  const request = view.request;
+  const dateDrafts = ensureDateDrafts(view);
+  const currentAssignment = getAssignmentForRequest(request) || getSelectedExhibitorAssignment();
+  card.innerHTML = `<h3>${view.action}</h3><p>Set up ${view.action.toLowerCase()}. Complete the form below.</p>`;
+
+  if (state.validationMessage) {
+    const note = document.createElement('div');
+    note.className = `status-note ${state.saveIntent === 'error' ? 'status-error' : 'status-success'}`;
+    note.textContent = state.validationMessage;
+    card.appendChild(note);
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'form-grid';
+
+  if (state.role === 'EXHIBITOR' && currentAssignment) {
+    const eventOptions = getExhibitorAssignments().map(item => ({
+      value: item.event_id,
+      label: `${item.event_name} · Booth ${item.booth_code}`,
+    }));
+
+    if (eventOptions.length > 1) {
+      grid.appendChild(
+        renderSelect('Event', currentAssignment.event_id, eventOptions, value => applyExhibitorEventSelection(value))
+      );
+    }
+
+    const assignmentField = document.createElement('div');
+    assignmentField.className = 'field field--full';
+    assignmentField.innerHTML = `<label>Assignment</label><div class="assignment-box">${currentAssignment.event_name}<br/>Booth ${currentAssignment.booth_code} · ${currentAssignment.hall_name} · ${currentAssignment.zone_id}</div>`;
+    grid.appendChild(assignmentField);
+
+    const aggOptions = state.flowConfig.steps.find(s => s.id === 'aggregation')?.options || [
+      { value: 'hourly', label: 'Hourly' },
+      { value: 'daily', label: 'Daily' },
+    ];
+    grid.appendChild(renderSelect('Aggregation', request.aggregation || 'hourly', aggOptions, value => updateRequest({ aggregation: value })));
+  } else {
+    grid.appendChild(renderSelect('Scope', request.scope_type, [
+      { value: 'full_venue', label: 'Full venue' },
+      { value: 'custom', label: 'Zone / hall' },
+    ], value => updateRequest({ scope_type: value })));
+
+    if (request.scope_type === 'custom') {
+      const zoneOptions = state.flowConfig.steps.find(s => s.id === 'zone_ids').options || [];
+      const hallOptions = request.zone_ids.length ? request.zone_ids.flatMap(z => buildHallMap()[z] || []) : [];
+
+      grid.appendChild(renderMultiSelect('Zones', 'zones', zoneOptions, request.zone_ids, ids => updateRequest({ zone_ids: ids })));
+      grid.appendChild(renderMultiSelect('Halls', 'halls', hallOptions, request.hall_ids, ids => updateRequest({ hall_ids: ids }), true));
+    }
+  }
+
+  const dateRow = document.createElement('div');
+  dateRow.className = 'date-row';
+  const minDate = state.role === 'EXHIBITOR' ? currentAssignment?.event_start_date : state.bootstrap.earliest_available_date;
+  const maxDate = state.role === 'EXHIBITOR' ? currentAssignment?.event_end_date : state.bootstrap.latest_available_date;
+  dateRow.appendChild(renderDateField('Start date', 'start_date', dateDrafts.start_date, minDate, maxDate));
+  dateRow.appendChild(renderDateField('End date', 'end_date', dateDrafts.end_date, minDate, maxDate));
+  grid.appendChild(dateRow);
+
+  if (view.action === 'Trends') {
+    grid.appendChild(renderSelect(
+      'Trend metric',
+      request.metric || 'occupancy_trend',
+      state.flowConfig.steps.find(s => s.id === 'metric').options,
+      value => updateRequest({ metric: value })
+    ));
+  }
+
+  const shouldShowCompare = state.role !== 'EXHIBITOR' || view.action === 'Comparison';
+  if (shouldShowCompare) {
+    const compareOptions = state.flowConfig.steps.find(s => s.id === 'compare_with')?.options || [
+      { value: 'none', label: 'No comparison' },
+      { value: 'yesterday', label: 'Previous day' },
+      { value: 'last_7_days', label: 'Previous 7 days' },
+    ];
+    grid.appendChild(renderSelect('Compare with', request.compare_with || 'none', compareOptions, value => updateRequest({ compare_with: value })));
+  }
+
+  card.appendChild(grid);
+
+  const actions = document.createElement('div');
+  actions.className = 'form-actions';
+
+  const runBtn = document.createElement('button');
+  runBtn.className = 'primary-btn';
+  runBtn.textContent = 'Run analysis';
+  runBtn.onclick = runAnalysis;
+
+  const backBtn = document.createElement('button');
+  backBtn.className = 'ghost-btn';
+  backBtn.textContent = 'Back to actions';
+  backBtn.onclick = backToActions;
+
+  actions.append(runBtn, backBtn);
+  card.appendChild(actions);
+  return card;
+}
+
+function renderDateField(label, fieldKey, value, minDate = '', maxDate = '') {
+  const wrap = document.createElement('div');
+  wrap.className = 'field';
+  wrap.innerHTML = `<label>${label}</label>`;
+
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.autocomplete = 'off';
+  input.className = 'guided-input guided-input--date';
+  input.value = value || '';
+  input.dataset.dateField = fieldKey;
+  input.setAttribute('aria-label', label);
+
+  if (minDate) {
+    input.min = minDate;
+    input.dataset.minDate = minDate;
+  }
+  if (maxDate) {
+    input.max = maxDate;
+    input.dataset.maxDate = maxDate;
+  }
+
+  const isLockedForExhibitor = state.role === 'EXHIBITOR';
+  if (isLockedForExhibitor) {
+    input.disabled = true;
+    input.classList.add('guided-input--locked');
+    input.setAttribute('aria-disabled', 'true');
+    input.title = 'Date is locked to the selected event.';
+  } else {
+    const commitCurrentValue = target => {
+      commitDateDraft(fieldKey, target.value, minDate, maxDate);
+    };
+
+    input.oninput = e => {
+      setDateDraft(fieldKey, e.target.value);
+      state.validationMessage = '';
+      state.saveIntent = 'idle';
+    };
+
+    input.onblur = e => {
+      commitCurrentValue(e.target);
+    };
+
+    input.onkeydown = e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commitCurrentValue(e.target);
+        e.target.blur();
+      }
+    };
+  }
+
+  wrap.appendChild(input);
+  return wrap;
+}

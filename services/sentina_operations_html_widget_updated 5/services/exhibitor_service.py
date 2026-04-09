@@ -43,35 +43,45 @@ class ExhibitorAnalyticsService:
         self.exhibitors_df = load_exhibitors_df().copy()
         self.metrics_df = load_exhibitor_metrics_df().copy()
 
-    def resolve_assignment(self, exhibitor_id: str, event_id: Optional[str] = None) -> Dict[str, Any]:
-        assignments = self.assignments_df[self.assignments_df['exhibitorId'] == exhibitor_id].copy()
+    def _merged_assignments(self, exhibitor_id: str) -> pd.DataFrame:
+        assignments = self.assignments_df[self.assignments_df['exhibitorId'].astype(str) == str(exhibitor_id)].copy()
         if assignments.empty:
-            # Demo mode falls back to the latest assignment so the widget still opens.
+            # Demo mode falls back to the latest assignments so the widget still opens.
             assignments = self.assignments_df.copy()
 
         merged = assignments.merge(self.events_df, on='eventId', how='left', suffixes=('', '_event'))
-        merged = merged.sort_values(['endDateTimeUtc', 'assignedAt'], ascending=[False, False])
+        return merged.sort_values(['endDateTimeUtc', 'assignedAt'], ascending=[False, False])
+
+    def _normalize_assignment_row(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        normalized = dict(row)
+        start_ts = _as_utc_timestamp(normalized['startDateTimeUtc'])
+        end_ts = _as_utc_timestamp(normalized['endDateTimeUtc'])
+
+        exhibitor_profile = self.exhibitors_df[self.exhibitors_df['exhibitorId'].astype(str) == str(normalized['exhibitorId'])]
+        if not exhibitor_profile.empty:
+            for key, value in exhibitor_profile.iloc[0].to_dict().items():
+                normalized.setdefault(key, value)
+
+        normalized['eventStartDate'] = start_ts.date().isoformat()
+        normalized['eventEndDate'] = end_ts.date().isoformat()
+        normalized['eventStartTs'] = start_ts
+        normalized['eventEndTs'] = end_ts
+        normalized['effectiveExhibitorId'] = str(normalized['exhibitorId'])
+        return normalized
+
+    def resolve_assignments(self, exhibitor_id: str) -> List[Dict[str, Any]]:
+        merged = self._merged_assignments(exhibitor_id)
+        return [self._normalize_assignment_row(row.to_dict()) for _, row in merged.iterrows()]
+
+    def resolve_assignment(self, exhibitor_id: str, event_id: Optional[str] = None) -> Dict[str, Any]:
+        merged = self._merged_assignments(exhibitor_id)
 
         if event_id:
-            selected = merged[merged['eventId'] == event_id]
+            selected = merged[merged['eventId'].astype(str) == str(event_id)]
             if not selected.empty:
                 merged = selected
 
-        row = merged.iloc[0].to_dict()
-        start_ts = _as_utc_timestamp(row['startDateTimeUtc'])
-        end_ts = _as_utc_timestamp(row['endDateTimeUtc'])
-
-        exhibitor_profile = self.exhibitors_df[self.exhibitors_df['exhibitorId'] == row['exhibitorId']]
-        if not exhibitor_profile.empty:
-            for key, value in exhibitor_profile.iloc[0].to_dict().items():
-                row.setdefault(key, value)
-
-        row['eventStartDate'] = start_ts.date().isoformat()
-        row['eventEndDate'] = end_ts.date().isoformat()
-        row['eventStartTs'] = start_ts
-        row['eventEndTs'] = end_ts
-        row['effectiveExhibitorId'] = str(row['exhibitorId'])
-        return row
+        return self._normalize_assignment_row(merged.iloc[0].to_dict())
 
     def resolve_previous_event_assignment(self, assignment: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         assignments = self.assignments_df[self.assignments_df['exhibitorId'] == assignment['exhibitorId']].copy()
