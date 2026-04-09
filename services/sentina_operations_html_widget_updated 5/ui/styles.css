@@ -1528,3 +1528,404 @@ body.assistant-embedded .conversation {
   }
 }
 
+/* ---- Final compact scale pass: keep window size same, reduce internal UI scale ---- */
+body.assistant-embedded .widget,
+body.assistant-embedded .saved-views-panel,
+body.assistant-embedded .tab-bar,
+body.assistant-embedded .conversation,
+body.assistant-embedded .widget__footer,
+body.assistant-embedded .save-view-bar {
+  font-size: 13px;
+}
+
+body.assistant-embedded .widget__header {
+  padding: 12px 14px;
+  min-height: 64px;
+}
+
+body.assistant-embedded .widget__header h2 {
+  font-size: 16px;
+}
+
+body.assistant-embedded .eyebrow {
+  margin: 0 0 2px;
+  font-size: 10px;
+  letter-spacing: 0.09em;
+}
+
+body.assistant-embedded .icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+body.assistant-embedded .tab-bar {
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+body.assistant-embedded .tab-chip {
+  gap: 6px;
+  padding: 8px 12px;
+  min-height: 34px;
+  font-size: 12px;
+}
+
+body.assistant-embedded .tab-delete,
+body.assistant-embedded .delete-mini {
+  font-size: 18px;
+}
+
+body.assistant-embedded .conversation {
+  padding: 12px 12px 16px;
+}
+
+body.assistant-embedded .card {
+  border-radius: 18px;
+  padding: 14px;
+}
+
+body.assistant-embedded .assistant-card {
+  margin-bottom: 16px;
+}
+
+body.assistant-embedded .intro-card {
+  margin-bottom: 14px;
+}
+
+body.assistant-embedded .card h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+body.assistant-embedded .card p {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+body.assistant-embedded .helper {
+  margin-top: 8px !important;
+  font-size: 12px;
+}
+
+body.assistant-embedded .large-gap {
+  margin-top: 12px;
+}
+
+body.assistant-embedded .message-row {
+  margin: 10px 0 14px;
+}
+
+body.assistant-embedded .message-bubble {
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+}
+
+body.assistant-embedded .message-bubble strong {
+  font-size: 14px;
+}
+
+body.assistant-embedded .message-bubble span {
+  font-size: 11px;
+}
+
+body.assistant-embedded .status-inline {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+body.assistant-embedded .form-card {
+  padding: 14px;
+}
+
+body.assistant-embedded .form-grid {
+  gap: 10px;
+  margin-top: 10px;
+}
+
+body.assistant-embedded .field label {
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+
+body.assistant-embedded .guided-select,
+body.assistant-embedded .guided-input,
+body.assistant-embedded .multi-toggle,
+body.assistant-embedded #saveViewName {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 16px;
+  font-size: 13px;
+}
+
+body.assistant-embedded .date-row {
+  gap: 10px;
+}
+
+body.assistant-embedded .form-actions,
+body.assistant-embedded .chip-row {
+  gap: 8px;
+  margin-top: 12px;
+}
+
+body.assistant-embedded .result-chip-row {
+  margin-top: 12px;
+}
+
+body.assistant-embedded .chip,
+body.assistant-embedded .ghost-btn,
+body.assistant-embedded .primary-btn,
+body.assistant-embedded .small-btn {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 16px;
+  font-size: 13px;
+}
+
+body.assistant-embedded .summary-grid,
+body.assistant-embedded .mini-summary-grid {
+  gap: 10px;
+  margin-top: 10px;
+}
+
+body.assistant-embedded .stat-box,
+body.assistant-embedded .mini-summary {
+  border-radius: 16px;
+  padding: 12px;
+}
+
+body.assistant-embedded .stat-box label,
+body.assistant-embedded .mini-summary label {
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+
+body.assistant-embedded .stat-box strong,
+body.assistant-embedded .mini-summary strong {
+  font-size: 18px;
+}
+
+body.assistant-embedded .table-wrap {
+  margin-top: 10px;
+  border-radius: 16px;
+}
+
+body.assistant-embedded .table-wrap table {
+  min-width: 420px;
+}
+
+body.assistant-embedded .table-wrap th,
+body.assistant-embedded .table-wrap td {
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+body.assistant-embedded .table-empty {
+  padding: 12px;
+  font-size: 12px;
+}
+
+body.assistant-embedded .chart-card {
+  margin-top: 10px;
+}
+
+body.assistant-embedded .chart-card .table-wrap {
+  margin-top: 12px;
+}
+
+body.assistant-embedded .chart-wrap {
+  border-radius: 16px;
+  padding: 10px 10px 8px;
+}
+
+body.assistant-embedded .axis-row {
+  margin-bottom: 4px;
+  padding: 0 6px 3px;
+  font-size: 11px;
+}
+
+body.assistant-embedded .chart-tooltip {
+  min-width: 120px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+}
+
+body.assistant-embedded .chart-legend {
+  gap: 10px;
+  padding: 8px 6px 2px;
+}
+
+body.assistant-embedded .chart-legend-item {
+  gap: 5px;
+  font-size: 12px;
+}
+
+body.assistant-embedded .chart-legend-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+}
+
+body.assistant-embedded .assignment-box {
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+body.assistant-embedded .saved-views-panel {
+  padding: 16px;
+  border-radius: 20px;
+}
+
+body.assistant-embedded .saved-views-panel__header h3 {
+  font-size: 18px;
+}
+
+body.assistant-embedded .saved-views-list {
+  gap: 10px;
+  margin-top: 14px;
+}
+
+body.assistant-embedded .saved-view-item {
+  padding: 12px;
+  border-radius: 16px;
+}
+
+body.assistant-embedded .saved-view-item h4 {
+  font-size: 15px;
+}
+
+body.assistant-embedded .saved-view-item p {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* Multi-select dropdown specifically compacted */
+body.assistant-embedded .multi-panel {
+  top: calc(100% + 8px);
+  border-radius: 16px;
+  padding: 10px;
+  gap: 8px;
+  max-height: 200px;
+  box-shadow: 0 10px 24px rgba(15, 35, 60, 0.10);
+}
+
+body.assistant-embedded .multi-panel .check-row,
+body.assistant-embedded .check-row {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+body.assistant-embedded .multi-panel .check-row {
+  grid-template-columns: 16px minmax(0, 1fr);
+  column-gap: 10px;
+}
+
+body.assistant-embedded .multi-panel .check-row input,
+body.assistant-embedded .check-row input {
+  width: 16px;
+  height: 16px;
+}
+
+body.assistant-embedded .multi-panel__select-all {
+  min-height: 36px;
+  border-radius: 14px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+body.assistant-embedded .widget__footer {
+  padding: 0 12px 12px;
+}
+
+body.assistant-embedded .quick-card__header {
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+}
+
+body.assistant-embedded .quick-card__body {
+  padding: 12px 14px;
+  border-radius: 18px;
+}
+
+body.assistant-embedded .save-view-bar {
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+/* ---- Compact multi-select dropdowns only (Zones + Halls) ---- */
+body.assistant-embedded .multi-toggle {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 14px;
+  font-size: 12px;
+}
+
+body.assistant-embedded .multi-panel {
+  top: calc(100% + 6px);
+  padding: 8px;
+  gap: 6px;
+  border-radius: 14px;
+  max-height: 150px;
+  box-shadow: 0 10px 22px rgba(15, 35, 60, 0.10);
+}
+
+body.assistant-embedded .multi-panel__select-all {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+body.assistant-embedded .multi-panel .check-row,
+body.assistant-embedded .check-row {
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+body.assistant-embedded .multi-panel .check-row {
+  grid-template-columns: 14px minmax(0, 1fr);
+  column-gap: 8px;
+}
+
+body.assistant-embedded .multi-panel .check-row input,
+body.assistant-embedded .check-row input {
+  width: 14px;
+  height: 14px;
+}
+
+body.assistant-embedded .multi-panel .check-row .check-row__label,
+body.assistant-embedded .check-row__label {
+  line-height: 1.15;
+}
+
+/* Keep the closed pill full width, but make only the opened dropdown narrower */
+body.assistant-embedded .multi-select-wrap {
+  width: 100%;
+  max-width: none;
+}
+
+body.assistant-embedded .multi-toggle {
+  width: 100%;
+}
+
+body.assistant-embedded .multi-panel {
+  width: 300px;
+  max-width: calc(100vw - 48px);
+  left: 0;
+  right: auto;
+}
