@@ -2,6 +2,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import SettingsPage from "../pages/SettingsPage";
+import FloatingAssistant from "../components/FloatingAssistant";
 
 const rolePrefixMap = {
   operations_manager: "/operations",
@@ -832,6 +833,24 @@ const handleLogout = (e) => {
               onClose={() => setSettingsOpen(false)}
             />
           ) : null}
+
+        {section === "operations" || section === "sustainability" ? (
+          <FloatingAssistant
+            section={section}
+            userId={
+              sessionStorage.getItem("employee_id") ||
+              localStorage.getItem("employee_id") ||
+              sessionStorage.getItem("user_id") ||
+              localStorage.getItem("user_id") ||
+              section
+            }
+            userName={
+              sessionStorage.getItem("full_name") ||
+              localStorage.getItem("full_name") ||
+              "User"
+            }
+          />
+        ) : null}
       </main>
     </div>
     

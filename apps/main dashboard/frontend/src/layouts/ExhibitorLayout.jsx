@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./../pages/ExhibitorDashboard.css";
 import SettingsPage from "../pages/SettingsPage";
+import FloatingAssistant from "../components/FloatingAssistant";
 import {
   getDashboardRefreshMs,
   useDashboardSettings,
@@ -804,6 +805,17 @@ export default function ExhibitorLayout() {
                 onClose={() => setSettingsOpen(false)}
               />
             ) : null}
+
+            <FloatingAssistant
+              section="exhibitor"
+              userId={exhibitorId || sessionStorage.getItem("employee_id") || localStorage.getItem("employee_id") || "EXH0215"}
+              userName={
+                exhibitorName ||
+                sessionStorage.getItem("full_name") ||
+                localStorage.getItem("full_name") ||
+                "Exhibitor"
+              }
+            />
         </main>
       </div>
     </div>
