@@ -81,7 +81,7 @@
 }
 
 .floatingAssistantPanel.isExpanded {
-  width: min(860px, calc(100vw - 40px));
+  width: min(1120px, calc(100vw - 40px));
   height: min(560px, calc(100vh - 120px));
 }
 
@@ -148,9 +148,10 @@
   }
 
   .floatingAssistantPanel.isExpanded {
-    width: min(760px, calc(100vw - 24px));
-    height: min(520px, calc(100vh - 96px));
-  }
+  width: min(980px, calc(100vw - 24px));
+  height: min(520px, calc(100vh - 96px));
+}
+
 }
 
 @media (max-width: 640px) {
