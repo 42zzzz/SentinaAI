@@ -77,6 +77,12 @@
   height: min(460px, calc(100vh - 160px));
   border-radius: 20px;
   overflow: hidden;
+  transition: width 0.2s ease, height 0.2s ease;
+}
+
+.floatingAssistantPanel.isExpanded {
+  width: min(860px, calc(100vw - 40px));
+  height: min(560px, calc(100vh - 120px));
 }
 
 .floatingAssistantPanelActions {
@@ -139,6 +145,11 @@
     width: min(440px, calc(100vw - 24px));
     height: min(420px, calc(100vh - 120px));
     border-radius: 18px;
+  }
+
+  .floatingAssistantPanel.isExpanded {
+    width: min(760px, calc(100vw - 24px));
+    height: min(520px, calc(100vh - 96px));
   }
 }
 

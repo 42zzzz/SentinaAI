@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./FloatingAssistant.css";
 
 const DEFAULT_ASSISTANT_BASE = import.meta.env.VITE_ASSISTANT_BASE_URL || "http://localhost:8002";
@@ -43,10 +43,13 @@ function SparklesIcon() {
 export default function FloatingAssistant({ section, userId, userName }) {
   const config = ROLE_CONFIG[section] || ROLE_CONFIG.operations;
   const [isOpen, setIsOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [frameKey, setFrameKey] = useState(0);
+  const iframeRef = useRef(null);
 
   useEffect(() => {
     setIsOpen(false);
+    setIsExpanded(false);
   }, [section, userId]);
 
   const iframeSrc = useMemo(() => {
@@ -59,12 +62,67 @@ export default function FloatingAssistant({ section, userId, userName }) {
     return `${DEFAULT_ASSISTANT_BASE}/?${params.toString()}`;
   }, [config.role, userId, userName]);
 
+  const assistantOrigin = useMemo(() => {
+    try {
+      return new URL(iframeSrc, window.location.href).origin;
+    } catch {
+      return "*";
+    }
+  }, [iframeSrc]);
+
+  useEffect(() => {
+    const handleMessage = (event) => {
+      const data = event.data || {};
+      if (!data || typeof data !== "object") return;
+      if (assistantOrigin !== "*" && event.origin !== assistantOrigin) return;
+
+      if (data.type === "sentina-assistant:expanded") {
+        setIsExpanded(Boolean(data.expanded));
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [assistantOrigin]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const frameWindow = iframeRef.current?.contentWindow;
+    if (!frameWindow) return;
+    frameWindow.postMessage(
+      { type: "sentina-assistant:set-expanded", expanded: isExpanded },
+      assistantOrigin
+    );
+  }, [assistantOrigin, isExpanded, isOpen, frameKey]);
+
   const handleToggle = () => {
-    setIsOpen((prev) => !prev);
+    setIsOpen((prev) => {
+      const nextOpen = !prev;
+      if (!nextOpen) setIsExpanded(false);
+      return nextOpen;
+    });
   };
 
   const handleRefresh = () => {
     setFrameKey((prev) => prev + 1);
+  };
+
+  const handleExpandToggle = () => {
+    setIsExpanded((prev) => !prev);
+  };
+
+  const handlePanelClose = () => {
+    setIsOpen(false);
+    setIsExpanded(false);
+  };
+
+  const handleFrameLoad = () => {
+    const frameWindow = iframeRef.current?.contentWindow;
+    if (!frameWindow) return;
+    frameWindow.postMessage(
+      { type: "sentina-assistant:set-expanded", expanded: isExpanded },
+      assistantOrigin
+    );
   };
 
   return (
@@ -72,7 +130,7 @@ export default function FloatingAssistant({ section, userId, userName }) {
       {isOpen ? (
         <div
           className="floatingAssistantBackdrop"
-          onClick={() => setIsOpen(false)}
+          onClick={handlePanelClose}
           aria-hidden="true"
         />
       ) : null}
@@ -88,10 +146,19 @@ export default function FloatingAssistant({ section, userId, userName }) {
       >
         {isOpen ? (
           <section
-            className="floatingAssistantPanel"
+            className={`floatingAssistantPanel${isExpanded ? " isExpanded" : ""}`}
             aria-label={`${config.label} panel`}
           >
             <div className="floatingAssistantPanelActions">
+              <button
+                type="button"
+                className="floatingAssistantMiniBtn"
+                onClick={handleExpandToggle}
+                aria-label={isExpanded ? "Collapse saved views" : "Expand saved views"}
+                title={isExpanded ? "Collapse saved views" : "Expand saved views"}
+              >
+                {isExpanded ? "⤡" : "⤢"}
+              </button>
               <button
                 type="button"
                 className="floatingAssistantMiniBtn"
@@ -104,7 +171,7 @@ export default function FloatingAssistant({ section, userId, userName }) {
               <button
                 type="button"
                 className="floatingAssistantMiniBtn"
-                onClick={() => setIsOpen(false)}
+                onClick={handlePanelClose}
                 aria-label="Close assistant"
                 title="Close assistant"
               >
@@ -114,9 +181,11 @@ export default function FloatingAssistant({ section, userId, userName }) {
 
             <iframe
               key={frameKey}
+              ref={iframeRef}
               title={config.label}
               src={iframeSrc}
               className="floatingAssistantFrame"
+              onLoad={handleFrameLoad}
             />
           </section>
         ) : null}

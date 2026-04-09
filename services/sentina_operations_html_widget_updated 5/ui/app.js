@@ -668,6 +668,25 @@ function renderFormCard(view) {
     }
   }
 
+  function scrollToRunStart(runIndex, extraOffset = 72) {
+  requestAnimationFrame(() => {
+    const target = el.conversation.querySelector(`.result-card[data-run-index="${runIndex}"]`);
+    if (!target) {
+      scrollConversationToBottom();
+      return;
+    }
+
+    const conversationRect = el.conversation.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const nextTop = el.conversation.scrollTop + (targetRect.top - conversationRect.top) - extraOffset;
+
+    el.conversation.scrollTo({
+      top: Math.max(0, nextTop),
+      behavior: 'smooth',
+    });
+  });
+}
+
   const dateRow = document.createElement('div');
   dateRow.className = 'date-row';
   const minDate = state.role === 'EXHIBITOR' ? state.assignment?.event_start_date : state.bootstrap.earliest_available_date;
@@ -866,17 +885,21 @@ async function runAnalysis() {
     ranAt: new Date().toISOString(),
     fromSavedView: false,
   });
+
+  const newRunIndex = view.runs.length - 1;
+
   view.isEditingForm = false;
   view.loadedMessage = '';
   state.validationMessage = '';
   state.saveIntent = 'idle';
   render();
-  scrollConversationToBottom();
+  scrollToRunStart(newRunIndex, 88);
 }
 
 function renderResultCard(result, runIndex) {
   const card = document.createElement('div');
   card.className = 'card result-card assistant-card';
+  card.dataset.runIndex = String(runIndex);
   card.innerHTML = `<h3>${result.title || 'Result'}</h3><p>${result.summary || ''}</p>`;
 
   if (result.response_type === 'summary_card') card.appendChild(renderSummaryCard(result.data));
@@ -922,6 +945,7 @@ function renderResultCard(result, runIndex) {
   card.appendChild(chips);
   return card;
 }
+
 
 function renderSummaryCard(data) {
   const box = document.createElement('div');
@@ -1286,3 +1310,788 @@ el.closeBtn.onclick = closeWidget;
 el.expandBtn.onclick = toggleExpanded;
 el.confirmSaveViewBtn.onclick = saveCurrentView;
 el.cancelSaveViewBtn.onclick = hideSaveViewBar;
+
+
+/* ---- ChatGPT patch: date typing, multiselect scroll retention, embedded expand sync, quick actions footer ---- */
+state.quickActionsCollapsed = typeof state.quickActionsCollapsed === 'boolean' ? state.quickActionsCollapsed : true;
+state.multiScrollTopByKey = state.multiScrollTopByKey || {};
+
+function notifyParentExpansion() {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'sentina-assistant:expanded', expanded: state.isExpanded }, '*');
+  }
+}
+
+function applyExpandedState(notifyParent = true) {
+  el.shell.classList.toggle('expanded', state.isExpanded);
+  if (el.savedViewsPanel) {
+    el.savedViewsPanel.classList.toggle('hidden', !state.isExpanded);
+  }
+  if (el.expandBtn) {
+    el.expandBtn.textContent = state.isExpanded ? '⤡' : '⤢';
+    el.expandBtn.setAttribute('aria-label', state.isExpanded ? 'Collapse saved views' : 'Expand saved views');
+    el.expandBtn.setAttribute('title', state.isExpanded ? 'Collapse saved views' : 'Expand saved views');
+  }
+  if (notifyParent) notifyParentExpansion();
+}
+
+function setExpanded(nextExpanded, notifyParent = true) {
+  state.isExpanded = !!nextExpanded;
+  applyExpandedState(notifyParent);
+}
+
+function toggleExpanded() {
+  setExpanded(!state.isExpanded);
+}
+
+async function boot() {
+  state.bootstrap = await api(
+    `/assistant/widget/bootstrap?user_id=${encodeURIComponent(state.userId)}&user_name=${encodeURIComponent(state.userName)}&role=${encodeURIComponent(state.role)}`
+  );
+  state.flowConfig = await api(`/assistant/widget/flow-config?role=${encodeURIComponent(state.role)}&user_id=${encodeURIComponent(state.userId)}`);
+  state.assignment = state.bootstrap.assignment || null;
+  state.analysisByTab = { draft: makeEmptyAnalysisState() };
+  await refreshSavedViews();
+  applyRoleBranding();
+  applyExpandedState();
+  render();
+}
+
+function openWidget() {
+  state.isOpen = true;
+  el.shell.classList.remove('hidden');
+  if (!state.bootstrap) {
+    boot().catch(err => {
+      const meta = getRoleMeta();
+      el.conversation.innerHTML = `<div class="card"><h3>Unable to load ${meta.assistantName}</h3><p>${err.message}</p></div>`;
+    });
+    return;
+  }
+  applyRoleBranding();
+  applyExpandedState();
+  render();
+}
+
+function closeWidget() {
+  state.isOpen = false;
+  el.shell.classList.add('hidden');
+  hideSaveViewBar();
+  setExpanded(false);
+}
+
+function makeEmptyAnalysisState() {
+  return {
+    action: null,
+    request: null,
+    runs: [],
+    isEditingForm: false,
+    loadedMessage: '',
+    dateDrafts: { start_date: '', end_date: '' },
+  };
+}
+
+function syncDateDrafts(view) {
+  if (!view) return;
+  view.dateDrafts = {
+    start_date: toInputDate(view.request?.start_date),
+    end_date: toInputDate(view.request?.end_date),
+  };
+}
+
+function ensureDateDrafts(view) {
+  if (!view) return { start_date: '', end_date: '' };
+  if (!view.dateDrafts) {
+    syncDateDrafts(view);
+  }
+  return view.dateDrafts;
+}
+
+function isValidIsoDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const dt = new Date(`${value}T00:00:00`);
+  return (
+    !Number.isNaN(dt.getTime()) &&
+    dt.getFullYear() === year &&
+    dt.getMonth() + 1 === month &&
+    dt.getDate() === day
+  );
+}
+
+function setDateDraft(fieldKey, value) {
+  const view = getActiveAnalysis();
+  const drafts = ensureDateDrafts(view);
+  drafts[fieldKey] = value;
+}
+
+function commitDateDraft(fieldKey, rawValue, minDate = '', maxDate = '') {
+  const nextValue = (rawValue || '').trim();
+  const view = getActiveAnalysis();
+  const drafts = ensureDateDrafts(view);
+  drafts[fieldKey] = nextValue;
+
+  if (!nextValue) {
+    updateRequest({ [fieldKey]: '' });
+    return true;
+  }
+
+  if (!isValidIsoDate(nextValue)) {
+    state.saveIntent = 'error';
+    state.validationMessage = 'Enter the date as YYYY-MM-DD.';
+    render();
+    scrollToForm();
+    return false;
+  }
+
+  if (minDate && nextValue < minDate) {
+    state.saveIntent = 'error';
+    state.validationMessage = `${fieldKey === 'start_date' ? 'Start' : 'End'} date cannot be before ${fmtDate(minDate)}.`;
+    render();
+    scrollToForm();
+    return false;
+  }
+
+  if (maxDate && nextValue > maxDate) {
+    state.saveIntent = 'error';
+    state.validationMessage = `${fieldKey === 'start_date' ? 'Start' : 'End'} date cannot be after ${fmtDate(maxDate)}.`;
+    render();
+    scrollToForm();
+    return false;
+  }
+
+  updateRequest({ [fieldKey]: nextValue });
+  return true;
+}
+
+function startAction(actionLabel) {
+  state.activeTabId = 'draft';
+  const request = defaultRequest(actionLabel);
+  state.analysisByTab.draft = {
+    action: actionLabel,
+    request,
+    runs: [],
+    isEditingForm: true,
+    loadedMessage: '',
+    dateDrafts: {
+      start_date: toInputDate(request.start_date),
+      end_date: toInputDate(request.end_date),
+    },
+  };
+  state.openMultiKey = null;
+  state.validationMessage = '';
+  state.saveIntent = 'idle';
+  hideSaveViewBar();
+  render();
+  scrollConversationToBottom();
+}
+
+function ensureSavedAnalysis(view) {
+  if (!view) return makeEmptyAnalysisState();
+  if (state.analysisByTab[view.view_id]) return state.analysisByTab[view.view_id];
+
+  const payload = view.view_payload || {};
+  const action = payload.action || inferActionLabel(payload.request || payload.analysis_type);
+  const request = payload.request || defaultRequest(action);
+  const results = payload.results || [];
+
+  state.analysisByTab[view.view_id] = {
+    action,
+    request,
+    runs: results.length ? [{ request, results, ranAt: payload.saved_at || view.created_at, fromSavedView: true }] : [],
+    isEditingForm: false,
+    loadedMessage: 'Saved view loaded.',
+    dateDrafts: {
+      start_date: toInputDate(request?.start_date),
+      end_date: toInputDate(request?.end_date),
+    },
+  };
+  return state.analysisByTab[view.view_id];
+}
+
+function updateRequest(patch) {
+  const view = getActiveAnalysis();
+  if (!view.request) return;
+  view.request = { ...view.request, ...patch };
+
+  if (Object.prototype.hasOwnProperty.call(patch, 'start_date') || Object.prototype.hasOwnProperty.call(patch, 'end_date')) {
+    const drafts = ensureDateDrafts(view);
+    if (Object.prototype.hasOwnProperty.call(patch, 'start_date')) {
+      drafts.start_date = toInputDate(patch.start_date);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'end_date')) {
+      drafts.end_date = toInputDate(patch.end_date);
+    }
+  }
+
+  if (patch.scope_type === 'full_venue') {
+    view.request.zone_ids = [];
+    view.request.hall_ids = [];
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'zone_ids')) {
+    const selected = patch.zone_ids || [];
+    const validHalls = new Set(allHallsForZones(selected));
+    view.request.hall_ids = view.request.hall_ids.filter(hallId => validHalls.has(hallId));
+  }
+
+  state.saveIntent = 'idle';
+  state.validationMessage = '';
+  render();
+}
+
+function renderFormCard(view) {
+  const card = document.createElement('div');
+  card.className = 'card form-card assistant-card';
+  card.id = 'activeFormCard';
+  const request = view.request;
+  const dateDrafts = ensureDateDrafts(view);
+  card.innerHTML = `<h3>${view.action}</h3><p>Set up ${view.action.toLowerCase()}. Complete the form below.</p>`;
+
+  if (state.validationMessage) {
+    const note = document.createElement('div');
+    note.className = `status-note ${state.saveIntent === 'error' ? 'status-error' : 'status-success'}`;
+    note.textContent = state.validationMessage;
+    card.appendChild(note);
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'form-grid';
+
+  if (state.role === 'EXHIBITOR' && state.assignment) {
+    const assignmentField = document.createElement('div');
+    assignmentField.className = 'field field--full';
+    assignmentField.innerHTML = `<label>Assignment</label><div class="assignment-box">${state.assignment.event_name}<br/>Booth ${state.assignment.booth_code} · ${state.assignment.hall_name} · ${state.assignment.zone_id}</div>`;
+    grid.appendChild(assignmentField);
+
+    const aggOptions = state.flowConfig.steps.find(s => s.id === 'aggregation')?.options || [
+      { value: 'hourly', label: 'Hourly' },
+      { value: 'daily', label: 'Daily' },
+    ];
+    grid.appendChild(renderSelect('Aggregation', request.aggregation || 'hourly', aggOptions, value => updateRequest({ aggregation: value })));
+  } else {
+    grid.appendChild(renderSelect('Scope', request.scope_type, [
+      { value: 'full_venue', label: 'Full venue' },
+      { value: 'custom', label: 'Zone / hall' },
+    ], value => updateRequest({ scope_type: value })));
+
+    if (request.scope_type === 'custom') {
+      const zoneOptions = state.flowConfig.steps.find(s => s.id === 'zone_ids').options || [];
+      const hallOptions = request.zone_ids.length ? request.zone_ids.flatMap(z => buildHallMap()[z] || []) : [];
+
+      grid.appendChild(renderMultiSelect('Zones', 'zones', zoneOptions, request.zone_ids, ids => updateRequest({ zone_ids: ids })));
+      grid.appendChild(renderMultiSelect('Halls', 'halls', hallOptions, request.hall_ids, ids => updateRequest({ hall_ids: ids }), true));
+    }
+  }
+
+  const dateRow = document.createElement('div');
+  dateRow.className = 'date-row';
+  const minDate = state.role === 'EXHIBITOR' ? state.assignment?.event_start_date : state.bootstrap.earliest_available_date;
+  const maxDate = state.role === 'EXHIBITOR' ? state.assignment?.event_end_date : state.bootstrap.latest_available_date;
+  dateRow.appendChild(renderDateField('Start date', 'start_date', dateDrafts.start_date, minDate, maxDate));
+  dateRow.appendChild(renderDateField('End date', 'end_date', dateDrafts.end_date, minDate, maxDate));
+  grid.appendChild(dateRow);
+
+  if (view.action === 'Trends') {
+    grid.appendChild(renderSelect(
+      'Trend metric',
+      request.metric || 'occupancy_trend',
+      state.flowConfig.steps.find(s => s.id === 'metric').options,
+      value => updateRequest({ metric: value })
+    ));
+  }
+
+  const shouldShowCompare = state.role !== 'EXHIBITOR' || view.action === 'Comparison';
+  if (shouldShowCompare) {
+    const compareOptions = state.flowConfig.steps.find(s => s.id === 'compare_with')?.options || [
+      { value: 'none', label: 'No comparison' },
+      { value: 'yesterday', label: 'Previous day' },
+      { value: 'last_7_days', label: 'Previous 7 days' },
+    ];
+    grid.appendChild(renderSelect('Compare with', request.compare_with || 'none', compareOptions, value => updateRequest({ compare_with: value })));
+  }
+
+  card.appendChild(grid);
+
+  const actions = document.createElement('div');
+  actions.className = 'form-actions';
+
+  const runBtn = document.createElement('button');
+  runBtn.className = 'primary-btn';
+  runBtn.textContent = 'Run analysis';
+  runBtn.onclick = runAnalysis;
+
+  const backBtn = document.createElement('button');
+  backBtn.className = 'ghost-btn';
+  backBtn.textContent = 'Back to actions';
+  backBtn.onclick = backToActions;
+
+  actions.append(runBtn, backBtn);
+  card.appendChild(actions);
+  return card;
+}
+
+function renderDateField(label, fieldKey, value, minDate = '', maxDate = '') {
+  const wrap = document.createElement('div');
+  wrap.className = 'field';
+  wrap.innerHTML = `<label>${label}</label>`;
+
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.autocomplete = 'off';
+  input.className = 'guided-input guided-input--date';
+  input.value = value || '';
+  input.dataset.dateField = fieldKey;
+  input.setAttribute('aria-label', label);
+
+  if (minDate) {
+    input.min = minDate;
+    input.dataset.minDate = minDate;
+  }
+  if (maxDate) {
+    input.max = maxDate;
+    input.dataset.maxDate = maxDate;
+  }
+
+  const commitCurrentValue = target => {
+    commitDateDraft(fieldKey, target.value, minDate, maxDate);
+  };
+
+  input.oninput = e => {
+    setDateDraft(fieldKey, e.target.value);
+    state.validationMessage = '';
+    state.saveIntent = 'idle';
+  };
+
+  input.onblur = e => {
+    commitCurrentValue(e.target);
+  };
+
+  input.onkeydown = e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitCurrentValue(e.target);
+      e.target.blur();
+    }
+  };
+
+  wrap.appendChild(input);
+  return wrap;
+}
+
+function renderMultiSelect(label, key, options, selectedValues, onApply, isHall = false) {
+  const wrap = document.createElement('div');
+  wrap.className = 'field field--left multi-select-wrap';
+  wrap.innerHTML = `<label>${label}</label>`;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'multi-toggle';
+
+  const allLabel = isHall ? 'All halls' : 'All zones';
+  let text = allLabel;
+
+  if (selectedValues.length && selectedValues.length !== options.length) {
+    text = `${selectedValues.length} selected`;
+  }
+
+  if (!options.length) {
+    text = isHall ? 'No halls available' : allLabel;
+  }
+
+  button.textContent = text;
+  button.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    state.openMultiKey = state.openMultiKey === key ? null : key;
+    render();
+  };
+
+  wrap.appendChild(button);
+
+  if (state.openMultiKey === key) {
+    const panel = document.createElement('div');
+    panel.className = 'multi-panel';
+    panel.dataset.multiKey = key;
+    panel.onclick = e => e.stopPropagation();
+    panel.onscroll = () => {
+      state.multiScrollTopByKey[key] = panel.scrollTop;
+    };
+
+    const allBtn = document.createElement('button');
+    allBtn.type = 'button';
+    allBtn.className = 'ghost-btn small-btn multi-panel__select-all';
+
+    const allSelected = options.length > 0 && selectedValues.length === options.length;
+    allBtn.textContent = allSelected ? 'Clear all' : 'Select all';
+    allBtn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      state.multiScrollTopByKey[key] = panel.scrollTop;
+      onApply(allSelected ? [] : options.map(opt => opt.value));
+    };
+
+    panel.appendChild(allBtn);
+
+    options.forEach(opt => {
+      const row = document.createElement('label');
+      row.className = 'check-row';
+
+      const checked = selectedValues.includes(opt.value);
+      row.innerHTML = `
+        <input type="checkbox" ${checked ? 'checked' : ''} />
+        <span class="check-row__label">${opt.label}</span>
+      `;
+
+      row.querySelector('input').onchange = ev => {
+        state.multiScrollTopByKey[key] = panel.scrollTop;
+        const next = ev.target.checked
+          ? [...new Set([...selectedValues, opt.value])]
+          : selectedValues.filter(v => v !== opt.value);
+
+        onApply(next);
+      };
+
+      panel.appendChild(row);
+    });
+
+    wrap.appendChild(panel);
+
+    requestAnimationFrame(() => {
+      panel.scrollTop = state.multiScrollTopByKey[key] || 0;
+    });
+  }
+
+  return wrap;
+}
+
+function toggleQuickActions() {
+  state.quickActionsCollapsed = !state.quickActionsCollapsed;
+  renderQuickControls();
+}
+
+function renderQuickControls() {
+  el.actionArea.innerHTML = '';
+
+  const box = document.createElement('div');
+  box.className = `card quick-card${state.quickActionsCollapsed ? ' is-collapsed' : ''}`;
+
+  const header = document.createElement('button');
+  header.type = 'button';
+  header.className = 'quick-card__header';
+  header.setAttribute('aria-expanded', String(!state.quickActionsCollapsed));
+  header.innerHTML = `
+    <span>Quick actions</span>
+    <span class="quick-card__chevron" aria-hidden="true">⌃</span>
+  `;
+  header.onclick = toggleQuickActions;
+
+  const body = document.createElement('div');
+  body.className = 'quick-card__body';
+  body.setAttribute('aria-hidden', String(state.quickActionsCollapsed));
+
+  const row = document.createElement('div');
+  row.className = 'chip-row quick-card__actions';
+
+  const save = document.createElement('button');
+  save.className = `primary-btn ${canSaveCurrentView() ? 'success-btn' : 'danger-btn'}`;
+  save.textContent = 'Save this view';
+  save.onclick = () => {
+    if (!canSaveCurrentView()) {
+      state.saveIntent = 'error';
+      state.validationMessage = 'Run analysis first.';
+      render();
+      scrollToForm();
+      return;
+    }
+    showSaveViewBar();
+  };
+
+  const restart = document.createElement('button');
+  restart.className = 'ghost-btn';
+  restart.textContent = 'Start another analysis';
+  restart.onclick = backToActions;
+
+  const guide = document.createElement('button');
+  guide.className = 'ghost-btn';
+  guide.textContent = 'Open user guide';
+  guide.onclick = () => window.open('/docs-static/operations_widget_guide.html', '_blank');
+
+  row.append(save, restart, guide);
+  body.appendChild(row);
+
+  box.appendChild(body);
+  box.appendChild(header);
+  el.actionArea.appendChild(box);
+}
+
+
+window.addEventListener('message', event => {
+  const data = event.data || {};
+  if (!data || typeof data !== 'object') return;
+
+  if (data.type === 'sentina-assistant:set-expanded') {
+    setExpanded(data.expanded, false);
+  }
+
+  if (data.type === 'sentina-assistant:toggle-expanded') {
+    toggleExpanded();
+  }
+});
+
+/* ---- Final patch: scroll to top of generated cards, click-away quick actions close, real slide animation hooks ---- */
+state.quickActionsCollapsed = typeof state.quickActionsCollapsed === 'boolean' ? state.quickActionsCollapsed : true;
+state.multiScrollTopByKey = state.multiScrollTopByKey || {};
+
+function scrollConversationToElement(targetOrSelector, offset = 14) {
+  requestAnimationFrame(() => {
+    const target = typeof targetOrSelector === 'string'
+      ? el.conversation.querySelector(targetOrSelector)
+      : targetOrSelector;
+
+    if (!target || !el.conversation) return;
+
+    const conversationRect = el.conversation.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const nextTop = el.conversation.scrollTop + (targetRect.top - conversationRect.top) - offset;
+
+    el.conversation.scrollTo({
+      top: Math.max(0, nextTop),
+      behavior: 'smooth',
+    });
+  });
+}
+
+function scrollToGeneratedCardTop(runIndex, offset = 14) {
+  scrollConversationToElement(`.result-card[data-run-index="${runIndex}"]`, offset);
+}
+
+function scrollToActiveFormTop(offset = 14) {
+  scrollConversationToElement('#activeFormCard', offset);
+}
+
+function startAction(actionLabel) {
+  state.activeTabId = 'draft';
+  const request = defaultRequest(actionLabel);
+  state.analysisByTab.draft = {
+    action: actionLabel,
+    request,
+    runs: [],
+    isEditingForm: true,
+    loadedMessage: '',
+    dateDrafts: {
+      start_date: toInputDate(request.start_date),
+      end_date: toInputDate(request.end_date),
+    },
+  };
+  state.openMultiKey = null;
+  state.validationMessage = '';
+  state.saveIntent = 'idle';
+  hideSaveViewBar();
+  render();
+  scrollToActiveFormTop(12);
+}
+
+async function runAnalysis() {
+  const view = getActiveAnalysis();
+  if (!view.request?.start_date || !view.request?.end_date) {
+    state.saveIntent = 'error';
+    state.validationMessage = 'Choose a valid date range.';
+    render();
+    scrollToForm();
+    return;
+  }
+
+  const req = JSON.parse(JSON.stringify(view.request));
+  const primary = await api('/assistant/widget/action', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  });
+
+  const results = [primary];
+  const shouldAutoAppendComparison = state.role !== 'EXHIBITOR'
+    && req.compare_with
+    && req.compare_with !== 'none'
+    && !isComparisonType(req.analysis_type);
+
+  if (shouldAutoAppendComparison) {
+    const comparisonType = state.role === 'SUSTAINABILITY' ? 'sus_time_comparison' : 'time_comparison';
+    const comparisonReq = { ...req, analysis_type: comparisonType };
+    const comparison = await api('/assistant/widget/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(comparisonReq),
+    });
+    results.push(comparison);
+  }
+
+  view.runs.push({
+    request: req,
+    results,
+    ranAt: new Date().toISOString(),
+    fromSavedView: false,
+  });
+
+  const newRunIndex = view.runs.length - 1;
+
+  view.isEditingForm = false;
+  view.loadedMessage = '';
+  state.validationMessage = '';
+  state.saveIntent = 'idle';
+  render();
+  scrollToGeneratedCardTop(newRunIndex, 12);
+}
+
+function renderResultCard(result, runIndex) {
+  const card = document.createElement('div');
+  card.className = 'card result-card assistant-card';
+  card.dataset.runIndex = String(runIndex);
+  card.innerHTML = `<h3>${result.title || 'Result'}</h3><p>${result.summary || ''}</p>`;
+
+  if (result.response_type === 'summary_card') card.appendChild(renderSummaryCard(result.data));
+  if (result.response_type === 'table_card') card.appendChild(renderTableCard(result.data));
+  if (result.response_type === 'chart_card') card.appendChild(renderChartCard(result.data));
+
+  const chips = document.createElement('div');
+  chips.className = 'chip-row result-chip-row';
+
+  const edit = document.createElement('button');
+  edit.className = 'ghost-btn small-btn';
+  edit.textContent = 'Edit scope';
+  edit.onclick = () => {
+    const view = getActiveAnalysis();
+    view.isEditingForm = true;
+    state.validationMessage = '';
+    render();
+    scrollToActiveFormTop(12);
+  };
+  chips.appendChild(edit);
+
+  (result.follow_up_actions || []).slice(0, 2).forEach(item => {
+    const btn = document.createElement('button');
+    btn.className = 'chip';
+    btn.textContent = item.label;
+    btn.onclick = async () => {
+      const view = getActiveAnalysis();
+      view.request = {
+        ...view.request,
+        ...item.payload,
+        user_id: state.userId,
+        user_name: state.userName,
+        role: state.role,
+        session_id: state.sessionId,
+      };
+      view.action = inferActionLabel(view.request.analysis_type);
+      view.isEditingForm = false;
+      await runAnalysis();
+    };
+    chips.appendChild(btn);
+  });
+
+  card.appendChild(chips);
+  return card;
+}
+
+function buildQuickActionsCard() {
+  const box = document.createElement('div');
+  box.className = 'card quick-card';
+
+  const header = document.createElement('button');
+  header.type = 'button';
+  header.className = 'quick-card__header';
+  header.innerHTML = `
+    <span>Quick actions</span>
+    <span class="quick-card__chevron" aria-hidden="true">⌃</span>
+  `;
+  header.onclick = event => {
+    event.stopPropagation();
+    toggleQuickActions();
+  };
+
+  const body = document.createElement('div');
+  body.className = 'quick-card__body';
+  body.onclick = event => event.stopPropagation();
+
+  const row = document.createElement('div');
+  row.className = 'chip-row quick-card__actions';
+
+  const save = document.createElement('button');
+  save.dataset.action = 'save-view';
+  save.textContent = 'Save this view';
+  save.onclick = () => {
+    if (!canSaveCurrentView()) {
+      state.saveIntent = 'error';
+      state.validationMessage = 'Run analysis first.';
+      render();
+      scrollToForm();
+      return;
+    }
+    showSaveViewBar();
+  };
+
+  const restart = document.createElement('button');
+  restart.className = 'ghost-btn';
+  restart.textContent = 'Start another analysis';
+  restart.onclick = backToActions;
+
+  const guide = document.createElement('button');
+  guide.className = 'ghost-btn';
+  guide.textContent = 'Open user guide';
+  guide.onclick = () => window.open('/docs-static/operations_widget_guide.html', '_blank');
+
+  row.append(save, restart, guide);
+  body.appendChild(row);
+  box.append(body, header);
+  return box;
+}
+
+function syncQuickActionsCard() {
+  if (!el.actionArea) return;
+
+  let box = el.actionArea.querySelector('.quick-card');
+  if (!box) {
+    el.actionArea.innerHTML = '';
+    box = buildQuickActionsCard();
+    el.actionArea.appendChild(box);
+  }
+
+  box.classList.toggle('is-collapsed', state.quickActionsCollapsed);
+
+  const header = box.querySelector('.quick-card__header');
+  const body = box.querySelector('.quick-card__body');
+  const save = box.querySelector('[data-action="save-view"]');
+
+  if (header) {
+    header.setAttribute('aria-expanded', String(!state.quickActionsCollapsed));
+  }
+
+  if (body) {
+    body.setAttribute('aria-hidden', String(state.quickActionsCollapsed));
+  }
+
+  if (save) {
+    save.className = `primary-btn ${canSaveCurrentView() ? 'success-btn' : 'danger-btn'}`;
+  }
+}
+
+function renderQuickControls() {
+  syncQuickActionsCard();
+}
+
+function toggleQuickActions(forceValue) {
+  const nextValue = typeof forceValue === 'boolean'
+    ? forceValue
+    : !state.quickActionsCollapsed;
+
+  if (nextValue === state.quickActionsCollapsed) return;
+  state.quickActionsCollapsed = nextValue;
+  syncQuickActionsCard();
+}
+
+if (!window.__sentinaQuickActionsOutsideCloseBound) {
+  window.__sentinaQuickActionsOutsideCloseBound = true;
+  document.addEventListener('click', event => {
+    if (state.quickActionsCollapsed) return;
+    if (event.target.closest('.quick-card')) return;
+    toggleQuickActions(true);
+  });
+}
