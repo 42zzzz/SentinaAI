@@ -32,6 +32,7 @@
   font-size:13px;
   color:#E8486F;
   font-weight:700;
+  text-align:right;
 }
 
 /* ===== controls card ===== */
@@ -375,4 +376,53 @@
 
 .closeBtn:hover{
   background:#0f253d;
+}
+
+/* ---- Icon consistency pass for Exhibitors filters ---- */
+.exhibitorsFiltersRow .filterPill,
+.exhibitorsControlsBottomRow .filterPill {
+  color: #64748b;
+}
+
+.exhibitorsFiltersRow .pillLeftIcon {
+  width: 18px;
+  height: 12px;
+  flex: 0 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #E8486F;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.exhibitorsFiltersRow .pillSearch {
+  overflow: hidden;
+}
+
+.exhibitorsFiltersRow .multiSelectSummary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exhibitorsCountTop,
+.boothsCountTop {
+  margin-left: auto;
+  width: fit-content;
+  text-align: right;
+}
+
+.exhibitorsHeaderRow{
+  display:flex;
+  width:100%;
+  align-items:flex-start;
+  gap:16px;
+}
+
+.exhibitorsHeaderRight{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  width:100%;
 }

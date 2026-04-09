@@ -378,3 +378,138 @@
 .exhibitorReportPage .commentsTextarea {
   min-height: 260px;
 }
+
+/* ---- Exhibitor Generate Report only: slightly more breathing room ---- */
+.exhibitorReportPage .generateReportGrid {
+  grid-template-columns: 1.08fr 1fr 0.82fr;
+  gap: 30px;
+}
+
+.exhibitorReportPage .generateReportGrid > .generateReportSection:first-child .reportField,
+.exhibitorReportPage .generateReportGrid > .generateReportSection:first-child .reportFieldRow {
+  margin-bottom: 14px;
+}
+
+.exhibitorReportPage .generateReportGrid > .generateReportSection:first-child .reportField input,
+.exhibitorReportPage .generateReportGrid > .generateReportSection:first-child .reportField select {
+  min-height: 44px;
+  padding: 9px 12px;
+  font-size: 13px;
+  border-radius: 11px;
+}
+
+.exhibitorReportPage .generateReportGrid > .generateReportSection:first-child .reportField span {
+  font-size: 11px;
+}
+
+.exhibitorReportPage .commentsTextarea {
+  max-width: 100%;
+  min-height: 320px;
+}
+
+.exhibitorReportPage .generateReportGrid > .generateReportSection:last-child .reportField textarea {
+  width: 100%;
+  max-width: 360px;
+}
+
+@media (max-width: 1100px) {
+  .exhibitorReportPage .generateReportGrid {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .exhibitorReportPage .generateReportGrid > .generateReportSection:last-child .reportField textarea {
+    max-width: 100%;
+  }
+}
+
+/* ---- Operations Generate Report only: pink theme + a bit more column spacing ---- */
+.operationsReportPage .generateReportGrid {
+  gap: 32px;
+}
+
+.operationsReportPage .generateReportCard {
+  --report-accent: #E8486F;
+}
+
+.operationsReportPage .generateReportSection h3,
+.operationsReportPage .generateReportSectionTitle{
+  color: #E8486F;
+}
+
+.operationsReportPage .switchButton.isOn {
+  background: #E8486F;
+  border-color: #E8486F;
+}
+
+.operationsReportPage input[type="radio"],
+.operationsReportPage input[type="checkbox"] {
+  accent-color: #E8486F;
+}
+
+.operationsReportPage .actionBtn.primary {
+  background: #E8486F;
+  border-color: #E8486F;
+}
+
+.operationsReportPage .actionBtn.primary:hover {
+  background: #d93f66;
+  border-color: #d93f66;
+}
+
+.operationsReportPage .reportField input:focus,
+.operationsReportPage .reportField select:focus,
+.operationsReportPage .reportField textarea:focus {
+  border-color: #E8486F;
+  box-shadow: 0 0 0 3px rgba(232, 72, 111, 0.12);
+}
+
+@media (max-width: 1100px) {
+  .operationsReportPage .generateReportGrid {
+    gap: 24px;
+  }
+}
+
+/* ---- Exhibitor Generate Report only: more space between columns ---- */
+.exhibitorReportPage .generateReportGrid {
+  grid-template-columns: 1.08fr 1fr 0.82fr;
+  gap: 30px;
+}
+
+.exhibitorReportPage .generateReportGrid > .generateReportSection:first-child .reportField,
+.exhibitorReportPage .generateReportGrid > .generateReportSection:first-child .reportFieldRow {
+  margin-bottom: 14px;
+}
+
+.exhibitorReportPage .generateReportGrid > .generateReportSection:first-child .reportField input,
+.exhibitorReportPage .generateReportGrid > .generateReportSection:first-child .reportField select {
+  min-height: 44px;
+  padding: 9px 12px;
+  font-size: 13px;
+  border-radius: 11px;
+}
+
+.exhibitorReportPage .generateReportGrid > .generateReportSection:first-child .reportField span {
+  font-size: 11px;
+}
+
+.exhibitorReportPage .commentsTextarea {
+  max-width: 100%;
+  min-height: 320px;
+}
+
+.exhibitorReportPage .generateReportGrid > .generateReportSection:last-child .reportField textarea {
+  width: 100%;
+  max-width: 360px;
+}
+
+@media (max-width: 1100px) {
+  .exhibitorReportPage .generateReportGrid {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .exhibitorReportPage .generateReportGrid > .generateReportSection:last-child .reportField textarea {
+    max-width: 100%;
+  }
+}

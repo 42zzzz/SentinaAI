@@ -308,7 +308,7 @@ export default function ReportsPage() {
               <input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Search here" className="pillInput" />
             </div>
 
-            <MultiSelectPill label="Report Type" icon={<IconReportType />} options={typeOptions} value={reportTypes} onChange={setReportTypes} />
+          
 
             <div className="filterPill pillSelectWrap">
               <span className="pillLeftIcon" aria-hidden>
@@ -365,7 +365,7 @@ export default function ReportsPage() {
                   <th>Report Title</th>
                   <th>Description</th>
                   <th>Timestamp</th>
-                  <th>Report Type</th>
+                  
                   <th>Format</th>
                   <th>Status</th>
                   <th>Actions</th>

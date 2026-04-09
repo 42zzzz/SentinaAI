@@ -290,3 +290,53 @@
   opacity:0.5;
   cursor:not-allowed;
 }
+
+/* ---- Icon consistency pass for Booths filters ---- */
+.boothsFiltersRow .filterPill,
+.boothsControlsBottomRow .filterPill {
+  color: #64748b;
+}
+
+.boothsFiltersRow .pillLeftIcon,
+.boothsControlsBottomRow .pillLeftIcon {
+  width: 18px;
+  height: 12px;
+  flex: 0 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #E8486F;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.boothsFiltersRow .pillSearch {
+  overflow: hidden;
+}
+
+.boothsFiltersRow .multiSelectSummary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exhibitorsCountTop,
+.boothsCountTop {
+  margin-left: auto;
+  width: fit-content;
+  text-align: right;
+}
+
+.boothsHeaderRow{
+  display:flex;
+  width:100%;
+  align-items:flex-start;
+  gap:16px;
+}
+
+.boothsHeaderRight{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  width:100%;
+}

@@ -668,20 +668,11 @@ export default function ExhibitorLayout() {
         <main className="exhMain">
           <header className="exhHeader">
             <div>
-              <div className="exhHeaderTitle">Exhibitor Portal</div>
-              <div className="exhHeaderSub">{pageTitle} | {formatHeaderClock(now)}</div>
+              <div className="exhHeaderTitle" style={{ fontSize: "20px" }}>{pageTitle}</div>
+              <div className="exhHeaderSub">Exhibitor Portal | {formatHeaderClock(now)}</div>
             </div>
 
             <div className="exhHeaderRight">
-              <div className="exhSearchWrap">
-                <input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search halls or events"
-                  className="exhSearchInput"
-                />
-                <span className="exhSearchIcon"><SearchIcon /></span>
-              </div>
 
               <div className="exhUserCard">
                 <div>

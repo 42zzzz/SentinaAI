@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 function defaultGetOptionValue(option) {
   if (option && typeof option === "object") {
@@ -26,7 +26,15 @@ export default function MultiSelectPill({
   getOptionLabel = defaultGetOptionLabel,
 }) {
   const wrapperRef = useRef(null);
+  const menuRef = useRef(null);
+
   const [open, setOpen] = useState(false);
+  const [menuPlacement, setMenuPlacement] = useState("bottom");
+  const [menuMaxHeight, setMenuMaxHeight] = useState(280);
+
+  useEffect(() => {
+    if (disabled) setOpen(false);
+  }, [disabled]);
 
   useEffect(() => {
     const handlePointerDown = (event) => {
@@ -52,13 +60,53 @@ export default function MultiSelectPill({
     };
   }, []);
 
-  const normalizedValue = useMemo(() => value.map(String), [value]);
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    const updateMenuPlacement = () => {
+      const wrapperEl = wrapperRef.current;
+      const menuEl = menuRef.current;
+      if (!wrapperEl || !menuEl) return;
+
+      const gutter = 12;
+      const wrapperRect = wrapperEl.getBoundingClientRect();
+      const naturalHeight = Math.min(menuEl.scrollHeight || 280, 320);
+
+      const spaceBelow = Math.max(0, window.innerHeight - wrapperRect.bottom - gutter);
+      const spaceAbove = Math.max(0, wrapperRect.top - gutter);
+
+      const shouldOpenUpward =
+        spaceBelow < Math.min(naturalHeight, 180) && spaceAbove > spaceBelow;
+
+      const usableSpace = Math.max(shouldOpenUpward ? spaceAbove : spaceBelow, 120);
+
+      setMenuPlacement(shouldOpenUpward ? "top" : "bottom");
+      setMenuMaxHeight(Math.min(naturalHeight, usableSpace));
+    };
+
+    updateMenuPlacement();
+
+    window.addEventListener("resize", updateMenuPlacement);
+    window.addEventListener("scroll", updateMenuPlacement, true);
+
+    return () => {
+      window.removeEventListener("resize", updateMenuPlacement);
+      window.removeEventListener("scroll", updateMenuPlacement, true);
+    };
+  }, [open, options.length]);
+
+  const normalizedValue = useMemo(
+    () => (Array.isArray(value) ? value.map(String) : []),
+    [value]
+  );
 
   const summary = useMemo(() => {
     if (!normalizedValue.length) return label;
 
     if (normalizedValue.length === 1) {
-      const match = options.find((option) => String(getOptionValue(option)) === normalizedValue[0]);
+      const match = options.find(
+        (option) => String(getOptionValue(option)) === normalizedValue[0]
+      );
       return match ? getOptionLabel(match) : normalizedValue[0];
     }
 
@@ -100,7 +148,13 @@ export default function MultiSelectPill({
       <span className="pillRightCaret" aria-hidden />
 
       {open && !disabled ? (
-        <div className="multiSelectMenu" role="listbox" aria-multiselectable="true">
+        <div
+          ref={menuRef}
+          className={`multiSelectMenu ${menuPlacement === "top" ? "isTop" : "isBottom"}`}
+          role="listbox"
+          aria-multiselectable="true"
+          style={{ maxHeight: menuMaxHeight }}
+        >
           {options.length ? (
             options.map((option) => {
               const optionValue = String(getOptionValue(option));

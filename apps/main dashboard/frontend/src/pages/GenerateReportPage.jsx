@@ -355,23 +355,22 @@ export default function GenerateReportPage() {
 
   if (loading) {
     return <div
-      className={`generateReportPage ${config.themeClass} ${domain === "exhibitors" ? "exhibitorReportPage" : ""}`}
+      className={`generateReportPage ${config.themeClass} ${domain === "operations" ? "operationsReportPage" : ""} ${domain === "exhibitors" ? "exhibitorReportPage" : ""}`}
       style={{ "--report-accent": config.accent }}></div>;
   }
 
   return (
     <div
-        className={`generateReportPage ${config.themeClass} ${domain === "exhibitors" ? "exhibitorReportPage" : ""}`}
+        className={`generateReportPage ${config.themeClass} ${domain === "operations" ? "operationsReportPage" : ""} ${domain === "exhibitors" ? "exhibitorReportPage" : ""}`}
         style={{ "--report-accent": config.accent }}
       >
       <div className="generateReportShell">
         <div className="generateReportHeaderRow">
           <div>
-            <h2>{config.title}</h2>
             <p>
               {isEditingDraft
                 ? "Edit your saved draft and generate when ready."
-                : "Configure your cloud-backed report and save it as a draft or generate it now."}
+                : "Configure your report and save it as a draft or generate it now."}
             </p>
           </div>
         </div>

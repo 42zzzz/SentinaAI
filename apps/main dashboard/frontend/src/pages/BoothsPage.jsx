@@ -5,6 +5,86 @@ import MultiSelectPill from "../components/MultiSelectPill";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
+
+function IconSearch() {
+  return (
+    <svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M6 11C8.76142 11 11 8.76142 11 6C11 3.23858 8.76142 1 6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M14 15L9 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconEvent() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M8 3V5M16 3V5M4 9H20M6 5H18C19.1046 5 20 5.89543 20 7V19C20 20.1046 19.1046 21 18 21H6C4.89543 21 4 20.1046 4 19V7C4 5.89543 4.89543 5 6 5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconZone() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M13.75 7.5C13.75 10.9518 10.9518 13.75 7.5 13.75M13.75 7.5C13.75 4.04822 10.9518 1.25 7.5 1.25M13.75 7.5H1.25M7.5 13.75C9.0633 12.0385 9.95172 9.81748 10 7.5C9.95172 5.18252 9.0633 2.96147 7.5 1.25M7.5 13.75C5.9367 12.0385 5.04828 9.81748 5 7.5C5.04828 5.18252 5.9367 2.96147 7.5 1.25M1.25 7.5C1.25 4.04822 4.04822 1.25 7.5 1.25"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconHall() {
+  return <IconZone />;
+}
+
+function IconSize() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="2" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M4.5 4.5H9.5V9.5H4.5V4.5Z" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+function IconStatus() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M9.91675 13.2702H4.08341C1.51091 13.2702 0.729248 12.4885 0.729248 9.91602V4.08268C0.729248 1.51018 1.51091 0.728516 4.08341 0.728516H4.95841C5.97925 0.728516 6.30008 1.06102 6.70841 1.60352L7.58341 2.77018C7.77591 3.02685 7.80508 3.06185 8.16675 3.06185H9.91675C12.4892 3.06185 13.2709 3.84352 13.2709 6.41602V9.91602C13.2709 12.4885 12.4892 13.2702 9.91675 13.2702Z"
+        fill="currentColor"
+      />
+      <path
+        d="M11.6667 4.15852C11.4276 4.15852 11.2292 3.96018 11.2292 3.72102V2.91602C11.2292 1.99435 10.8384 1.60352 9.91675 1.60352H4.66675C4.42758 1.60352 4.22925 1.40518 4.22925 1.16602C4.22925 0.926849 4.42758 0.728516 4.66675 0.728516H9.91675C11.3284 0.728516 12.1042 1.50435 12.1042 2.91602V3.72102C12.1042 3.96018 11.9059 4.15852 11.6667 4.15852Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function IconSort() {
+  return (
+    <svg width="10" height="12" viewBox="0 0 10 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9.16659 1.5H0.833252L4.16659 6.23V9.5L5.83325 10.5V6.23L9.16659 1.5Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+
 export default function BoothsPage() {
   const [events, setEvents] = useState([]);
   const [filters, setFilters] = useState(null);
@@ -141,6 +221,7 @@ export default function BoothsPage() {
 
             <MultiSelectPill
               className="pillEvent"
+              icon={<IconEvent />}
               label="Event"
               options={events}
               value={eventIds}
@@ -149,7 +230,10 @@ export default function BoothsPage() {
               getOptionLabel={(option) => `${option.event_id} — ${option.event_name}`}
             />
 
-            <div className="filterPill pillSearch">
+            <div className="filterPill pillSearch" role="search">
+              <span className="pillLeftIcon" aria-hidden>
+                <IconSearch />
+              </span>
               <input
                 className="pillInput"
                 value={q}
@@ -160,6 +244,7 @@ export default function BoothsPage() {
 
             <MultiSelectPill
               className="pillZone"
+              icon={<IconZone />}
               label="Zone"
               options={filters?.zones || []}
               value={zoneIds}
@@ -168,6 +253,7 @@ export default function BoothsPage() {
 
             <MultiSelectPill
               className="pillHall"
+              icon={<IconHall />}
               label="Hall"
               options={hallOptions}
               value={hallIds}
@@ -178,6 +264,7 @@ export default function BoothsPage() {
 
             <MultiSelectPill
               className="pillSize"
+              icon={<IconSize />}
               label="Size"
               options={filters?.boothSizeTypes || []}
               value={sizeTypes}
@@ -186,6 +273,7 @@ export default function BoothsPage() {
 
             <MultiSelectPill
               className="pillAssigned"
+              icon={<IconStatus />}
               label="Assigned"
               options={assignedOptions}
               value={assignedValues}
@@ -199,6 +287,9 @@ export default function BoothsPage() {
           <div className="boothsControlsBottomRow">
 
             <div className="filterPill pillSelectWrap" style={{ width: 220 }}>
+              <span className="pillLeftIcon" aria-hidden>
+                <IconSort />
+              </span>
               <select
                 className="pillSelect"
                 value={sort}

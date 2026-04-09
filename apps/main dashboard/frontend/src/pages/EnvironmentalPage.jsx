@@ -7,6 +7,12 @@ import {
   getDashboardRefreshMs,
   useDashboardSettings,
 } from "../utils/dashboardSettings";
+import {
+  IconMetrics,
+  IconSearch,
+  IconSort,
+  IconZone,
+} from "../components/FilterIcons";
 
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -274,6 +280,9 @@ export default function EnvironmentalPage() {
       <div className="envInner">
         <div className="envControls">
           <div className="envPill envSearch">
+            <span className="pillLeftIcon" aria-hidden>
+              <IconSearch />
+            </span>
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -283,6 +292,9 @@ export default function EnvironmentalPage() {
           </div>
 
           <div className="envPill envSelectWrap">
+            <span className="pillLeftIcon" aria-hidden>
+              <IconZone />
+            </span>
             <select value={zoneId} onChange={(e) => setZoneId(e.target.value)} className="envSelectEl">
               <option value="">Zone</option>
               {zoneOptions.map((z) => (
@@ -295,6 +307,9 @@ export default function EnvironmentalPage() {
           </div>
 
           <div className="envPill envSelectWrap">
+            <span className="pillLeftIcon" aria-hidden>
+              <IconMetrics />
+            </span>
             <select value={metric} onChange={(e) => setMetric(e.target.value)} className="envSelectEl">
               <option value="air_quality">Metrics: Air quality</option>
               <option value="temperature">Metrics: Temperature</option>
@@ -307,6 +322,9 @@ export default function EnvironmentalPage() {
           </div>
 
           <div className="envPill envSelectWrap">
+            <span className="pillLeftIcon" aria-hidden>
+              <IconSort />
+            </span>
             <select value={sort} onChange={(e) => setSort(e.target.value)} className="envSelectEl">
               <option value="desc">Sort: {currentMetricLabel} (desc)</option>
               <option value="asc">Sort: {currentMetricLabel} (asc)</option>

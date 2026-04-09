@@ -50,14 +50,25 @@ button, input, textarea, select {
   top: calc(100% + 8px);
   left: 0;
   right: 0;
-  z-index: 60;
+  z-index: 400;
   padding: 8px;
   border-radius: 16px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.14);
-  max-height: 280px;
+  max-height: min(320px, calc(100vh - 120px));
   overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.multiSelectMenu.isTop {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+.multiSelectMenu.isBottom {
+  bottom: auto;
 }
 
 .multiSelectOption {

@@ -8,6 +8,12 @@ import {
   getDashboardRefreshMs,
   useDashboardSettings,
 } from "../utils/dashboardSettings";
+import {
+  IconMetrics,
+  IconSearch,
+  IconSort,
+  IconZone,
+} from "../components/FilterIcons";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const SUST_GREEN = "#00802B";
@@ -231,6 +237,9 @@ export default function EnergyPage() {
           {/* Filters row */}
           <div className="energyFiltersRow">
             <div className="filterPill pillSearch">
+              <span className="pillLeftIcon" aria-hidden>
+                <IconSearch />
+              </span>
               <input
                 className="pillInput"
                 placeholder="Search here"
@@ -239,7 +248,10 @@ export default function EnergyPage() {
               />
             </div>
 
-            <div className="filterPill pillSelectWrap">
+            <div className="filterPill pillSelectWrap pillZone">
+              <span className="pillLeftIcon" aria-hidden>
+                <IconZone />
+              </span>
               <select className="pillSelect" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
                 <option value="">Zone</option>
                 {["zoneA", "zoneB", "zoneC", "zoneD"].map((z) => (
@@ -251,7 +263,10 @@ export default function EnergyPage() {
               <span className="pillRightCaret" aria-hidden />
             </div>
 
-            <div className="filterPill pillSelectWrap">
+            <div className="filterPill pillSelectWrap pillMetric">
+              <span className="pillLeftIcon" aria-hidden>
+                <IconMetrics />
+              </span>
               <select className="pillSelect" value={metric} onChange={(e) => setMetric(e.target.value)}>
                 <option value="energy">Metrics: HVAC energy</option>
                 <option value="temperature">Metrics: Temperature</option>
@@ -260,7 +275,10 @@ export default function EnergyPage() {
               <span className="pillRightCaret" aria-hidden />
             </div>
 
-            <div className="filterPill pillSelectWrap">
+            <div className="filterPill pillSelectWrap pillSort">
+              <span className="pillLeftIcon" aria-hidden>
+                <IconSort />
+              </span>
               <select className="pillSelect" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
                 <option value="kwh_desc">Sort by: kWh (desc)</option>
                 <option value="kwh_asc">Sort by: kWh (asc)</option>

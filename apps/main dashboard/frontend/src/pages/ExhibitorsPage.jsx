@@ -12,6 +12,95 @@ function formatAED(n) {
   return `AED ${num.toLocaleString()}`;
 }
 
+
+function IconSearch() {
+  return (
+    <svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M6 11C8.76142 11 11 8.76142 11 6C11 3.23858 8.76142 1 6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M14 15L9 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconEvent() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M8 3V5M16 3V5M4 9H20M6 5H18C19.1046 5 20 5.89543 20 7V19C20 20.1046 19.1046 21 18 21H6C4.89543 21 4 20.1046 4 19V7C4 5.89543 4.89543 5 6 5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconTier() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M2.04175 4.08366V9.91699C2.04175 11.6662 2.74175 12.3662 4.49175 12.3662H9.50841C11.2584 12.3662 11.9584 11.6662 11.9584 9.91699V4.08366C11.9584 2.33366 11.2584 1.63366 9.50841 1.63366H4.49175C2.74175 1.63366 2.04175 2.33366 2.04175 4.08366Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+      />
+      <path d="M4.66675 5.25H9.33341" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M4.66675 7H8.16675" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M4.66675 8.75H7.00008" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconIndustry() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M2.1875 13.125V4.6875C2.1875 4.34268 2.46768 4.0625 2.8125 4.0625H6.5625C6.90732 4.0625 7.1875 4.34268 7.1875 4.6875V13.125M7.1875 13.125V2.8125C7.1875 2.46768 7.46768 2.1875 7.8125 2.1875H11.5625C11.9073 2.1875 12.1875 2.46768 12.1875 2.8125V13.125M1.25 13.125H13.125"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M4.0625 5.625H5.3125M4.0625 7.5H5.3125M8.75 4.0625H10M8.75 5.9375H10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconCountry() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M13.75 7.5C13.75 10.9518 10.9518 13.75 7.5 13.75M13.75 7.5C13.75 4.04822 10.9518 1.25 7.5 1.25M13.75 7.5H1.25M7.5 13.75C9.0633 12.0385 9.95172 9.81748 10 7.5C9.95172 5.18252 9.0633 2.96147 7.5 1.25M7.5 13.75C5.9367 12.0385 5.04828 9.81748 5 7.5C5.04828 5.18252 5.9367 2.96147 7.5 1.25M1.25 7.5C1.25 4.04822 4.04822 1.25 7.5 1.25"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconStatus() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M9.91675 13.2702H4.08341C1.51091 13.2702 0.729248 12.4885 0.729248 9.91602V4.08268C0.729248 1.51018 1.51091 0.728516 4.08341 0.728516H4.95841C5.97925 0.728516 6.30008 1.06102 6.70841 1.60352L7.58341 2.77018C7.77591 3.02685 7.80508 3.06185 8.16675 3.06185H9.91675C12.4892 3.06185 13.2709 3.84352 13.2709 6.41602V9.91602C13.2709 12.4885 12.4892 13.2702 9.91675 13.2702Z"
+        fill="currentColor"
+      />
+      <path
+        d="M11.6667 4.15852C11.4276 4.15852 11.2292 3.96018 11.2292 3.72102V2.91602C11.2292 1.99435 10.8384 1.60352 9.91675 1.60352H4.66675C4.42758 1.60352 4.22925 1.40518 4.22925 1.16602C4.22925 0.926849 4.42758 0.728516 4.66675 0.728516H9.91675C11.3284 0.728516 12.1042 1.50435 12.1042 2.91602V3.72102C12.1042 3.96018 11.9059 4.15852 11.6667 4.15852Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+
 export default function ExhibitorsPage() {
   const [filters, setFilters] = useState(null);
   const [events, setEvents] = useState([]);
@@ -131,7 +220,10 @@ export default function ExhibitorsPage() {
 
           <div className="exhibitorsFiltersRow">
 
-            <div className="filterPill pillSearch">
+            <div className="filterPill pillSearch" role="search">
+              <span className="pillLeftIcon" aria-hidden>
+                <IconSearch />
+              </span>
               <input
                 className="pillInput"
                 value={q}
@@ -142,6 +234,7 @@ export default function ExhibitorsPage() {
 
             <MultiSelectPill
               className="pillEvent"
+              icon={<IconEvent />}
               label="Event"
               options={events}
               value={eventIds}
@@ -152,6 +245,7 @@ export default function ExhibitorsPage() {
 
             <MultiSelectPill
               className="pillTier"
+              icon={<IconTier />}
               label={eventIds.length ? "Tier" : "Select event first"}
               options={filters?.packageTiers || []}
               value={packageTiers}
@@ -161,6 +255,7 @@ export default function ExhibitorsPage() {
 
             <MultiSelectPill
               className="pillIndustry"
+              icon={<IconIndustry />}
               label="Industry"
               options={filters?.industries || []}
               value={industries}
@@ -169,6 +264,7 @@ export default function ExhibitorsPage() {
 
             <MultiSelectPill
               className="pillCountry"
+              icon={<IconCountry />}
               label="HQ Country"
               options={filters?.hqCountries || []}
               value={hqCountries}
@@ -177,6 +273,7 @@ export default function ExhibitorsPage() {
 
             <MultiSelectPill
               className="pillStatus"
+              icon={<IconStatus />}
               label="Status"
               options={filters?.statuses || []}
               value={statuses}
