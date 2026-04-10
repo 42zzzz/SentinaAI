@@ -627,3 +627,127 @@
 .alertsBottomRight{
   padding-right: 6px;
 }
+
+/* ===== refined top layout ===== */
+.opsTheme .alertsControlsTopRow,
+.sustTheme .alertsControlsTopRow,
+.alertsControlsTopRow{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:nowrap;
+}
+
+.opsTheme .alertsTopActions,
+.sustTheme .alertsTopActions,
+.alertsTopActions{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex:0 0 auto;
+}
+
+.opsTheme .alertsFiltersSecondary,
+.sustTheme .alertsFiltersSecondary,
+.alertsFiltersSecondary{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid #eef0f2;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.opsTheme .alertsPage .pillSearch,
+.sustTheme .alertsPage .pillSearch,
+.alertsPage .pillSearch{
+  flex:1 1 500px;
+  min-width:360px;
+}
+
+.opsTheme .alertsPage .pillSeverity,
+.sustTheme .alertsPage .pillSeverity,
+.alertsPage .pillSeverity,
+.opsTheme .alertsPage .pillAlertStatus,
+.sustTheme .alertsPage .pillAlertStatus,
+.alertsPage .pillAlertStatus,
+.opsTheme .alertsPage .pillZone,
+.sustTheme .alertsPage .pillZone,
+.alertsPage .pillZone,
+.opsTheme .alertsPage .pillHall,
+.sustTheme .alertsPage .pillHall,
+.alertsPage .pillHall{
+  flex:0 0 auto;
+}
+
+.opsTheme .alertsPage .pillHall,
+.sustTheme .alertsPage .pillHall,
+.alertsPage .pillHall{
+  width:160px;
+}
+
+.opsTheme .alertsPage .pillRule,
+.sustTheme .alertsPage .pillRule,
+.alertsPage .pillRule{
+  flex:1 1 320px;
+  min-width:280px;
+}
+
+.opsTheme .alertsPage .pillSort,
+.sustTheme .alertsPage .pillSort,
+.alertsPage .pillSort{
+  width:170px;
+}
+
+.opsTheme .alertsControlsCard .moreOptionsBtn,
+.sustTheme .alertsControlsCard .moreOptionsBtn,
+.alertsControlsCard .moreOptionsBtn{
+  height:34px;
+  padding:0 16px;
+  border-radius:10px;
+  border:1px solid #d2d7dc;
+  background:#f8fafc;
+  color:#475569;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+  transition:border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.opsTheme .alertsControlsCard .moreOptionsBtn:hover,
+.sustTheme .alertsControlsCard .moreOptionsBtn:hover,
+.alertsControlsCard .moreOptionsBtn:hover,
+.opsTheme .alertsControlsCard .moreOptionsBtn.isOpen,
+.sustTheme .alertsControlsCard .moreOptionsBtn.isOpen,
+.alertsControlsCard .moreOptionsBtn.isOpen{
+  border-color:var(--alerts-accent);
+  color:var(--alerts-accent);
+  background:var(--alerts-accent-bg);
+}
+
+.opsTheme .alertsFiltersSecondary .secondaryRowsControl,
+.sustTheme .alertsFiltersSecondary .secondaryRowsControl,
+.alertsFiltersSecondary .secondaryRowsControl{
+  margin-left:auto;
+  flex:0 0 auto;
+}
+
+@media (max-width: 1380px){
+  .opsTheme .alertsControlsTopRow,
+  .sustTheme .alertsControlsTopRow,
+  .alertsControlsTopRow,
+  .opsTheme .alertsFiltersSecondary,
+  .sustTheme .alertsFiltersSecondary,
+  .alertsFiltersSecondary{
+    flex-wrap:wrap;
+  }
+
+  .opsTheme .alertsTopActions,
+  .sustTheme .alertsTopActions,
+  .alertsTopActions{
+    margin-left:0;
+    width:100%;
+    justify-content:flex-end;
+  }
+}

@@ -31,6 +31,8 @@ export default function MultiSelectPill({
   const [open, setOpen] = useState(false);
   const [menuPlacement, setMenuPlacement] = useState("bottom");
   const [menuMaxHeight, setMenuMaxHeight] = useState(280);
+  const [menuAlign, setMenuAlign] = useState("left");
+  const [menuWidth, setMenuWidth] = useState(null);
 
   useEffect(() => {
     if (disabled) setOpen(false);
@@ -69,6 +71,9 @@ export default function MultiSelectPill({
       if (!wrapperEl || !menuEl) return;
 
       const gutter = 12;
+      const minMenuWidth = 240;
+      const maxMenuWidth = 420;
+      const viewportWidth = window.innerWidth;
       const wrapperRect = wrapperEl.getBoundingClientRect();
       const naturalHeight = Math.min(menuEl.scrollHeight || 280, 320);
 
@@ -79,9 +84,23 @@ export default function MultiSelectPill({
         spaceBelow < Math.min(naturalHeight, 180) && spaceAbove > spaceBelow;
 
       const usableSpace = Math.max(shouldOpenUpward ? spaceAbove : spaceBelow, 120);
+      const preferredWidth = Math.max(wrapperRect.width, minMenuWidth);
+      const clampedWidth = Math.min(preferredWidth, maxMenuWidth, viewportWidth - gutter * 2);
+      const roomOnRight = viewportWidth - wrapperRect.left - gutter;
+      const roomOnLeft = wrapperRect.right - gutter;
+
+      let align = "left";
+      let width = Math.min(clampedWidth, roomOnRight);
+
+      if (width < minMenuWidth && roomOnLeft > roomOnRight) {
+        align = "right";
+        width = Math.min(clampedWidth, roomOnLeft);
+      }
 
       setMenuPlacement(shouldOpenUpward ? "top" : "bottom");
       setMenuMaxHeight(Math.min(naturalHeight, usableSpace));
+      setMenuAlign(align);
+      setMenuWidth(Math.max(Math.floor(width), Math.min(minMenuWidth, viewportWidth - gutter * 2)));
     };
 
     updateMenuPlacement();
@@ -150,10 +169,10 @@ export default function MultiSelectPill({
       {open && !disabled ? (
         <div
           ref={menuRef}
-          className={`multiSelectMenu ${menuPlacement === "top" ? "isTop" : "isBottom"}`}
+          className={`multiSelectMenu ${menuPlacement === "top" ? "isTop" : "isBottom"} ${menuAlign === "right" ? "isAlignRight" : "isAlignLeft"}`}
           role="listbox"
           aria-multiselectable="true"
-          style={{ maxHeight: menuMaxHeight }}
+          style={{ maxHeight: menuMaxHeight, width: menuWidth || undefined }}
         >
           {options.length ? (
             options.map((option) => {

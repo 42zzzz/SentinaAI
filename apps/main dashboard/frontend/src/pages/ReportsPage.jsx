@@ -179,13 +179,13 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
-  const [reportTypes, setReportTypes] = useState([]);
   const [dateFilter, setDateFilter] = useState("");
   const [format, setFormat] = useState("");
   const [statuses, setStatuses] = useState([]);
   const [sort, setSort] = useState("timestamp_desc");
   const [page, setPage] = useState(1);
   const [busyKey, setBusyKey] = useState("");
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -207,8 +207,13 @@ export default function ReportsPage() {
     };
   }, [domain]);
 
-  const typeOptions = useMemo(() => [...new Set(rows.map((row) => row.report_type).filter(Boolean))], [rows]);
   const statusOptions = useMemo(() => [...new Set(rows.map((row) => formatReportStatus(row.status)).filter(Boolean))], [rows]);
+
+  const advancedFilterCount = sort !== "timestamp_desc" ? 1 : 0;
+
+  const moreFiltersLabel = showMoreFilters
+    ? "Less options"
+    : `More options${advancedFilterCount ? ` (${advancedFilterCount})` : ""}`;
 
   const filteredRows = useMemo(() => {
     let next = [...rows];
@@ -222,7 +227,6 @@ export default function ReportsPage() {
       );
     }
 
-    if (reportTypes.length) next = next.filter((row) => reportTypes.includes(row.report_type));
     if (format) next = next.filter((row) => String(row.format).toLowerCase() === format.toLowerCase());
     if (statuses.length) next = next.filter((row) => statuses.includes(formatReportStatus(row.status)));
     if (dateFilter) next = next.filter((row) => buildDateMatches(dateFilter, row.timestamp));
@@ -233,7 +237,7 @@ export default function ReportsPage() {
     if (sort === "title_desc") next.sort((a, b) => String(b.report_title).localeCompare(String(a.report_title)));
 
     return next;
-  }, [dateFilter, format, q, reportTypes, rows, sort, statuses]);
+  }, [dateFilter, format, q, rows, sort, statuses]);
 
   const pageSize = 10;
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
@@ -242,7 +246,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [q, reportTypes, dateFilter, format, statuses, sort, domain]);
+  }, [q, dateFilter, format, statuses, sort, domain]);
 
   async function refreshRows() {
     const refreshed = await fetchReports(domain);
@@ -300,7 +304,7 @@ export default function ReportsPage() {
         {error ? <div className="reportsErrorBanner">{error}</div> : null}
 
         <div className="reportsControlsCard">
-          <div className="reportsFiltersRow">
+          <div className="reportsControlsTopRow">
             <div className="filterPill pillSearch" role="search">
               <span className="pillLeftIcon" aria-hidden>
                 <IconSearch />
@@ -308,9 +312,7 @@ export default function ReportsPage() {
               <input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Search here" className="pillInput" />
             </div>
 
-          
-
-            <div className="filterPill pillSelectWrap">
+            <div className="filterPill pillSelectWrap pillDate">
               <span className="pillLeftIcon" aria-hidden>
                 <IconDate />
               </span>
@@ -323,7 +325,7 @@ export default function ReportsPage() {
               <span className="pillRightCaret" aria-hidden />
             </div>
 
-            <div className="filterPill pillSelectWrap">
+            <div className="filterPill pillSelectWrap pillFormat">
               <span className="pillLeftIcon" aria-hidden>
                 <IconFormat />
               </span>
@@ -335,25 +337,40 @@ export default function ReportsPage() {
               <span className="pillRightCaret" aria-hidden />
             </div>
 
-            <MultiSelectPill label="Status" icon={<IconStatus />} options={statusOptions} value={statuses} onChange={setStatuses} />
+            <MultiSelectPill className="pillStatus" label="Status" icon={<IconStatus />} options={statusOptions} value={statuses} onChange={setStatuses} />
 
-            <div className="filterPill pillSelectWrap pillSort">
-              <span className="pillLeftIcon" aria-hidden>
-                <IconSort />
-              </span>
-              <select value={sort} className="pillSelect" onChange={(event) => setSort(event.target.value)}>
-                <option value="timestamp_desc">Newest</option>
-                <option value="timestamp_asc">Oldest</option>
-                <option value="title_asc">Title A-Z</option>
-                <option value="title_desc">Title Z-A</option>
-              </select>
-              <span className="pillRightCaret" aria-hidden />
+            <div className="reportsTopActions">
+              <button
+                type="button"
+                className={`moreOptionsBtn ${showMoreFilters ? "isOpen" : ""}`}
+                onClick={() => setShowMoreFilters((prev) => !prev)}
+              >
+                {moreFiltersLabel}
+              </button>
+
+              <button type="button" className="newReportBtn" onClick={() => navigate(`${location.pathname}/new`)}>
+                + New Report
+              </button>
             </div>
-
-            <button type="button" className="newReportBtn" onClick={() => navigate(`${location.pathname}/new`)}>
-              + New Report
-            </button>
           </div>
+
+          {showMoreFilters ? (
+            <div className="reportsFiltersSecondary">
+
+              <div className="filterPill pillSelectWrap pillSort">
+                <span className="pillLeftIcon" aria-hidden>
+                  <IconSort />
+                </span>
+                <select value={sort} className="pillSelect" onChange={(event) => setSort(event.target.value)}>
+                  <option value="timestamp_desc">Newest</option>
+                  <option value="timestamp_asc">Oldest</option>
+                  <option value="title_asc">Title A-Z</option>
+                  <option value="title_desc">Title Z-A</option>
+                </select>
+                <span className="pillRightCaret" aria-hidden />
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="reportsTableCard">

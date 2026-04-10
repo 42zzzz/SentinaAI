@@ -148,6 +148,7 @@ export default function AlertsPage() {
 
   const [expandedId, setExpandedId] = useState(null);
   const [openSelect, setOpenSelect] = useState(null);
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
 
   const [qLive, setQLive] = useState("");
   useEffect(() => {
@@ -209,6 +210,13 @@ export default function AlertsPage() {
   useEffect(() => setPage(1), [severities, statuses, ruleKeys, zoneIds, hallIds, deviceId, sort, pageSize]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
+
+  const advancedFilterCount =
+    hallIds.length + ruleKeys.length + (sort !== "detected_desc" ? 1 : 0);
+
+  const moreFiltersLabel = showMoreFilters
+    ? "Less options"
+    : `More options${advancedFilterCount ? ` (${advancedFilterCount})` : ""}`;
 
   const hallOptions = useMemo(() => {
     const allHalls = filters?.halls || [];
@@ -288,8 +296,7 @@ export default function AlertsPage() {
 
           {/* Controls */}
           <div className="alertsControlsCard">
-            <div className="alertsFiltersRow">
-              {/* Search */}
+            <div className="alertsControlsTopRow">
               <div className="filterPill pillSearch" role="search">
                 <span className="pillLeftIcon" aria-hidden>
                   <IconSearch />
@@ -329,32 +336,45 @@ export default function AlertsPage() {
                 onChange={setZoneIds}
               />
 
-              <MultiSelectPill
-                className="pillHall"
-                icon={<IconZone />}
-                label="Hall"
-                options={hallOptions}
-                value={hallIds}
-                onChange={setHallIds}
-                getOptionValue={(option) => option.hall_id}
-                getOptionLabel={(option) => option.hall_id}
-              />
+              <div className="alertsTopActions">
+                <button
+                  type="button"
+                  className={`moreOptionsBtn ${showMoreFilters ? "isOpen" : ""}`}
+                  onClick={() => setShowMoreFilters((prev) => !prev)}
+                >
+                  {moreFiltersLabel}
+                </button>
 
-              <MultiSelectPill
-                className="pillRule"
-                icon={<IconRule />}
-                label="Rule"
-                options={filters?.rules || []}
-                value={ruleKeys}
-                onChange={setRuleKeys}
-                getOptionValue={(option) => option.rule_key}
-                getOptionLabel={(option) => `${option.rule_key} — ${option.rule_name}`}
-              />
+                <button onClick={clearFilters} className="clearFiltersBtn">
+                  Clear filters
+                </button>
+              </div>
             </div>
 
-            <div className="alertsControlsBottomRow">
-              <div className="alertsBottomLeft">
-                {/* Sort */}
+            {showMoreFilters ? (
+              <div className="alertsFiltersSecondary">
+                <MultiSelectPill
+                  className="pillHall"
+                  icon={<IconZone />}
+                  label="Hall"
+                  options={hallOptions}
+                  value={hallIds}
+                  onChange={setHallIds}
+                  getOptionValue={(option) => option.hall_id}
+                  getOptionLabel={(option) => option.hall_id}
+                />
+
+                <MultiSelectPill
+                  className="pillRule"
+                  icon={<IconRule />}
+                  label="Rule"
+                  options={filters?.rules || []}
+                  value={ruleKeys}
+                  onChange={setRuleKeys}
+                  getOptionValue={(option) => option.rule_key}
+                  getOptionLabel={(option) => `${option.rule_key} — ${option.rule_name}`}
+                />
+
                 <div className={`filterPill pillSelectWrap pillSort ${openSelect === "sort" ? "isOpen" : ""}`}>
                   <span className="pillLeftIcon" aria-hidden>
                     <IconSort />
@@ -379,13 +399,7 @@ export default function AlertsPage() {
                   <span className="pillRightCaret" aria-hidden />
                 </div>
 
-                <button onClick={clearFilters} className="clearFiltersBtn">
-                  Clear filters
-                </button>
-              </div>
-
-              <div className="alertsBottomRight">
-                <div className="rowsControl">
+                <div className="rowsControl secondaryRowsControl">
                   <span className="rowsLabel">Rows:</span>
                   <div className={`filterPill pillSelectWrap pillRows ${openSelect === "rows" ? "isOpen" : ""}`}>
                     <select
@@ -409,7 +423,7 @@ export default function AlertsPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            ) : null}
           </div>
 
           {/* Error */}

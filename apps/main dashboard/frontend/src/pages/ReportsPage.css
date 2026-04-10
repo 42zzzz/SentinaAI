@@ -392,3 +392,109 @@
 .reportsPage.socTheme .pillRightCaret {
   color: #123150;
 }
+
+/* ===== refined control layout ===== */
+.reportsControlsTopRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: nowrap;
+}
+
+.reportsTopActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.reportsFiltersSecondary {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.reportsPage .pillSearch {
+  min-width: 250px;
+  flex: 1 1 260px;
+}
+
+.reportsPage .pillDate,
+.reportsPage .pillFormat,
+.reportsPage .pillStatus,
+.reportsPage .pillReportType,
+.reportsPage .pillSort {
+  min-width: 150px;
+}
+
+.reportsPage .pillReportType {
+  min-width: 180px;
+}
+
+.reportsPage .filterPill {
+  font-size: 13px;
+}
+
+.reportsPage .pillInput,
+.reportsPage .pillSelect,
+.reportsPage .multiSelectSummary {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.reportsPage .pillLeftIcon {
+  color: currentColor;
+}
+
+.reportsControlsCard .moreOptionsBtn {
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid #d2d7dc;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.reportsPage.opsTheme .moreOptionsBtn:hover,
+.reportsPage.opsTheme .moreOptionsBtn.isOpen {
+  border-color: #e8486f;
+  color: #e8486f;
+  background: rgba(232,72,111,0.08);
+}
+
+.reportsPage.sustTheme .moreOptionsBtn:hover,
+.reportsPage.sustTheme .moreOptionsBtn.isOpen {
+  border-color: #00802b;
+  color: #00802b;
+  background: rgba(0,128,43,0.08);
+}
+
+.reportsPage.exhTheme .moreOptionsBtn:hover,
+.reportsPage.exhTheme .moreOptionsBtn.isOpen,
+.reportsPage.socTheme .moreOptionsBtn:hover,
+.reportsPage.socTheme .moreOptionsBtn.isOpen {
+  border-color: currentColor;
+  color: currentColor;
+  background: rgba(15,23,42,0.06);
+}
+
+@media (max-width: 1260px) {
+  .reportsControlsTopRow,
+  .reportsFiltersSecondary {
+    flex-wrap: wrap;
+  }
+
+  .reportsTopActions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

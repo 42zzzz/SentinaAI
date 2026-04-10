@@ -106,6 +106,7 @@ export default function BoothsPage() {
   const [error, setError] = useState("");
 
   const [qLive, setQLive] = useState("");
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setQLive(q.trim()), 300);
@@ -203,6 +204,13 @@ export default function BoothsPage() {
     []
   );
 
+  const advancedFilterCount =
+    sizeTypes.length + assignedValues.length + (sort !== "booth_code_asc" ? 1 : 0);
+
+  const moreFiltersLabel = showMoreFilters
+    ? "Less options"
+    : `More options${advancedFilterCount ? ` (${advancedFilterCount})` : ""}`;
+
   return (
     <div className="boothsPage">
       <div className="pageInner">
@@ -217,8 +225,7 @@ export default function BoothsPage() {
 
         <div className="boothsControlsCard">
 
-          <div className="boothsFiltersRow">
-
+          <div className="boothsControlsTopRow">
             <MultiSelectPill
               className="pillEvent"
               icon={<IconEvent />}
@@ -262,68 +269,76 @@ export default function BoothsPage() {
               getOptionLabel={(option) => option.hall_id}
             />
 
-            <MultiSelectPill
-              className="pillSize"
-              icon={<IconSize />}
-              label="Size"
-              options={filters?.boothSizeTypes || []}
-              value={sizeTypes}
-              onChange={setSizeTypes}
-            />
-
-            <MultiSelectPill
-              className="pillAssigned"
-              icon={<IconStatus />}
-              label="Assigned"
-              options={assignedOptions}
-              value={assignedValues}
-              onChange={setAssignedValues}
-              getOptionValue={(option) => option.value}
-              getOptionLabel={(option) => option.label}
-            />
-
+            <div className="boothsTopActions">
+              <button
+                type="button"
+                className={`moreOptionsBtn ${showMoreFilters ? "isOpen" : ""}`}
+                onClick={() => setShowMoreFilters((prev) => !prev)}
+              >
+                {moreFiltersLabel}
+              </button>
+            </div>
           </div>
 
-          <div className="boothsControlsBottomRow">
+          {showMoreFilters ? (
+            <div className="boothsFiltersSecondary">
+              <MultiSelectPill
+                className="pillSize"
+                icon={<IconSize />}
+                label="Size"
+                options={filters?.boothSizeTypes || []}
+                value={sizeTypes}
+                onChange={setSizeTypes}
+              />
 
-            <div className="filterPill pillSelectWrap" style={{ width: 220 }}>
-              <span className="pillLeftIcon" aria-hidden>
-                <IconSort />
-              </span>
-              <select
-                className="pillSelect"
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-              >
-                {filters?.sortOptions?.map((s) => (
-                  <option key={s} value={s}>
-                    Sort: {s}
-                  </option>
-                ))}
-              </select>
-              <div className="pillRightCaret"></div>
-            </div>
+              <MultiSelectPill
+                className="pillAssigned"
+                icon={<IconStatus />}
+                label="Assigned"
+                options={assignedOptions}
+                value={assignedValues}
+                onChange={setAssignedValues}
+                getOptionValue={(option) => option.value}
+                getOptionLabel={(option) => option.label}
+              />
 
-            <div className="rowsControl">
-              <div className="rowsLabel">Rows:</div>
-
-              <div className="filterPill pillSelectWrap" style={{ width: 70 }}>
+              <div className="filterPill pillSelectWrap pillSortCompact">
+                <span className="pillLeftIcon" aria-hidden>
+                  <IconSort />
+                </span>
                 <select
                   className="pillSelect"
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
                 >
-                  {[10, 20, 50].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
+                  {filters?.sortOptions?.map((s) => (
+                    <option key={s} value={s}>
+                      Sort: {s}
                     </option>
                   ))}
                 </select>
                 <div className="pillRightCaret"></div>
               </div>
-            </div>
 
-          </div>
+              <div className="rowsControl secondaryRowsControl">
+                <div className="rowsLabel">Rows:</div>
+                <div className="filterPill pillSelectWrap pillRowsCompact">
+                  <select
+                    className="pillSelect"
+                    value={pageSize}
+                    onChange={(e) => setPageSize(Number(e.target.value))}
+                  >
+                    {[10, 20, 50].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pillRightCaret"></div>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
         </div>
 

@@ -4,19 +4,16 @@
               "Apple Color Emoji","Segoe UI Emoji";
 }
 
-/* Global font */
 html, body {
   font-family: var(--app-font);
 }
 
-/* Ensure the app is full-width and inherits the font */
 #root {
   font-family: var(--app-font);
   width: 100%;
   min-height: 100vh;
 }
 
-/* Ensure form controls inherit too */
 button, input, textarea, select {
   font-family: inherit;
 }
@@ -49,17 +46,17 @@ button, input, textarea, select {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  right: 0;
   z-index: 400;
+  min-width: 100%;
   padding: 8px;
   border-radius: 16px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.14);
   max-height: min(320px, calc(100vh - 120px));
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
-  scrollbar-gutter: stable;
 }
 
 .multiSelectMenu.isTop {
@@ -71,11 +68,20 @@ button, input, textarea, select {
   bottom: auto;
 }
 
+.multiSelectMenu.isAlignRight {
+  left: auto;
+  right: 0;
+}
+
+.multiSelectMenu.isAlignLeft {
+  right: auto;
+}
+
 .multiSelectOption {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border-radius: 10px;
   cursor: pointer;
   user-select: none;
@@ -86,16 +92,18 @@ button, input, textarea, select {
 }
 
 .multiSelectCheckbox {
-  margin: 0;
+  margin: 1px 0 0;
   width: 14px;
   height: 14px;
+  flex: 0 0 14px;
 }
 
 .multiSelectOptionLabel {
   min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  font-size: 12.5px;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .multiSelectEmpty {

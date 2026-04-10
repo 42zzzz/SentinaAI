@@ -293,12 +293,16 @@
 
 /* ---- Icon consistency pass for Booths filters ---- */
 .boothsFiltersRow .filterPill,
-.boothsControlsBottomRow .filterPill {
+.boothsControlsBottomRow .filterPill,
+.boothsControlsTopRow .filterPill,
+.boothsFiltersSecondary .filterPill {
   color: #64748b;
 }
 
 .boothsFiltersRow .pillLeftIcon,
-.boothsControlsBottomRow .pillLeftIcon {
+.boothsControlsBottomRow .pillLeftIcon,
+.boothsControlsTopRow .pillLeftIcon,
+.boothsFiltersSecondary .pillLeftIcon {
   width: 18px;
   height: 12px;
   flex: 0 0 18px;
@@ -310,11 +314,14 @@
   pointer-events: none;
 }
 
-.boothsFiltersRow .pillSearch {
+.boothsFiltersRow .pillSearch,
+.boothsControlsTopRow .pillSearch {
   overflow: hidden;
 }
 
-.boothsFiltersRow .multiSelectSummary {
+.boothsFiltersRow .multiSelectSummary,
+.boothsControlsTopRow .multiSelectSummary,
+.boothsFiltersSecondary .multiSelectSummary {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -339,4 +346,90 @@
   align-items:center;
   justify-content:flex-end;
   width:100%;
+}
+
+/* ===== refined control layout ===== */
+.boothsControlsTopRow{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:nowrap;
+}
+
+.boothsTopActions{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex:0 0 auto;
+}
+
+.boothsFiltersSecondary{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid #eef0f2;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.boothsPage .pillEvent{ width:320px; }
+.boothsPage .pillSearch{ flex:1 1 260px; min-width:240px; }
+.boothsPage .pillZone{ width:150px; }
+.boothsPage .pillHall{ width:150px; }
+.boothsPage .pillSize{ width:150px; }
+.boothsPage .pillAssigned{ width:180px; }
+.boothsPage .pillSortCompact{ width:220px; }
+.boothsPage .pillRowsCompact{ width:72px; }
+
+.boothsPage .pillInput,
+.boothsPage .pillSelect{
+  color:#64748b;
+  font-size:13px;
+  font-weight:500;
+}
+
+.boothsPage .pillInput::placeholder{
+  color:#64748b;
+  opacity:1;
+}
+
+.boothsControlsCard .moreOptionsBtn{
+  height:34px;
+  padding:0 16px;
+  border-radius:10px;
+  border:1px solid #d2d7dc;
+  background:#f8fafc;
+  color:#475569;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+  transition:border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.boothsControlsCard .moreOptionsBtn:hover,
+.boothsControlsCard .moreOptionsBtn.isOpen{
+  border-color:#E8486F;
+  color:#E8486F;
+  background:rgba(232,72,111,0.08);
+}
+
+
+
+.boothsFiltersSecondary .secondaryRowsControl{
+  margin-left:auto;
+  flex:0 0 auto;
+}
+
+@media (max-width: 1320px){
+  .boothsControlsTopRow,
+  .boothsFiltersSecondary{
+    flex-wrap:wrap;
+  }
+
+  .boothsTopActions{
+    margin-left:0;
+    width:100%;
+    justify-content:flex-end;
+  }
 }
