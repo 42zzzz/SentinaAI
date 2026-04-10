@@ -173,35 +173,37 @@ export default function NavigationPage() {
             Find Path
           </button>
 
-          <label style={toggleWrap}>
-            <span
-              style={toggleTrack(showHeatmap, theme.accent)}
-              onClick={() => setShowHeatmap((v) => !v)}
-            >
-              <span style={toggleThumb(showHeatmap)} />
-            </span>
-            <span style={toggleLabel}>Heatmap</span>
-          </label>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
+            <label style={toggleWrap}>
+              <span
+                style={toggleTrack(showHeatmap, theme.accent)}
+                onClick={() => setShowHeatmap((v) => !v)}
+              >
+                <span style={toggleThumb(showHeatmap)} />
+              </span>
+              <span style={toggleLabel}>Heatmap</span>
+            </label>
 
-          <label style={toggleWrap}>
-            <span
-              style={toggleTrack(avoidCrowds, theme.accent)}
-              onClick={() => setAvoidCrowds((v) => !v)}
-            >
-              <span style={toggleThumb(avoidCrowds)} />
-            </span>
-            <span style={toggleLabel}>Avoid Crowds</span>
-          </label>
+            <label style={toggleWrap}>
+              <span
+                style={toggleTrack(avoidCrowds, theme.accent)}
+                onClick={() => setAvoidCrowds((v) => !v)}
+              >
+                <span style={toggleThumb(avoidCrowds)} />
+              </span>
+              <span style={toggleLabel}>Avoid Crowds</span>
+            </label>
 
-          <label style={toggleWrap}>
-            <span
-              style={toggleTrack(demoMode, theme.accent)}
-              onClick={() => setDemoMode((v) => !v)}
-            >
-              <span style={toggleThumb(demoMode)} />
-            </span>
-            <span style={toggleLabel}>Demo IoT</span>
-          </label>
+            <label style={toggleWrap}>
+              <span
+                style={toggleTrack(demoMode, theme.accent)}
+                onClick={() => setDemoMode((v) => !v)}
+              >
+                <span style={toggleThumb(demoMode)} />
+              </span>
+              <span style={toggleLabel}>Demo IoT</span>
+            </label>
+          </div>
 
           {error ? <div style={{ color: "#b91c1c", fontWeight: 800 }}>{error}</div> : null}
         </div>
