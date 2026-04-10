@@ -601,8 +601,15 @@ export default function ExhibitorLayout() {
           </button>
 
           <div className="exhBrand">
-            <span className="exhBrandLong">SentinaAI</span>
-            <span className="exhBrandShort">sAI</span>
+            <span className="exhBrandLong">
+              <span className="exhBrandLight">Sentina</span>
+              <span className="exhBrandBold">AI</span>
+            </span>
+
+            <span className="exhBrandShort">
+              <span className="exhBrandLight">s</span>
+              <span className="exhBrandBold">AI</span>
+            </span>
           </div>
 
           <div className="exhSidebarLabel">MAIN</div>

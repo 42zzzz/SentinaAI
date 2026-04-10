@@ -1546,3 +1546,49 @@
     grid-template-columns: 1fr;
   }
 }
+
+.exhBrand {
+  position: relative;
+  height: 34px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  line-height: 1;
+  font-family: "Oxanium", sans-serif;
+  font-size: 28px;
+  letter-spacing: -0.5px;
+}
+
+.exhBrandLong,
+.exhBrandShort {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  white-space: nowrap;
+}
+
+.exhBrandLight {
+  font-weight: 500;
+}
+
+.exhBrandBold {
+  font-weight: 800;
+}
+
+.exhBrandShort {
+  display: none;
+}
+
+.exhibitorTheme.sidebarCollapsed .exhBrand {
+  justify-content: center;
+}
+
+.exhibitorTheme.sidebarCollapsed .exhBrandLong {
+  display: none;
+}
+
+.exhibitorTheme.sidebarCollapsed .exhBrandShort {
+  display: inline-flex;
+}

@@ -39,7 +39,10 @@ export default function AdminLayout({ children }) {
   return (
     <div style={styles.wrapper}>
       <div style={styles.topBar}>
-        <div style={styles.brand}>SentinaAI</div>
+        <div style={styles.brand}>
+          <span style={styles.brandLight}>Sentina</span>
+          <span style={styles.brandBold}>AI</span>
+        </div>
 
         <div style={styles.rightSection}>
           <div style={styles.profileInfo}>
@@ -97,8 +100,18 @@ const styles = {
 
   brand: {
     fontSize: 22,
-    fontWeight: 900,
     letterSpacing: -0.5,
+    display: "flex",
+    alignItems: "baseline",
+    fontFamily: "'Oxanium', sans-serif",
+  },
+
+  brandLight: {
+    fontWeight: 500,
+  },
+
+  brandBold: {
+    fontWeight: 800,
   },
 
   rightSection: {

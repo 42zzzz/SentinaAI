@@ -207,24 +207,27 @@ function SidebarBrand({ collapsed }) {
         alignItems: "center",
         justifyContent: collapsed ? "center" : "flex-start",
         overflow: "hidden",
-        fontSize: 28,
-        fontWeight: 900,
-        letterSpacing: "-0.5px",
         lineHeight: 1,
       }}
     >
       <span
         style={{
-          display: "inline-block",
+          display: "inline-flex",
+          alignItems: "baseline",
+          gap: 0,
           maxWidth: collapsed ? 0 : 220,
           opacity: collapsed ? 0 : 1,
           overflow: "hidden",
           whiteSpace: "nowrap",
           transform: `translateY(${collapsed ? "-4px" : "0"})`,
           transition: "max-width 280ms ease, opacity 180ms ease, transform 280ms ease",
+          fontFamily: "'Oxanium', sans-serif",
+          fontSize: 28,
+          letterSpacing: "-0.5px",
         }}
       >
-        SentinaAI
+        <span style={{ fontWeight: 500 }}>Sentina</span>
+        <span style={{ fontWeight: 800 }}>AI</span>
       </span>
 
       <span
@@ -238,9 +241,13 @@ function SidebarBrand({ collapsed }) {
           transform: `translateY(${collapsed ? "0" : "4px"})`,
           transition: "opacity 180ms ease, transform 280ms ease",
           pointerEvents: "none",
+          fontFamily: "'Oxanium', sans-serif",
+          fontSize: 28,
+          letterSpacing: "-0.5px",
         }}
       >
-        sAI
+        <span style={{ fontWeight: 500 }}>s</span>
+        <span style={{ fontWeight: 800 }}>AI</span>
       </span>
     </div>
   );
@@ -792,49 +799,49 @@ export default function AppLayout() {
         </div>
         {section === "soc" ? (
           <style>{`
-            .socLayout .devicesPage.opsTheme,
-            .socLayout .alertsPage.opsTheme {
-              background: #f6f9ff;
-            }
-            .socLayout .devicesHeaderRight .devicesCountTop,
-            .socLayout .alertsHeaderRight .alertsCountTop {
-              color: #123150 !important;
-            }
-            .socLayout .devicesTable thead th {
-              color: #123150 !important;
-            }
-            .socLayout .devicesPage .devicesControlsCard .clearFiltersBtn,
-            .socLayout .alertsPage .alertsControlsCard .clearFiltersBtn {
-              color: #123150 !important;
-              border-color: #bfdbfe !important;
-              background: #eff6ff !important;
-            }
-            .socLayout .devicesPage .devicesControlsCard .clearFiltersBtn:hover,
-            .socLayout .alertsPage .alertsControlsCard .clearFiltersBtn:hover {
-              background: #dbeafe !important;
-              border-color: #93c5fd !important;
-            }
-            .socLayout .alertsPage {
-              --alerts-accent: #123150;
-              --alerts-accent-bg: rgba(18,49,80,0.08);
-              --alerts-accent-hover: #0f2740;
-            }
-            .socLayout .devicesPage .pillLeftIcon,
-            .socLayout .devicesPage .pillRightCaret,
-            .socLayout .alertsPage .pillLeftIcon,
-            .socLayout .alertsPage .pillRightCaret {
-              color: #123150 !important;
-              border-top-color: #123150 !important;
-            }
-            .socLayout .devicesPage .pillSearchIcon {
-              background: #123150 !important;
-              color: #ffffff !important;
-            }
-            .socLayout .alertInfoCard h2,
-            .socLayout .alertActionsTop h2 {
-              color: #123150 !important;
-            }
-          `}</style>
+              .socLayout .devicesPage.opsTheme,
+              .socLayout .alertsPage.opsTheme {
+                background: #f6f9ff;
+              }
+              .socLayout .devicesHeaderRight .devicesCountTop,
+              .socLayout .alertsHeaderRight .alertsCountTop {
+                color: #123150 !important;
+              }
+              .socLayout .devicesTable thead th {
+                color: #123150 !important;
+              }
+              .socLayout .devicesPage .devicesControlsCard .clearFiltersBtn,
+              .socLayout .alertsPage .alertsControlsCard .clearFiltersBtn {
+                color: #123150 !important;
+                border-color: #bfdbfe !important;
+                background: #eff6ff !important;
+              }
+              .socLayout .devicesPage .devicesControlsCard .clearFiltersBtn:hover,
+              .socLayout .alertsPage .alertsControlsCard .clearFiltersBtn:hover {
+                background: #dbeafe !important;
+                border-color: #93c5fd !important;
+              }
+              .socLayout .alertsPage {
+                --alerts-accent: #123150;
+                --alerts-accent-bg: rgba(18,49,80,0.08);
+                --alerts-accent-hover: #0f2740;
+              }
+              .socLayout .devicesPage .pillLeftIcon,
+              .socLayout .devicesPage .pillRightCaret,
+              .socLayout .alertsPage .pillLeftIcon,
+              .socLayout .alertsPage .pillRightCaret {
+                color: #123150 !important;
+                border-top-color: #123150 !important;
+              }
+              .socLayout .devicesPage .pillSearchIcon {
+                background: #123150 !important;
+                color: #ffffff !important;
+              }
+              .socLayout .alertInfoCard h2,
+              .socLayout .alertActionsTop h2 {
+                color: #123150 !important;
+              }
+            `}</style>
         ) : null}
         {settingsOpen ? (
           <SettingsPage
