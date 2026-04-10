@@ -29,7 +29,6 @@ export default function AdminLayout({ children }) {
           <div style={styles.profileInfo}>
             <div style={styles.name}>{fullName || "Super Admin"}</div>
             <div style={styles.meta}>{formattedRole}</div>
-            <div style={styles.meta}>Employee ID: {employeeId}</div>
           </div>
 
           <div style={styles.avatar}>

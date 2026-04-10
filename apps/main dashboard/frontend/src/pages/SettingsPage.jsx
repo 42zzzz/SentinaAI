@@ -422,7 +422,7 @@ export default function SettingsPage({ section = "operations", onClose }) {
     }
   };
 
-  const refreshSummary = `Live panels refresh every ${settings.refreshInterval} seconds`;
+  
   const displayedEmail = accountState.email || "User";
   const displayedRole = accountState.role || meta.roleLabel;
   const displayedLastActivity = formatLastActivity(accountState.last_active_at);
@@ -478,18 +478,6 @@ export default function SettingsPage({ section = "operations", onClose }) {
             </div>
           </div>
 
-          <div className="settingsStatusBar">
-            <span className="settingsStatusPill">{refreshSummary}</span>
-            <span className={`settingsSaveState settingsSaveState--${saveState}`}>
-              {saveState === "saved"
-                ? "Saved on this browser"
-                : saveState === "dirty"
-                ? "Unsaved changes"
-                : saveState === "error"
-                ? "Could not save"
-                : "Preferences ready"}
-            </span>
-          </div>
 
           <div className="settingsGrid settingsGrid--top">
             <SectionCard
