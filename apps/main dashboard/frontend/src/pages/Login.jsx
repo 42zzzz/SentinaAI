@@ -143,7 +143,10 @@ export default function Login() {
   return (
     <div className="login-wrapper">
       <div className="login-card">
-        <div className="login-title">SentinaAI</div>
+        <div className="login-title">
+          <span className="login-title-light">Sentina</span>
+          <span className="login-title-bold">AI</span>
+        </div>
 
         {flash && (
           <div

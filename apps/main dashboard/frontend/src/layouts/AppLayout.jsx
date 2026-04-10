@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import SettingsPage from "../pages/SettingsPage";
 import FloatingAssistant from "../components/FloatingAssistant";
+import LogoutConfirmModal from "../components/LogoutConfirmModal";
 
 const rolePrefixMap = {
   operations_manager: "/operations",
@@ -254,6 +255,7 @@ export default function AppLayout() {
   const storedRole = localStorage.getItem("role") || sessionStorage.getItem("role") || "operations_manager";
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
@@ -275,15 +277,15 @@ export default function AppLayout() {
     section === "sustainability"
       ? "/sustainability"
       : section === "operations"
-      ? "/operations"
-      : rolePrefixMap[storedRole] || "/operations";
+        ? "/operations"
+        : rolePrefixMap[storedRole] || "/operations";
 
   const helpGuidePath =
     section === "sustainability"
       ? HELP_GUIDE_PATHS.sustainability
       : section === "soc"
-      ? null
-      : HELP_GUIDE_PATHS.operations;
+        ? null
+        : HELP_GUIDE_PATHS.operations;
 
   const openHelpGuide = () => {
     window.open(helpGuidePath, "_blank", "noopener,noreferrer");
@@ -314,21 +316,28 @@ export default function AppLayout() {
       "background 220ms ease, color 220ms ease, padding 280ms ease, gap 280ms ease, transform 180ms ease",
   });
 
-const handleLogout = (e) => {
-  e?.preventDefault?.();
-  e?.stopPropagation?.();
+  const handleLogoutClick = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    setShowLogoutConfirm(true);
+  };
 
-  const preservedSidebar = localStorage.getItem("sentina.sidebarCollapsed");
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false);
+  };
 
-  localStorage.clear();
-  sessionStorage.clear();
+  const handleLogoutConfirm = () => {
+    const preservedSidebar = localStorage.getItem("sentina.sidebarCollapsed");
 
-  if (preservedSidebar !== null) {
-    localStorage.setItem("sentina.sidebarCollapsed", preservedSidebar);
-  }
+    localStorage.clear();
+    sessionStorage.clear();
 
-  window.location.replace("/");
-};
+    if (preservedSidebar !== null) {
+      localStorage.setItem("sentina.sidebarCollapsed", preservedSidebar);
+    }
+
+    window.location.replace("/");
+  };
 
   const styles = {
     shell: {
@@ -725,7 +734,7 @@ const handleLogout = (e) => {
         <button
           type="button"
           style={styles.logoutBtn}
-          onClick={handleLogout}
+          onClick={handleLogoutClick}
           title={sidebarCollapsed ? "Logout" : undefined}
         >
           <span style={{ ...iconStyle, color: "#e0565b" }}>
@@ -751,10 +760,10 @@ const handleLogout = (e) => {
               {isSust
                 ? "Sustainability Dashboard"
                 : section === "soc"
-                ? "Security Operations Center"
-                : section === "exhibitor"
-                ? "Exhibitor Portal"
-                : "Operations Dashboard"}
+                  ? "Security Operations Center"
+                  : section === "exhibitor"
+                    ? "Exhibitor Portal"
+                    : "Operations Dashboard"}
             </div>
           </div>
 
@@ -828,11 +837,11 @@ const handleLogout = (e) => {
           `}</style>
         ) : null}
         {settingsOpen ? (
-            <SettingsPage
-              section={section === "soc" ? "soc" : isSust ? "sustainability" : "operations"}
-              onClose={() => setSettingsOpen(false)}
-            />
-          ) : null}
+          <SettingsPage
+            section={section === "soc" ? "soc" : isSust ? "sustainability" : "operations"}
+            onClose={() => setSettingsOpen(false)}
+          />
+        ) : null}
 
         {section === "operations" || section === "sustainability" ? (
           <FloatingAssistant
@@ -852,7 +861,22 @@ const handleLogout = (e) => {
           />
         ) : null}
       </main>
+      <LogoutConfirmModal
+        open={showLogoutConfirm}
+        onConfirm={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+        accentColor={isSust ? "#178032" : isSoc ? "#1e3a5d" : section === "exhibitor" ? "#37005e" : "#e9456f"}
+        roleLabel={
+          isSust
+            ? "Sustainability Dashboard"
+            : isSoc
+              ? "Security Dashboard"
+              : section === "exhibitor"
+                ? "Exhibitor Dashboard"
+                : "Operations Dashboard"
+        }
+      />
     </div>
-    
+
   );
 }

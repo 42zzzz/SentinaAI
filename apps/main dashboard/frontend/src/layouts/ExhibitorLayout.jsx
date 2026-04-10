@@ -4,6 +4,7 @@ import axios from "axios";
 import "./../pages/ExhibitorDashboard.css";
 import SettingsPage from "../pages/SettingsPage";
 import FloatingAssistant from "../components/FloatingAssistant";
+import LogoutConfirmModal from "../components/LogoutConfirmModal";
 import {
   getDashboardRefreshMs,
   useDashboardSettings,
@@ -242,28 +243,29 @@ export default function ExhibitorLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const hideTopControls =
-  location.pathname.startsWith("/exhibitor/reports") ||
-  location.pathname.startsWith("/exhibitor/navigation");
+    location.pathname.startsWith("/exhibitor/reports") ||
+    location.pathname.startsWith("/exhibitor/navigation");
 
   const dashboardSettings = useDashboardSettings("exhibitor");
   const refreshMs = getDashboardRefreshMs(dashboardSettings);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-  try {
-    return localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-});
+    try {
+      return localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
-  try {
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? "1" : "0");
-  } catch {
-    // ignore storage errors
-  }
-}, [sidebarCollapsed]);
+    try {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? "1" : "0");
+    } catch {
+      // ignore storage errors
+    }
+  }, [sidebarCollapsed]);
 
   const [now, setNow] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState("");
@@ -556,9 +558,24 @@ export default function ExhibitorLayout() {
     window.open(EXHIBITOR_HELP_GUIDE_PATH, "_blank", "noopener,noreferrer");
   };
 
-  const handleLogout = () => {
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false);
+  };
+
+  const handleLogoutConfirm = () => {
+    const preservedSidebar = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+
     sessionStorage.clear();
     localStorage.clear();
+
+    if (preservedSidebar !== null) {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, preservedSidebar);
+    }
+
     navigate("/", { replace: true });
   };
 
@@ -659,7 +676,7 @@ export default function ExhibitorLayout() {
             <span className="exhLinkText">Help</span>
           </button>
 
-          <button type="button" className="exhLogoutBtn" onClick={handleLogout} title={sidebarCollapsed ? "Logout" : undefined}>
+          <button type="button" className="exhLogoutBtn" onClick={handleLogoutClick} title={sidebarCollapsed ? "Logout" : undefined}>
             <span className="exhSideIcon"><LogoutIcon /></span>
             <span className="exhLinkText">Logout</span>
           </button>
@@ -790,25 +807,32 @@ export default function ExhibitorLayout() {
               }}
             />
           </div>
-            {settingsOpen ? (
-              <SettingsPage
-                section="exhibitor"
-                onClose={() => setSettingsOpen(false)}
-              />
-            ) : null}
-
-            <FloatingAssistant
+          {settingsOpen ? (
+            <SettingsPage
               section="exhibitor"
-              userId={exhibitorId || sessionStorage.getItem("employee_id") || localStorage.getItem("employee_id") || "EXH0215"}
-              userName={
-                exhibitorName ||
-                sessionStorage.getItem("full_name") ||
-                localStorage.getItem("full_name") ||
-                "Exhibitor"
-              }
+              onClose={() => setSettingsOpen(false)}
             />
+          ) : null}
+
+          <FloatingAssistant
+            section="exhibitor"
+            userId={exhibitorId || sessionStorage.getItem("employee_id") || localStorage.getItem("employee_id") || "EXH0215"}
+            userName={
+              exhibitorName ||
+              sessionStorage.getItem("full_name") ||
+              localStorage.getItem("full_name") ||
+              "Exhibitor"
+            }
+          />
         </main>
       </div>
+      <LogoutConfirmModal
+        open={showLogoutConfirm}
+        onConfirm={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+        accentColor="#37005e"
+        roleLabel="Exhibitor Dashboard"
+      />
     </div>
   );
 }

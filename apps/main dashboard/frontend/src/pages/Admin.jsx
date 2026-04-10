@@ -45,6 +45,74 @@ function statusPillStyle(status) {
   };
 }
 
+function rolePillStyle(role) {
+  const normalized = String(role || "").toUpperCase();
+
+  if (normalized.includes("SUPER_ADMIN") || normalized.includes("SOC") || normalized.includes("SECURITY")) {
+    return {
+      background: "rgba(30, 58, 93, 0.10)",
+      color: "#1e3a5d",
+      border: "1px solid rgba(30, 58, 93, 0.22)",
+    };
+  }
+
+  if (normalized.includes("OPERATIONS")) {
+    return {
+      background: "rgba(233, 69, 111, 0.10)",
+      color: "#e9456f",
+      border: "1px solid rgba(233, 69, 111, 0.22)",
+    };
+  }
+
+  if (normalized.includes("SUSTAINABILITY")) {
+    return {
+      background: "rgba(23, 128, 50, 0.10)",
+      color: "#178032",
+      border: "1px solid rgba(23, 128, 50, 0.22)",
+    };
+  }
+
+  if (normalized.includes("EXHIBITOR")) {
+    return {
+      background: "rgba(55, 0, 94, 0.10)",
+      color: "#37005e",
+      border: "1px solid rgba(55, 0, 94, 0.22)",
+    };
+  }
+
+  return {
+    background: "rgba(30, 58, 93, 0.08)",
+    color: "#1e3a5d",
+    border: "1px solid rgba(30, 58, 93, 0.16)",
+  };
+}
+
+function userStatusPillStyle(status) {
+  const normalized = String(status || "").toUpperCase();
+
+  if (normalized === "ACTIVE") {
+    return {
+      background: "rgba(22, 163, 74, 0.10)",
+      color: "#166534",
+      border: "1px solid rgba(22, 163, 74, 0.18)",
+    };
+  }
+
+  if (normalized === "INACTIVE") {
+    return {
+      background: "rgba(148, 163, 184, 0.14)",
+      color: "#475569",
+      border: "1px solid rgba(148, 163, 184, 0.22)",
+    };
+  }
+
+  return {
+    background: "rgba(245, 158, 11, 0.10)",
+    color: "#b45309",
+    border: "1px solid rgba(245, 158, 11, 0.18)",
+  };
+}
+
 export default function Admin() {
   const token =
     localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -437,7 +505,14 @@ export default function Admin() {
   return (
     <AdminLayout>
       <div style={styles.headerRow}>
-        <h2>User Management</h2>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: "#0f172a" }}>
+            User Management
+          </h2>
+          <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: 14 }}>
+            Manage platform users, access roles, and account activity.
+          </p>
+        </div>
         <button style={styles.addBtn} onClick={() => setShowAddModal(true)}>
           + Add User
         </button>
@@ -451,28 +526,52 @@ export default function Admin() {
         <table style={styles.table}>
           <thead>
             <tr>
-              <th>Employee ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Created</th>
-              <th>Last Active</th>
-              <th></th>
+              <th style={{ ...styles.th, minWidth: 220 }}>Name</th>
+              <th style={{ ...styles.th, minWidth: 280 }}>Email</th>
+              <th style={{ ...styles.th, minWidth: 200 }}>Role</th>
+              <th style={{ ...styles.th, minWidth: 140 }}>Status</th>
+              <th style={{ ...styles.th, minWidth: 190 }}>Created</th>
+              <th style={{ ...styles.th, minWidth: 190 }}>Last Active</th>
+              <th style={{ ...styles.th, minWidth: 120, textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
 
           <tbody>
-            {users.map((user) => (
-              <tr key={user.user_id}>
-                <td>{user.employee_id}</td>
-                <td>{user.full_name}</td>
-                <td>{user.email}</td>
-                <td>{formatRole(user.role_name)}</td>
-                <td>{user.status}</td>
-                <td>{formatDate(user.created_at)}</td>
-                <td>{formatDate(user.last_active_at)}</td>
-                <td>
+            {users.map((user, index) => (
+              <tr
+                key={user.user_id}
+                style={index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd}
+              >
+                <td style={styles.td}>
+                  <div style={styles.primaryText}>{user.full_name}</div>
+                  <div style={styles.userMetaText}>{user.employee_id || "—"}</div>
+                </td>
+
+                <td style={styles.td}>
+                  <div style={styles.secondaryTextStrong}>{user.email}</div>
+                </td>
+
+                <td style={styles.td}>
+                  <span style={{ ...styles.softPill, ...rolePillStyle(user.role_name) }}>
+                    {formatRole(user.role_name)}
+                  </span>
+                </td>
+
+                <td style={styles.td}>
+                  <span style={{ ...styles.softPill, ...userStatusPillStyle(user.status) }}>
+                    {user.status}
+                  </span>
+                </td>
+
+                <td style={{ ...styles.td, ...styles.cellDate }}>
+                  {formatDate(user.created_at)}
+                </td>
+
+                <td style={{ ...styles.td, ...styles.cellDate }}>
+                  {formatDate(user.last_active_at)}
+                </td>
+
+                <td style={{ ...styles.td, ...styles.actionsCell }}>
                   {user.role_name !== "super_admin" && (
                     <button
                       style={styles.editBtn}
@@ -542,14 +641,14 @@ export default function Admin() {
           <table style={styles.logsTable}>
             <thead>
               <tr>
-                <th>Time</th>
-                <th>User</th>
-                <th>Role</th>
-                <th>Query</th>
-                <th>Status</th>
-                <th>Summary</th>
-                <th>Session</th>
-                <th></th>
+                <th style={{ ...styles.th, width: 180 }}>Time</th>
+                <th style={{ ...styles.th, width: 240 }}>User</th>
+                <th style={{ ...styles.th, width: 160 }}>Role</th>
+                <th style={{ ...styles.th, width: 260 }}>Query</th>
+                <th style={{ ...styles.th, width: 140 }}>Status</th>
+                <th style={{ ...styles.th, minWidth: 420 }}>Summary</th>
+                <th style={{ ...styles.th, width: 200 }}>Session</th>
+                <th style={{ ...styles.th, width: 120, textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -566,12 +665,16 @@ export default function Admin() {
                         <div style={styles.userCellPrimary}>{row.user_name || row.user_id || "Unknown user"}</div>
                         <div style={styles.userCellSecondary}>{row.user_id || "—"}</div>
                       </td>
-                      <td style={styles.logsCellTop}>{formatRole(row.role)}</td>
-                      <td style={styles.logsCellTop}>
-                        <div style={styles.userCellPrimary}>{prettyLabel(row.analysis_type || row.raw_query)}</div>
-                        <div style={styles.userCellSecondary}>{row.date_range || "—"}</div>
+                      <td style={{ ...styles.logsCellTop, ...styles.logsCenterCell }}>
+                        <span style={{ ...styles.softPill, ...rolePillStyle(row.role) }}>
+                          {formatRole(row.role)}
+                        </span>
                       </td>
                       <td style={styles.logsCellTop}>
+                        <div style={styles.logQueryTitle}>{prettyLabel(row.analysis_type || row.raw_query)}</div>
+                        <div style={styles.logQueryRange}>{row.date_range || "—"}</div>
+                      </td>
+                      <td style={{ ...styles.logsCellTop, ...styles.logsCenterCell }}>
                         <span style={{ ...styles.statusPill, ...statusPillStyle(row.response_status) }}>
                           {prettyLabel(row.response_status)}
                         </span>
@@ -579,8 +682,10 @@ export default function Admin() {
                       <td style={styles.logsCellTop}>
                         <div style={styles.summaryClamp}>{row.summary || "—"}</div>
                       </td>
-                      <td style={styles.logsCellTop}>{row.session_id || "—"}</td>
-                      <td style={styles.logsCellTop}>
+                      <td style={{ ...styles.logsCellTop, ...styles.logsSessionCell }}>
+                        <div style={styles.sessionText}>{row.session_id || "—"}</div>
+                      </td>
+                      <td style={{ ...styles.logsCellTop, ...styles.logsActionCell }}>
                         <button
                           type="button"
                           style={styles.detailsBtn}
@@ -640,6 +745,7 @@ export default function Admin() {
             <h2>Create New User</h2>
 
             <input
+              style={styles.modalInput}
               placeholder="Full Name"
               value={form.full_name}
               onChange={(e) => handleChange("full_name", e.target.value)}
@@ -649,6 +755,7 @@ export default function Admin() {
             )}
 
             <input
+              style={styles.modalInput}
               placeholder="Email"
               value={form.email}
               onChange={(e) => handleChange("email", e.target.value)}
@@ -659,6 +766,7 @@ export default function Admin() {
 
             <div style={styles.passwordWrap}>
               <input
+                style={styles.modalInputFlex}
                 type={showPassword ? "text" : "password"}
                 placeholder="Password"
                 value={form.password}
@@ -683,6 +791,7 @@ export default function Admin() {
             )}
 
             <select
+              style={styles.modalInput}
               value={form.role_id}
               onChange={(e) => handleChange("role_id", e.target.value)}
             >
@@ -733,6 +842,7 @@ export default function Admin() {
             <h2>Edit User</h2>
 
             <input
+              style={styles.modalInput}
               value={selectedUser.full_name}
               onChange={(e) =>
                 setSelectedUser({
@@ -743,6 +853,7 @@ export default function Admin() {
             />
 
             <input
+              style={styles.modalInput}
               value={selectedUser.email}
               onChange={(e) =>
                 setSelectedUser({
@@ -753,6 +864,7 @@ export default function Admin() {
             />
 
             <select
+              style={styles.modalInput}
               value={selectedUser.role_id}
               onChange={(e) =>
                 setSelectedUser({
@@ -805,43 +917,119 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 24,
+    gap: 16,
+    flexWrap: "wrap",
   },
   addBtn: {
-    background: "#111827",
+    background: "#1e3a5d",
     color: "white",
     border: "none",
-    padding: "10px 18px",
+    padding: "12px 20px",
+    borderRadius: 12,
+    cursor: "pointer",
+    fontWeight: 800,
+    fontSize: 15,
+    boxShadow: "0 10px 24px rgba(30, 58, 93, 0.20)",
+  },
+  editBtn: {
+    background: "#1e3a5d",
+    color: "white",
+    border: "none",
+    padding: "9px 16px",
     borderRadius: 10,
     cursor: "pointer",
     fontWeight: 700,
-  },
-  editBtn: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "6px 14px",
-    borderRadius: 8,
-    cursor: "pointer",
-    fontWeight: 600,
+    fontSize: 14,
+    boxShadow: "0 8px 18px rgba(30, 58, 93, 0.18)",
   },
   tableWrap: {
     width: "100%",
     overflowX: "auto",
-    border: "1px solid #e5e7eb",
-    borderRadius: 14,
+    border: "1px solid #dbe4ee",
+    borderRadius: 20,
+    background: "#ffffff",
+    boxShadow: "0 14px 34px rgba(15, 23, 42, 0.06)",
   },
   table: {
     width: "100%",
-    borderCollapse: "collapse",
+    minWidth: 1120,
+    borderCollapse: "separate",
+    borderSpacing: 0,
+  },
+  th: {
+    textAlign: "left",
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    padding: "18px 22px",
+    background: "#f8fbff",
+    borderBottom: "1px solid #e5edf5",
+    whiteSpace: "nowrap",
+  },
+  td: {
+    padding: "18px 22px",
+    borderBottom: "1px solid #eef3f8",
+    verticalAlign: "middle",
+  },
+  tableRowEven: {
+    background: "#ffffff",
+  },
+  tableRowOdd: {
+    background: "#fbfdff",
+  },
+  primaryText: {
+    fontWeight: 800,
+    color: "#0f172a",
+    lineHeight: 1.35,
+    fontSize: 16,
+  },
+  userMetaText: {
+    fontSize: 13,
+    color: "#64748b",
+    marginTop: 6,
+    lineHeight: 1.4,
+  },
+  secondaryTextStrong: {
+    color: "#334155",
+    fontWeight: 600,
+    lineHeight: 1.45,
+    wordBreak: "break-word",
+    fontSize: 15,
+  },
+  softPill: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 34,
+    padding: "0 14px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 800,
+    whiteSpace: "nowrap",
+    letterSpacing: 0.2,
+  },
+  cellDate: {
+    whiteSpace: "normal",
+    color: "#334155",
+    fontWeight: 500,
+    lineHeight: 1.55,
+    minWidth: 160,
+  },
+  actionsCell: {
+    textAlign: "right",
+    whiteSpace: "nowrap",
+    minWidth: 110,
   },
   logsSection: {
     marginTop: 32,
-    border: "1px solid #e5e7eb",
-    borderRadius: 18,
-    padding: 22,
-    background: "#fafcff",
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.04)",
+    border: "1px solid #dbe4ee",
+    borderRadius: 24,
+    padding: 26,
+    background: "linear-gradient(180deg, #fbfdff 0%, #f8fbff 100%)",
+    boxShadow: "0 14px 34px rgba(15, 23, 42, 0.05)",
   },
   logsHeaderRow: {
     display: "flex",
@@ -853,99 +1041,151 @@ const styles = {
   },
   logsTitle: {
     margin: 0,
-    fontSize: 22,
-    fontWeight: 800,
+    fontSize: 24,
+    fontWeight: 900,
     color: "#0f172a",
   },
   logsSubtitle: {
-    margin: "6px 0 0",
+    margin: "8px 0 0",
     color: "#64748b",
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 1.5,
   },
   logsCountBadge: {
-    background: "#e0f2fe",
-    color: "#075985",
-    border: "1px solid #bae6fd",
+    background: "rgba(30, 58, 93, 0.08)",
+    color: "#1e3a5d",
+    border: "1px solid rgba(30, 58, 93, 0.16)",
     borderRadius: 999,
-    padding: "8px 12px",
-    fontSize: 12,
-    fontWeight: 700,
+    padding: "10px 14px",
+    fontSize: 13,
+    fontWeight: 800,
   },
   logsFiltersRow: {
-    display: "flex",
-    gap: 12,
-    flexWrap: "wrap",
-    marginBottom: 16,
+    display: "grid",
+    gridTemplateColumns: "minmax(320px, 2fr) minmax(180px, 0.9fr) minmax(180px, 0.9fr)",
+    gap: 14,
+    marginBottom: 20,
   },
   logsSearchInput: {
-    flex: "1 1 320px",
-    minWidth: 260,
-    height: 42,
-    borderRadius: 10,
+    height: 48,
+    borderRadius: 14,
     border: "1px solid #cbd5e1",
-    padding: "0 14px",
+    padding: "0 16px",
     background: "#fff",
+    fontSize: 15,
+    color: "#0f172a",
+    outline: "none",
+    boxShadow: "inset 0 1px 2px rgba(15, 23, 42, 0.04)",
   },
   logsSelect: {
     minWidth: 180,
-    height: 42,
-    borderRadius: 10,
+    height: 48,
+    borderRadius: 14,
     border: "1px solid #cbd5e1",
-    padding: "0 12px",
+    padding: "0 14px",
     background: "#fff",
+    fontSize: 15,
+    color: "#0f172a",
+    outline: "none",
   },
   logsTableWrap: {
     width: "100%",
     overflowX: "auto",
-    border: "1px solid #e5e7eb",
-    borderRadius: 14,
+    border: "1px solid #dbe4ee",
+    borderRadius: 20,
     background: "#fff",
+    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.04)",
   },
   logsTable: {
     width: "100%",
-    minWidth: 1040,
-    borderCollapse: "collapse",
+    minWidth: 1320,
+    borderCollapse: "separate",
+    borderSpacing: 0,
   },
   logsCellTop: {
     verticalAlign: "top",
+    padding: "18px 20px",
+    borderBottom: "1px solid #eef3f8",
+  },
+  logsActionCell: {
+    textAlign: "right",
+    verticalAlign: "middle",
+    whiteSpace: "nowrap",
+  },
+
+  logsSessionCell: {
+    verticalAlign: "middle",
+    whiteSpace: "nowrap",
+  },
+
+  logsCenterCell: {
+    verticalAlign: "middle",
+    whiteSpace: "nowrap",
+  },
+
+  logQueryTitle: {
+    fontWeight: 800,
+    color: "#0f172a",
+    fontSize: 15,
+    lineHeight: 1.35,
+    marginBottom: 8,
+  },
+
+  logQueryRange: {
+    fontSize: 13,
+    color: "#64748b",
+    lineHeight: 1.45,
   },
   userCellPrimary: {
-    fontWeight: 700,
+    fontWeight: 800,
     color: "#0f172a",
-    marginBottom: 4,
+    marginBottom: 6,
+    lineHeight: 1.35,
+    fontSize: 15,
   },
   userCellSecondary: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#64748b",
+    lineHeight: 1.4,
+    marginTop: 6,
   },
   statusPill: {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 28,
-    padding: "0 10px",
+    minHeight: 32,
+    padding: "0 12px",
     borderRadius: 999,
     fontSize: 12,
-    fontWeight: 700,
+    fontWeight: 800,
     whiteSpace: "nowrap",
   },
-  summaryClamp: {
-    display: "-webkit-box",
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: "vertical",
+  sessionText: {
+    fontSize: 12,
+    color: "#475569",
+    fontFamily: "monospace",
+    background: "#f8fafc",
+    border: "1px solid #e2e8f0",
+    borderRadius: 10,
+    padding: "8px 12px",
+    display: "inline-flex",
+    alignItems: "center",
+    minHeight: 36,
+    maxWidth: 190,
     overflow: "hidden",
-    color: "#334155",
-    lineHeight: 1.45,
-    maxWidth: 260,
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
   },
   detailsBtn: {
-    background: "#eff6ff",
-    color: "#1d4ed8",
-    border: "1px solid #bfdbfe",
-    padding: "6px 12px",
-    borderRadius: 8,
+    background: "#1e3a5d",
+    color: "#ffffff",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: 10,
     cursor: "pointer",
-    fontWeight: 700,
+    fontWeight: 800,
+    fontSize: 14,
+    boxShadow: "0 8px 18px rgba(30, 58, 93, 0.16)",
   },
   logsEmptyCell: {
     textAlign: "center",
@@ -1002,38 +1242,47 @@ const styles = {
   },
   modal: {
     background: "white",
-    padding: 40,
-    borderRadius: 16,
-    width: 600,
+    padding: 30,
+    borderRadius: 22,
+    width: "min(720px, 100%)",
     display: "flex",
     flexDirection: "column",
-    gap: 15,
+    gap: 14,
+    boxShadow: "0 24px 60px rgba(15, 23, 42, 0.20)",
+    border: "1px solid #e5edf5",
   },
   passwordWrap: {
-    display: "flex",
-    gap: 10,
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 110px",
+    gap: 12,
+    alignItems: "center",
   },
   showBtn: {
-    background: "#e5e7eb",
-    border: "none",
-    padding: "8px 12px",
-    borderRadius: 8,
+    height: 48,
+    background: "#eef2f7",
+    border: "1px solid #dbe3ee",
+    padding: "0 16px",
+    borderRadius: 12,
     cursor: "pointer",
+    fontWeight: 700,
+    color: "#334155",
   },
   passwordRulesBox: {
     background: "#f8fafc",
     border: "1px solid #e2e8f0",
-    padding: 16,
-    borderRadius: 12,
+    padding: 18,
+    borderRadius: 16,
     fontSize: 14,
     display: "flex",
     flexDirection: "column",
-    gap: 6,
+    gap: 8,
+    lineHeight: 1.5,
   },
   modalActions: {
     display: "flex",
     justifyContent: "flex-end",
-    gap: 10,
+    gap: 12,
+    marginTop: 8,
   },
   modalActionsBetween: {
     display: "flex",
@@ -1043,17 +1292,20 @@ const styles = {
   cancelBtn: {
     background: "#e5e7eb",
     border: "none",
-    padding: "8px 14px",
-    borderRadius: 8,
+    padding: "10px 18px",
+    borderRadius: 12,
     cursor: "pointer",
+    fontWeight: 700,
+    color: "#334155",
   },
   saveBtn: {
-    background: "#16a34a",
+    background: "#4da851",
     color: "white",
     border: "none",
-    padding: "8px 16px",
-    borderRadius: 8,
+    padding: "10px 18px",
+    borderRadius: 12,
     cursor: "pointer",
+    fontWeight: 800,
   },
   deleteBtn: {
     background: "#dc2626",
@@ -1075,5 +1327,30 @@ const styles = {
     padding: "10px 14px",
     borderRadius: 10,
     marginBottom: 16,
+  },
+  modalInput: {
+    width: "100%",
+    height: 48,
+    borderRadius: 12,
+    border: "1px solid #cbd5e1",
+    padding: "0 14px",
+    fontSize: 15,
+    color: "#0f172a",
+    background: "#ffffff",
+    outline: "none",
+    boxSizing: "border-box",
+  },
+
+  modalInputFlex: {
+    width: "100%",
+    height: 48,
+    borderRadius: 12,
+    border: "1px solid #cbd5e1",
+    padding: "0 14px",
+    fontSize: 15,
+    color: "#0f172a",
+    background: "#ffffff",
+    outline: "none",
+    boxSizing: "border-box",
   },
 };
