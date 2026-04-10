@@ -1,5 +1,7 @@
 const analyticsDb = require("../dbs/analytics.db");
 const coreDb = require("../dbs/core.db");
+const securityDb = require("../dbs/security.db");
+
 // Helper: pick the latest timestamp (interval) for a given event/zone
 async function getLatestTs({ eventId, zoneId }) {
   const r = await analyticsDb.query(
@@ -100,7 +102,7 @@ exports.getZonesSummary = async (req, res) => {
     );
 
     // Convert into UI-friendly labels like your Figma
-    const rows = r.rows.map(z => {
+    const rows = r.rows.map((z) => {
       const occ = Number(z.occupancy_pct || 0);
       const congestion = Number(z.congestion_index || 0);
       const comfort = Number(z.comfort_index || 0);
@@ -185,7 +187,7 @@ exports.getTrends = async (req, res) => {
       ? Number(req.query.limit)
       : Math.max(8, Math.min(7 * 24 * 4, Math.round(hours * 4)));
 
-        // whitelist metrics -> SQL expressions
+    // whitelist metrics -> SQL expressions
     const metricExpr =
       metric === "congestion" ? "AVG(flow_congestion_index)::float8" :
       metric === "comfort" ? "AVG(comfort_index)::float8" :
@@ -346,24 +348,58 @@ exports.getAlertsTrend = async (req, res) => {
     const bucketMins = 15;
     const mode = lifetime ? "lifetime" : days > 0 ? "days" : "hours";
 
+    async function getAlertsAnchorTs() {
+      const row = await coreDb.query(
+        `SELECT MAX(detected_at) AS latest_ts FROM alerts WHERE domain = $1`,
+        [domain]
+      );
+      return row.rows?.[0]?.latest_ts ? new Date(row.rows[0].latest_ts) : null;
+    }
+
+    async function getSecurityEvidenceAnchorTs() {
+      const r = await securityDb.query(`
+        SELECT MAX(ts) AS latest_ts
+        FROM (
+          SELECT MAX(ts) AS ts FROM auth_events
+          UNION ALL
+          SELECT MAX(ts) AS ts FROM mqtt_security_events
+          UNION ALL
+          SELECT MAX(ts) AS ts FROM identity_events
+          UNION ALL
+          SELECT MAX(ts) AS ts FROM integrity_events
+        ) s
+      `);
+      return r.rows?.[0]?.latest_ts ? new Date(r.rows[0].latest_ts) : null;
+    }
+
+    const alertsAnchor = await getAlertsAnchorTs();
+    const securityAnchor = domain === "SECURITY" ? await getSecurityEvidenceAnchorTs() : null;
+
+    const anchor =
+      domain === "SECURITY"
+        ? (securityAnchor || alertsAnchor || new Date())
+        : (alertsAnchor || new Date());
+
+    const anchorIso = anchor.toISOString();
+
     const timeClause =
       mode === "lifetime"
         ? ""
         : mode === "days"
-        ? "AND detected_at >= NOW() - ($2 || ' days')::interval"
-        : "AND detected_at >= NOW() - ($2 || ' hours')::interval";
+        ? "AND detected_at BETWEEN ($2::timestamptz - ($1 || ' days')::interval) AND $2::timestamptz"
+        : "AND detected_at BETWEEN ($2::timestamptz - ($1 || ' hours')::interval) AND $2::timestamptz";
 
     const bucketIdx = 1;
     const trendParams =
       mode === "lifetime"
         ? [bucketMins, domain]
         : mode === "days"
-        ? [bucketMins, days, domain]
-        : [bucketMins, hours, domain];
+        ? [days, anchorIso, domain]
+        : [hours, anchorIso, domain];
 
     const domainIdx = mode === "lifetime" ? 2 : 3;
 
-    const r = await coreDb.query(
+    const alertsTrendQ = await coreDb.query(
       `
       SELECT
         to_timestamp(
@@ -379,31 +415,54 @@ exports.getAlertsTrend = async (req, res) => {
       trendParams
     );
 
-    const totalParams =
-      mode === "lifetime"
-        ? [domain]
-        : mode === "days"
-        ? [days, domain]
-        : [hours, domain];
+    let points = (alertsTrendQ.rows || []).map((x) => ({
+      ts: x.ts,
+      value: Number(x.value || 0),
+    }));
 
-    const totalTimeClause =
-      mode === "lifetime"
-        ? ""
-        : mode === "days"
-        ? "AND detected_at >= NOW() - ($1 || ' days')::interval"
-        : "AND detected_at >= NOW() - ($1 || ' hours')::interval";
+    let total = points.reduce((sum, p) => sum + Number(p.value || 0), 0);
 
-    const totalDomainIdx = mode === "lifetime" ? 1 : 2;
+    if (domain === "SECURITY" && total === 0) {
+      const windowClause =
+        mode === "lifetime"
+          ? ""
+          : mode === "days"
+          ? "WHERE ts BETWEEN ($1::timestamptz - ($2 || ' days')::interval) AND $1::timestamptz"
+          : "WHERE ts BETWEEN ($1::timestamptz - ($2 || ' hours')::interval) AND $1::timestamptz";
 
-    const totalQ = await coreDb.query(
-      `
-      SELECT COUNT(*)::int AS total
-      FROM alerts
-      WHERE domain = $${totalDomainIdx}
-      ${totalTimeClause}
-      `,
-      totalParams
-    );
+      const q = `
+        WITH merged AS (
+          SELECT ts FROM auth_events ${windowClause}
+          UNION ALL
+          SELECT ts FROM mqtt_security_events ${windowClause}
+          UNION ALL
+          SELECT ts FROM identity_events ${windowClause}
+          UNION ALL
+          SELECT ts FROM integrity_events ${windowClause}
+        )
+        SELECT
+          to_timestamp(
+            floor(extract(epoch from ts) / (${bucketMins} * 60)) * (${bucketMins} * 60)
+          ) AS ts,
+          COUNT(*)::int AS value
+        FROM merged
+        GROUP BY 1
+        ORDER BY 1 ASC
+      `;
+
+      const params =
+        mode === "lifetime"
+          ? []
+          : [anchorIso, mode === "days" ? days : hours];
+
+      const evidenceQ = await securityDb.query(q, params);
+
+      points = (evidenceQ.rows || []).map((x) => ({
+        ts: x.ts,
+        value: Number(x.value || 0),
+      }));
+      total = points.reduce((sum, p) => sum + Number(p.value || 0), 0);
+    }
 
     res.json({
       ok: true,
@@ -414,8 +473,9 @@ exports.getAlertsTrend = async (req, res) => {
       lifetime: mode === "lifetime",
       days: mode === "days" ? days : null,
       hours: mode === "hours" ? hours : null,
-      total: Number(totalQ.rows?.[0]?.total || 0),
-      points: (r.rows || []).map((x) => ({ ts: x.ts, value: Number(x.value || 0) })),
+      anchor_timestamp: anchorIso,
+      total,
+      points,
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });

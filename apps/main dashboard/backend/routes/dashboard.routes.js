@@ -15,5 +15,6 @@ router.get("/alerts-trend", dash.getAlertsTrend);
 
 router.get("/soc-overview", soc.getSocOverview);
 router.get("/soc-logs", soc.getSocLogs);
+router.get("/soc-analytics", soc.getSocAnalytics);
 
 module.exports = router;

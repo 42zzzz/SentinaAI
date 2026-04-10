@@ -1,125 +1,101 @@
-import { runRuleEngine } from "./app";
-import { InMemoryCapacityProvider, InMemoryRulesProvider, JsonlFileAlertsSink } from "./stubs";
-import { RuleRow } from "./types";
-import fs from "node:fs";
+import { RuleEngine } from "./ruleEngine";
+import { DbEventReader } from "./dbEventReader";
+import {
+  DbCapacityProvider,
+  DbRulesProvider,
+  StatefulDbAlertsSink,
+  makeDbClients,
+} from "./dbProviders";
+import type { RuleRow } from "./types";
 
-function parseBool(v: unknown): boolean {
-  if (typeof v === "boolean") return v;
-  if (typeof v === "string") return v.toLowerCase() === "true";
-  return false;
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
-function parseNum(v: unknown): number {
-  const n = typeof v === "number" ? v : Number(v);
-  return Number.isFinite(n) ? n : 0;
+
+async function isUrlHealthy(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url, { method: "GET" });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
-function loadRulesFromCsv(path: string): RuleRow[] {
-  // DEV ONLY. DB provider replaces this.
-  const txt = fs.readFileSync(path, "utf8").trim();
-  const [headerLine, ...lines] = txt.split(/\r?\n/);
-  const headers = headerLine.split(",").map((s) => s.trim());
+async function shouldEnableNonSecurityAlerts(): Promise<boolean> {
+  const mode = String(process.env.RULE_ENGINE_NON_SECURITY_MODE || "fallback_only").toLowerCase();
 
-  return lines.map((line) => {
-    const cols = line.split(",");
-    const row: any = {};
-    headers.forEach((h, i) => (row[h] = cols[i]));
+  if (mode === "always") return true;
+  if (mode === "never") return false;
 
-    return {
-      rule_key: row.rule_key,
-      domain: row.domain,
-      rule_name: row.rule_name,
-      description: row.description,
+  if (process.env.AI_ENGINE_HEALTHY !== undefined) {
+    return String(process.env.AI_ENGINE_HEALTHY).toLowerCase() === "false";
+  }
 
-      event_type: row.event_type,
-      field_path: row.field_path,
+  const healthUrl = process.env.RULE_ENGINE_AI_HEALTH_URL;
+  if (!healthUrl) {
+    return false;
+  }
 
-      aggregation: row.aggregation,
-      window_seconds: parseNum(row.window_seconds),
+  const healthy = await isUrlHealthy(healthUrl);
+  return !healthy;
+}
 
-      operator: row.operator,
-      threshold_value: parseNum(row.threshold_value),
-
-      base_severity: row.base_severity,
-
-      escalation_enabled: parseBool(row.escalation_enabled),
-      escalation_window_seconds: row.escalation_window_seconds ? parseNum(row.escalation_window_seconds) : null,
-      escalation_threshold: row.escalation_threshold ? parseNum(row.escalation_threshold) : null,
-
-      cooldown_seconds: parseNum(row.cooldown_seconds),
-
-      default_response_type: row.default_response_type,
-      default_response_action: row.default_response_action,
-
-      auto_mitigation_enabled: parseBool(row.auto_mitigation_enabled),
-    } as RuleRow;
+function filterRulesForRun(rules: RuleRow[], enableNonSecurity: boolean): RuleRow[] {
+  return rules.filter((rule) => {
+    const domain = String(rule.domain || "").toUpperCase();
+    if (domain === "SECURITY") return true;
+    return enableNonSecurity;
   });
 }
 
 async function main() {
-  const telemetryJsonlPath = process.argv[2];
-  if (!telemetryJsonlPath) {
-    console.error('Usage: npx ts-node src/index.ts "<telemetry_stream.jsonl>"');
-    process.exit(1);
+  const pollMs = Math.max(5000, Number(process.env.RULE_ENGINE_POLL_MS || 15000));
+  const limitPerSource = Math.max(100, Number(process.env.RULE_ENGINE_BATCH_LIMIT || 500));
+
+  const { core, telemetry, security } = await makeDbClients();
+  const rulesProvider = new DbRulesProvider(core);
+  const capacityProvider = new DbCapacityProvider(core);
+  const alertsSink = new StatefulDbAlertsSink(core);
+  const eventReader = new DbEventReader(telemetry, security);
+
+  let rules: RuleRow[] = await rulesProvider.loadActiveRules();
+  let capacityByZone = await capacityProvider.loadCapacityByZone();
+  let engine = new RuleEngine(capacityByZone);
+  let cycle = 0;
+
+  console.log("[rule_engine] started with database-backed rules, telemetry, and security evidence feeds");
+
+  while (true) {
+    try {
+      cycle += 1;
+
+      if (cycle === 1 || cycle % 4 === 0) {
+        rules = await rulesProvider.loadActiveRules();
+        capacityByZone = await capacityProvider.loadCapacityByZone();
+        engine.setCapacityByZone(capacityByZone);
+      }
+
+      const enableNonSecurity = await shouldEnableNonSecurityAlerts();
+      const activeRules = filterRulesForRun(rules, enableNonSecurity);
+      const events = await eventReader.nextBatch(limitPerSource);
+
+      if (events.length > 0) {
+        for (const event of events) {
+          const alerts = engine.ingest(event, activeRules);
+          if (alerts.length > 0) {
+            await alertsSink.writeAlerts(alerts);
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error("[rule_engine] cycle failed:", error?.message || error);
+    }
+
+    await sleep(pollMs);
   }
-
-  // TEMP ONLY: rules from CSV 
-  const rules = loadRulesFromCsv("./Rules_updated_with_actions_v2.csv");
-
-  // TEMP ONLY: capacity map placeholder
-  const capacityByZone: Record<string, number> = {
-    zoneA: 450,
-    zoneB: 500,
-    zoneC: 400,
-    zoneD: 600,
-  };
-
-  await runRuleEngine({
-    telemetryJsonlPath,
-    rulesProvider: new InMemoryRulesProvider(rules),
-    capacityProvider: new InMemoryCapacityProvider(capacityByZone),
-    alertsSink: new JsonlFileAlertsSink("./generated_alerts.jsonl"),
-  });
 }
 
-main().catch((e) => {
-  console.error(e);
+main().catch((error) => {
+  console.error("[rule_engine] fatal error:", error);
   process.exit(1);
 });
-
-
-/**
- //new index after db integration
- // src/index.ts
-import { runRuleEngine } from "./app";
-import { DbAlertsSink, DbCapacityProvider, DbRulesProvider, makeDbClient } from "./dbProviders";
-
-async function main() {
-  const telemetryJsonlPath = process.argv[2];
-  if (!telemetryJsonlPath) {
-    console.error('Usage: npx ts-node src/index.ts "<telemetry_stream.jsonl>"');
-    process.exit(1);
-  }
-
-  console.log("Rule Engine starting. Rules source: DB. Alerts sink: DB.");
-
-  const db = await makeDbClient();
-
-  const rulesProvider = new DbRulesProvider(db);
-  const capacityProvider = new DbCapacityProvider(db);
-  const alertsSink = new DbAlertsSink(db);
-
-  await runRuleEngine({
-    telemetryJsonlPath,
-    rulesProvider,
-    capacityProvider,
-    alertsSink,
-  });
-
-  console.log("Rule Engine finished processing telemetry stream.");
-}
-
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
- */
