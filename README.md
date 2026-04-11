@@ -163,7 +163,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8082
 
 ---
 
-### MQTT Broker (Docker — EMQX 5.8)
+### MQTT Broker (Docker, EMQX 5.8)
 
 ```bash
 cd services/mqtt-broker
@@ -184,7 +184,7 @@ docker exec sentina-emqx emqx ping
 python3 scripts/test_emqx.py -v
 ```
 
-EMQX dashboard: **http://localhost:18083** (default credentials in `docker-compose.yml` — change before production use).
+EMQX dashboard: **http://localhost:18083** (default credentials in `docker-compose.yml`; change before production use).
 
 > See `services/mqtt-broker/README.md` and `services/mqtt-broker/DOCKER_PRIMER.md` for detailed setup and Docker basics.
 
@@ -192,7 +192,7 @@ EMQX dashboard: **http://localhost:18083** (default credentials in `docker-compo
 
 ## Environment Variables
 
-### Main Dashboard Backend — `apps/main dashboard/backend/.env`
+### Main Dashboard Backend `apps/main dashboard/backend/.env`
 
 | Variable | Description | Example |
 |----------|-------------|---------|
@@ -208,13 +208,13 @@ EMQX dashboard: **http://localhost:18083** (default credentials in `docker-compo
 | `AI_SERVICE_URL` | URL of the AI Detection service | `http://127.0.0.1:8000` |
 | `EXHIBITOR_AI_SERVICE_URL` | URL of the Exhibitor AI service | `http://127.0.0.1:8001` |
 
-### Main Dashboard Frontend — `apps/main dashboard/frontend/.env`
+### Main Dashboard Frontend `apps/main dashboard/frontend/.env`
 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `VITE_API_BASE_URL` | Backend API base URL | `http://localhost:8080` |
 
-### Exhibitor AI Pipeline — `services/exhibitor-ai-pipeline/.env`
+### Exhibitor AI Pipeline `services/exhibitor-ai-pipeline/.env`
 
 | Variable | Description |
 |----------|-------------|
@@ -284,24 +284,24 @@ This builds Docker images for all services and deploys them to **GCP Cloud Run**
 
 The Operations Manager dashboard provides complete venue operational visibility.
 
-**Dashboard** — Overview of key metrics: live occupancy, active device count, open alerts, and energy consumption. Includes device health bars and alert trend charts.
+**Dashboard**  Overview of key metrics: live occupancy, active device count, open alerts, and energy consumption. Includes device health bars and alert trend charts.
 
-**Devices** — Real-time device list with status indicators, location, and live telemetry values. Filter by status or location.
+**Devices**  Real-time device list with status indicators, location, and live telemetry values. Filter by status or location.
 
-**Events** — Schedule and track venue events. View attendee counts, timelines, and event details.
+**Events**  Schedule and track venue events. View attendee counts, timelines, and event details.
 
-**Exhibitors & Booths** — Manage exhibitor profiles, booth assignments, and traffic patterns.
+**Exhibitors & Booths**  Manage exhibitor profiles, booth assignments, and traffic patterns.
 
-**Alerts** — Operations-scoped alerts filtered by severity (critical / warning / info) and status (new / acknowledged / resolved). Includes AI-generated anomaly alerts with recommended actions.
+**Alerts**  Operations-scoped alerts filtered by severity (critical / warning / info) and status (new / acknowledged / resolved). Includes AI-generated anomaly alerts with recommended actions.
 
-**Navigation Map** — Interactive 2D floor plan with:
+**Navigation Map**  Interactive 2D floor plan with:
 - Select a **Start Room** and **End Room** from the dropdowns, then click **Find Optimal Path** to compute the shortest route with turn-by-turn steps and distance.
 - Toggle **Avoid Crowded Areas** to route visitors around congested zones.
 - Toggle **Show Heatmap** to overlay live occupancy heat (green = low, orange = moderate, red = high).
 
-**Digital Twin** — Embedded 3D view of the venue (see [Digital Twin](#digital-twin) section below).
+**Digital Twin**  Embedded 3D view of the venue (see [Digital Twin](#digital-twin) section below).
 
-**Reports** — Create, save, and export custom reports. Select date ranges, metrics, and zones.
+**Reports**  Create, save, and export custom reports. Select date ranges, metrics, and zones.
 
 ---
 
@@ -309,43 +309,43 @@ The Operations Manager dashboard provides complete venue operational visibility.
 
 The SOC (Security Operations Center) dashboard focuses on security event monitoring.
 
-**Dashboard** — Security KPIs: active alerts, monitored zones, device status.
+**Dashboard**  Security KPIs: active alerts, monitored zones, device status.
 
-**Alerts** — Security-domain alerts with filtering by severity, zone, and time range.
+**Alerts**  Security-domain alerts with filtering by severity, zone, and time range.
 
-**Analytics** — Incident trends, threat pattern analysis, anomaly detection results.
+**Analytics**  Incident trends, threat pattern analysis, anomaly detection results.
 
-**Logs** — Access logs, system event logs, and full audit trail.
+**Logs**  Access logs, system event logs, and full audit trail.
 
-**Reports** — Security incident reports and compliance documentation.
+**Reports**  Security incident reports and compliance documentation.
 
 ---
 
 ### Sustainability Manager
 
-**Dashboard** — Carbon emissions score, energy efficiency index, HVAC optimization status, and comfort index.
+**Dashboard**  Carbon emissions score, energy efficiency index, HVAC optimization status, and comfort index.
 
-**Energy** — Per-hall energy consumption charts, historical trends, top energy consumers, and efficiency benchmarks.
+**Energy**  Per-hall energy consumption charts, historical trends, top energy consumers, and efficiency benchmarks.
 
-**Environmental** — Carbon footprint tracking, air quality metrics (temperature, humidity, CO₂), and emissions assessment.
+**Environmental**  Carbon footprint tracking, air quality metrics (temperature, humidity, CO₂), and emissions assessment.
 
-**Hall Details** — Drill into individual halls for occupancy-vs-energy analysis.
+**Hall Details**  Drill into individual halls for occupancy-vs-energy analysis.
 
-**Alerts** — Sustainability alerts: energy waste, equipment efficiency warnings, threshold breaches.
+**Alerts**  Sustainability alerts: energy waste, equipment efficiency warnings, threshold breaches.
 
-**Reports** — Carbon reports, energy audits, and sustainability compliance documentation.
+**Reports**  Carbon reports, energy audits, and sustainability compliance documentation.
 
 ---
 
 ### Exhibitor
 
-**Dashboard** — Booth KPIs: visitor density, confidence score, engagement metrics, daily visitor count, and peak hours.
+**Dashboard**  Booth KPIs: visitor density, confidence score, engagement metrics, daily visitor count, and peak hours.
 
-**Heatmap** — Visual traffic heatmap of the booth area showing visitor concentration and dwell zones.
+**Heatmap**  Visual traffic heatmap of the booth area showing visitor concentration and dwell zones.
 
-**Analytics** — Visitor behavior analysis: dwell time, repeat visitors, engagement confidence scoring.
+**Analytics**  Visitor behavior analysis: dwell time, repeat visitors, engagement confidence scoring.
 
-**Reports** — Booth-specific visitor reports and ROI analysis.
+**Reports**  Booth-specific visitor reports and ROI analysis.
 
 ---
 
@@ -358,9 +358,9 @@ Access via the **Super Admin** role at `/admin`.
 - Click the edit icon on any row to modify a user's details or role.
 - Use the status toggle to activate or deactivate accounts without deleting them.
 
-**Support Tickets** — View and manage help desk tickets submitted by users. Track status (open / resolved).
+**Support Tickets**  View and manage help desk tickets submitted by users. Track status (open / resolved).
 
-**Audit Logs** — Review a timestamped log of all authentication events and critical actions.
+**Audit Logs**  Review a timestamped log of all authentication events and critical actions.
 
 ---
 
@@ -368,11 +368,11 @@ Access via the **Super Admin** role at `/admin`.
 
 The Navigation Web is a standalone app at **http://localhost:5000** (also embedded in role dashboards).
 
-1. **Select rooms** — Choose a Start Room and End Room from the dropdowns.
-2. **Find path** — Click **Find Optimal Path**. The shortest route is drawn on the map with distance in metres and step-by-step turn instructions.
-3. **Crowd awareness** — Enable **Avoid Crowded Areas** to automatically route around halls with high occupancy.
-4. **Heatmap** — Enable **Show Heatmap** to see a live colour overlay (green → orange → red) showing current occupancy levels across all halls.
-5. **Demo mode** — Click **Demo Congestion** to simulate a busy venue scenario for testing.
+1. **Select rooms**  Choose a Start Room and End Room from the dropdowns.
+2. **Find path**  Click **Find Optimal Path**. The shortest route is drawn on the map with distance in metres and step-by-step turn instructions.
+3. **Crowd awareness**  Enable **Avoid Crowded Areas** to automatically route around halls with high occupancy.
+4. **Heatmap**  Enable **Show Heatmap** to see a live colour overlay (green → orange → red) showing current occupancy levels across all halls.
+5. **Demo mode**  Click **Demo Congestion** to simulate a busy venue scenario for testing.
 
 The **Live Telemetry** panel (bottom-right) shows the current IoT connection status, average occupancy, peak occupancy, and a list of crowded halls.
 
@@ -388,8 +388,8 @@ The Digital Twin provides a real-time 3D view of the venue, accessible from any 
 - Use the **All Halls / Individual Hall** selector to focus on a specific area.
 
 **Layers**
-- **Occupancy** — Colours each hall by current occupancy (green = low, orange = moderate, red = high).
-- **Energy** — Colours each hall by current energy consumption.
+- **Occupancy**  Colours each hall by current occupancy (green = low, orange = moderate, red = high).
+- **Energy**  Colours each hall by current energy consumption.
 
 **Simulation modes**
 
