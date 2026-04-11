@@ -1,10 +1,37 @@
 # SentinaAI
 
+> ### Live Demo: [https://dashboard-frontend-976861260438.me-central1.run.app/](https://dashboard-frontend-976861260438.me-central1.run.app/)
+> See the [User Guide](#user-guide) for login instructions.
+
 **SentinaAI** is a full-stack edge–cloud platform for real-time IoT monitoring, AI-powered anomaly detection, and operational management of large-scale venues such as convention centers. It combines live telemetry ingestion, behavioral analytics, role-based dashboards, crowd-aware navigation, and a 3D digital twin to provide complete operational visibility and rapid response capabilities.
 
-![SentinaAI High-Level Architecture](Documents/Images/high-level-architechture-overview.png)
-
 > **Academic context:** Developed as part of CSIT321 at the University of Wollongong in Dubai. The scope and design extend beyond standard coursework requirements to explore real-world system design and deployment.
+
+---
+
+## Accessing the Platform (for Evaluators & Professors)
+
+There are two ways to access the project:
+
+### Option 1 — Live Hosted Demo (no setup required)
+
+The platform is deployed on GCP Cloud Run and accessible directly in a browser:
+
+**https://hboard-frontend-976861260438.me-central1.run.app/**
+
+No installation or account setup needed. Jump straight to the [User Guide](#user-guide) section for login instructions and a walkthrough of each role's features.
+
+### Option 2 — Clone the Private Repository
+
+To review the source code or run the project locally:
+
+1. **Request collaborator access** — Contact the project team to be added as a GitHub collaborator on the private repository.
+2. Once access is granted, clone normally:
+   ```bash
+   git clone https://github.com/42zzzz/SentinaAI.git
+   cd SentinaAI
+   ```
+3. Follow the [Quick Start](#quick-start) guide below.
 
 ---
 
