@@ -4,6 +4,7 @@ const ctrl = require("../controllers/alerts.controller");
 const router = express.Router();
 
 router.get("/filters", ctrl.getAlertFilters);
+router.get("/live", ctrl.getLiveAlerts);
 router.get("/", ctrl.listAlerts);
 router.get("/:id", ctrl.getAlertDetails);
 

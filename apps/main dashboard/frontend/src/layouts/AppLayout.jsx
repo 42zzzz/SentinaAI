@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import SettingsPage from "../pages/SettingsPage";
 import FloatingAssistant from "../components/FloatingAssistant";
 import LogoutConfirmModal from "../components/LogoutConfirmModal";
+import LiveAlertOverlay from "../components/LiveAlertOverlay";
 
 const rolePrefixMap = {
   operations_manager: "/operations",
@@ -797,6 +798,10 @@ export default function AppLayout() {
         <div style={styles.content}>
           <Outlet />
         </div>
+
+        {(section === "operations" || section === "sustainability" || section === "soc") ? (
+          <LiveAlertOverlay section={section} />
+        ) : null}
         {section === "soc" ? (
           <style>{`
               .socLayout .devicesPage.opsTheme,
