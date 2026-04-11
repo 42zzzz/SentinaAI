@@ -17,6 +17,17 @@ function parseMulti(value) {
     .filter(Boolean);
 }
 
+
+function severityRank(value) {
+  switch (String(value || "").toUpperCase()) {
+    case "CRITICAL": return 4;
+    case "HIGH": return 3;
+    case "MEDIUM": return 2;
+    case "LOW": return 1;
+    default: return 0;
+  }
+}
+
 function severityOrderSql(dir = "DESC") {
   const d = String(dir).toUpperCase() === "ASC" ? "ASC" : "DESC";
   return `CASE a.severity
@@ -228,6 +239,82 @@ exports.listAlerts = async (req, res) => {
       pageSize,
       total: countRes.rows[0]?.total || 0,
       rows: dataRes.rows || [],
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+};
+
+
+
+exports.getLiveAlerts = async (req, res) => {
+  const domain = (req.query.domain || "OPERATIONS").toUpperCase();
+
+  try {
+    const severities = parseMulti(req.query.severity);
+    const statuses = parseMulti(req.query.status);
+    const sinceAlertId = Math.max(toInt(req.query.since_alert_id, 0), 0);
+    const limit = Math.min(Math.max(toInt(req.query.limit, 10), 1), 50);
+    const minSeverityRank = severities.length
+      ? Math.min(...severities.map(severityRank).filter((value) => Number.isFinite(value) && value > 0))
+      : 1;
+
+    const dataSql = `
+      SELECT
+        a.alert_id,
+        a.rule_key,
+        COALESCE(r.rule_name, a.rule_key) AS rule_name,
+        a.domain,
+        a.severity,
+        a.status,
+        a.device_id,
+        a.zone_id,
+        a.hall_id,
+        a.event_timestamp,
+        a.detected_at,
+        a.trigger_value,
+        a.threshold_value,
+        a.message,
+        a.metadata,
+        a.recommended_action,
+        a.action_status,
+        a.auto_response_executed,
+        a.response_type,
+        a.response_action
+      FROM alerts a
+      LEFT JOIN rules r ON r.rule_key = a.rule_key
+      WHERE a.domain = $1
+        AND a.alert_id > $2
+        AND (cardinality($3::text[]) = 0 OR a.status = ANY($3::text[]))
+        AND (CASE a.severity
+              WHEN 'CRITICAL' THEN 4
+              WHEN 'HIGH' THEN 3
+              WHEN 'MEDIUM' THEN 2
+              WHEN 'LOW' THEN 1
+              ELSE 0
+            END) >= $4::int
+      ORDER BY a.alert_id ASC
+      LIMIT $5;
+    `;
+
+    const dataRes = await coreDb.query(dataSql, [
+      domain,
+      sinceAlertId,
+      statuses,
+      minSeverityRank,
+      limit,
+    ]);
+
+    const rows = (dataRes.rows || []).filter((row) => {
+      if (!severities.length) return true;
+      return severities.includes(String(row.severity || "").toUpperCase());
+    });
+
+    res.json({
+      ok: true,
+      domain,
+      since_alert_id: sinceAlertId,
+      rows,
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
