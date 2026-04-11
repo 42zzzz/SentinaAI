@@ -9,6 +9,8 @@ import {
   getDashboardRefreshMs,
   useDashboardSettings,
 } from "../utils/dashboardSettings";
+import HelpSupportModal from "../components/HelpSupportModal";
+
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const ACCENT = "#35005C";
@@ -248,6 +250,7 @@ export default function ExhibitorLayout() {
 
   const dashboardSettings = useDashboardSettings("exhibitor");
   const refreshMs = getDashboardRefreshMs(dashboardSettings);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -555,7 +558,7 @@ export default function ExhibitorLayout() {
   };
 
   const openHelpGuide = () => {
-    window.open(EXHIBITOR_HELP_GUIDE_PATH, "_blank", "noopener,noreferrer");
+    setShowHelpModal(true);
   };
 
   const handleLogoutClick = () => {
@@ -833,6 +836,13 @@ export default function ExhibitorLayout() {
           />
         </main>
       </div>
+      <HelpSupportModal
+        open={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
+        guideUrl={EXHIBITOR_HELP_GUIDE_PATH}
+        accentColor="#37005e"
+        sectionLabel="Exhibitor Dashboard"
+      />
       <LogoutConfirmModal
         open={showLogoutConfirm}
         onConfirm={handleLogoutConfirm}

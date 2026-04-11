@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import SettingsPage from "../pages/SettingsPage";
 import FloatingAssistant from "../components/FloatingAssistant";
 import LogoutConfirmModal from "../components/LogoutConfirmModal";
+import HelpSupportModal from "../components/HelpSupportModal";
 
 const rolePrefixMap = {
   operations_manager: "/operations",
@@ -18,6 +19,7 @@ const HELP_GUIDE_PATHS = {
   operations: "/guides/operations-user-guide.pdf",
   sustainability: "/guides/sustainability-user-guide.pdf",
 };
+
 
 function getSectionFromPath(pathname) {
   if (pathname.startsWith("/sustainability")) return "sustainability";
@@ -263,6 +265,7 @@ export default function AppLayout() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
@@ -295,7 +298,7 @@ export default function AppLayout() {
         : HELP_GUIDE_PATHS.operations;
 
   const openHelpGuide = () => {
-    window.open(helpGuidePath, "_blank", "noopener,noreferrer");
+    setShowHelpModal(true);
   };
 
   const isSust = section === "sustainability";
@@ -868,6 +871,19 @@ export default function AppLayout() {
           />
         ) : null}
       </main>
+      <HelpSupportModal
+        open={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
+        guideUrl={helpGuidePath}
+        accentColor={isSust ? "#178032" : isSoc ? "#1e3a5d" : "#e9456f"}
+        sectionLabel={
+          isSust
+            ? "Sustainability Dashboard"
+            : isSoc
+              ? "Security Dashboard"
+              : "Operations Dashboard"
+        }
+      />
       <LogoutConfirmModal
         open={showLogoutConfirm}
         onConfirm={handleLogoutConfirm}

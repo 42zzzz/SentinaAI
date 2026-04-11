@@ -37,6 +37,7 @@ app.use(accessAudit);
 const environmentRoutes = require("./routes/environment.routes");
 const authenticate = require("./middleware/auth.middleware");
 const { assertExhibitorOwnership } = require("./utils/exhibitorAccess");
+const supportRoutes = require("./routes/support.routes");
 
 app.get("/health", (req, res) =>
   res.json({ ok: true, service: "backend", time: new Date().toISOString() })
@@ -128,8 +129,9 @@ app.use("/alerts", require("./routes/alerts.routes.js"));
 app.use("/environment", environmentRoutes);
 app.use("/sustainability", require("./routes/sustainability.routes.js"));
 app.use("/reports", require("./routes/reports.routes.js"));
+app.use("/support", supportRoutes);
 
-//AUTH LAYER
+// AUTH LAYER
 app.use("/auth", require("./routes/auth"));
 app.use("/users", require("./routes/users.routes.js"));
 app.use("/compliance", require("./routes/compliance.routes.js"));

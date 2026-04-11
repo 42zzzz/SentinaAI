@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import AdminLayout from "../layouts/AdminLayout";
+import AdminSupportIssues from "../components/AdminSupportIssues";
 
 const rule = (valid) => ({
   color: valid ? "#16a34a" : "#94a3b8",
@@ -590,7 +591,7 @@ export default function Admin() {
           </tbody>
         </table>
       </div>
-
+      <AdminSupportIssues />
       <section style={styles.logsSection}>
         <div style={styles.logsHeaderRow}>
           <div>
