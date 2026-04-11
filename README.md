@@ -1,7 +1,7 @@
 # SentinaAI
 
 > ### Live Demo: [https://dashboard-frontend-976861260438.me-central1.run.app/](https://dashboard-frontend-976861260438.me-central1.run.app/)
-> See the [User Guide](#user-guide) for login instructions.
+> Login credentials are provided in the final submission document.
 
 **SentinaAI** is a full-stack edge–cloud platform for real-time IoT monitoring, AI-powered anomaly detection, and operational management of large-scale venues such as convention centers. It combines live telemetry ingestion, behavioral analytics, role-based dashboards, crowd-aware navigation, and a 3D digital twin to provide complete operational visibility and rapid response capabilities.
 
@@ -19,7 +19,7 @@ The platform is deployed on GCP Cloud Run and accessible directly in a browser:
 
 **https://dashboard-frontend-976861260438.me-central1.run.app/**
 
-No installation or account setup needed. Jump straight to the [User Guide](#user-guide) section for login instructions and a walkthrough of each role's features.
+No installation or account setup needed. Login credentials and any additional instructions are provided in the final submission document.
 
 ### Option 2: Clone the Private Repository
 
