@@ -13,7 +13,7 @@
 
 There are two ways to access the project:
 
-### Option 1 — Live Hosted Demo (no setup required)
+### Option 1: Live Hosted Demo (no setup required)
 
 The platform is deployed on GCP Cloud Run and accessible directly in a browser:
 
@@ -21,7 +21,7 @@ The platform is deployed on GCP Cloud Run and accessible directly in a browser:
 
 No installation or account setup needed. Jump straight to the [User Guide](#user-guide) section for login instructions and a walkthrough of each role's features.
 
-### Option 2 — Clone the Private Repository
+### Option 2: Clone the Private Repository
 
 To review the source code or run the project locally:
 
