@@ -17,7 +17,7 @@ There are two ways to access the project:
 
 The platform is deployed on GCP Cloud Run and accessible directly in a browser:
 
-**https://hboard-frontend-976861260438.me-central1.run.app/**
+**https://dashboard-frontend-976861260438.me-central1.run.app/**
 
 No installation or account setup needed. Jump straight to the [User Guide](#user-guide) section for login instructions and a walkthrough of each role's features.
 
