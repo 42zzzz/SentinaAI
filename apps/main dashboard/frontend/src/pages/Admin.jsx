@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import AdminLayout from "../layouts/AdminLayout";
 import AdminSupportIssues from "../components/AdminSupportIssues";
 
+
 const rule = (valid) => ({
   color: valid ? "#16a34a" : "#94a3b8",
   fontWeight: valid ? 600 : 400,
@@ -133,6 +134,9 @@ export default function Admin() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+  const [activeSection, setActiveSection] = useState("users");
+  const [usersSearch, setUsersSearch] = useState("");
+  const [issuesSearch, setIssuesSearch] = useState("");
 
   const [form, setForm] = useState({
     full_name: "",
@@ -372,6 +376,27 @@ export default function Admin() {
     });
   }, [assistantLogs, logsRoleFilter, logsSearch, logsStatusFilter]);
 
+  const filteredUsers = useMemo(() => {
+    const q = usersSearch.trim().toLowerCase();
+
+    return users.filter((user) => {
+      if (!q) return true;
+
+      const haystack = [
+        user.full_name,
+        user.email,
+        user.employee_id,
+        user.role_name,
+        user.status,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(q);
+    });
+  }, [users, usersSearch]);
+
   const toggleLogOpen = (logKey) => {
     setOpenLogKeys((prev) => ({
       ...prev,
@@ -505,240 +530,294 @@ export default function Admin() {
 
   return (
     <AdminLayout>
-      <div style={styles.headerRow}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: "#0f172a" }}>
-            User Management
-          </h2>
-          <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: 14 }}>
-            Manage platform users, access roles, and account activity.
-          </p>
-        </div>
-        <button style={styles.addBtn} onClick={() => setShowAddModal(true)}>
-          + Add User
+      <div style={styles.sectionTabsWrap}>
+        <button
+          type="button"
+          onClick={() => setActiveSection("users")}
+          style={{
+            ...styles.sectionTab,
+            ...(activeSection === "users" ? styles.sectionTabActive : {}),
+          }}
+        >
+          User Management
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSection("issues")}
+          style={{
+            ...styles.sectionTab,
+            ...(activeSection === "issues" ? styles.sectionTabActive : {}),
+          }}
+        >
+          Support Issues
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSection("logs")}
+          style={{
+            ...styles.sectionTab,
+            ...(activeSection === "logs" ? styles.sectionTabActive : {}),
+          }}
+        >
+          Assistant Chat Logs
         </button>
       </div>
 
-      {errors.api && !showAddModal && !showEditModal && (
-        <div style={styles.errorBanner}>{errors.api}</div>
+      {activeSection === "users" && (
+        <>
+          <div style={styles.headerRow}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: "#0f172a" }}>
+                User Management
+              </h2>
+              <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: 14 }}>
+                Manage platform users, access roles, and account activity.
+              </p>
+            </div>
+            <button style={styles.addBtn} onClick={() => setShowAddModal(true)}>
+              + Add User
+            </button>
+          </div>
+
+          <div style={styles.sectionSearchRow}>
+            <input
+              type="text"
+              placeholder="Search by name, email, ID, role, or status"
+              value={usersSearch}
+              onChange={(e) => setUsersSearch(e.target.value)}
+              style={styles.sectionSearchInput}
+            />
+          </div>
+
+          {errors.api && !showAddModal && !showEditModal && (
+            <div style={styles.errorBanner}>{errors.api}</div>
+          )}
+
+          <div style={styles.tableWrap}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={{ ...styles.th, minWidth: 220 }}>Name</th>
+                  <th style={{ ...styles.th, minWidth: 280 }}>Email</th>
+                  <th style={{ ...styles.th, minWidth: 200 }}>Role</th>
+                  <th style={{ ...styles.th, minWidth: 140 }}>Status</th>
+                  <th style={{ ...styles.th, minWidth: 190 }}>Created</th>
+                  <th style={{ ...styles.th, minWidth: 190 }}>Last Active</th>
+                  <th style={{ ...styles.th, minWidth: 120, textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((user, index) => (
+                  <tr
+                    key={user.user_id}
+                    style={index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd}
+                  >
+                    <td style={styles.td}>
+                      <div style={styles.primaryText}>{user.full_name}</div>
+                      <div style={styles.userMetaText}>{user.employee_id || "—"}</div>
+                    </td>
+
+                    <td style={styles.td}>
+                      <div style={styles.secondaryTextStrong}>{user.email}</div>
+                    </td>
+
+                    <td style={styles.td}>
+                      <span style={{ ...styles.softPill, ...rolePillStyle(user.role_name) }}>
+                        {formatRole(user.role_name)}
+                      </span>
+                    </td>
+
+                    <td style={styles.td}>
+                      <span style={{ ...styles.softPill, ...userStatusPillStyle(user.status) }}>
+                        {user.status}
+                      </span>
+                    </td>
+
+                    <td style={{ ...styles.td, ...styles.cellDate }}>
+                      {formatDate(user.created_at)}
+                    </td>
+
+                    <td style={{ ...styles.td, ...styles.cellDate }}>
+                      {formatDate(user.last_active_at)}
+                    </td>
+
+                    <td style={{ ...styles.td, ...styles.actionsCell }}>
+                      {user.role_name !== "super_admin" && (
+                        <button
+                          style={styles.editBtn}
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setShowEditModal(true);
+                            setErrors({});
+                          }}
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
-      <div style={styles.tableWrap}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={{ ...styles.th, minWidth: 220 }}>Name</th>
-              <th style={{ ...styles.th, minWidth: 280 }}>Email</th>
-              <th style={{ ...styles.th, minWidth: 200 }}>Role</th>
-              <th style={{ ...styles.th, minWidth: 140 }}>Status</th>
-              <th style={{ ...styles.th, minWidth: 190 }}>Created</th>
-              <th style={{ ...styles.th, minWidth: 190 }}>Last Active</th>
-              <th style={{ ...styles.th, minWidth: 120, textAlign: "right" }}>Actions</th>
-            </tr>
-          </thead>
+      {activeSection === "issues" && <AdminSupportIssues />}
 
-          <tbody>
-            {users.map((user, index) => (
-              <tr
-                key={user.user_id}
-                style={index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd}
-              >
-                <td style={styles.td}>
-                  <div style={styles.primaryText}>{user.full_name}</div>
-                  <div style={styles.userMetaText}>{user.employee_id || "—"}</div>
-                </td>
-
-                <td style={styles.td}>
-                  <div style={styles.secondaryTextStrong}>{user.email}</div>
-                </td>
-
-                <td style={styles.td}>
-                  <span style={{ ...styles.softPill, ...rolePillStyle(user.role_name) }}>
-                    {formatRole(user.role_name)}
-                  </span>
-                </td>
-
-                <td style={styles.td}>
-                  <span style={{ ...styles.softPill, ...userStatusPillStyle(user.status) }}>
-                    {user.status}
-                  </span>
-                </td>
-
-                <td style={{ ...styles.td, ...styles.cellDate }}>
-                  {formatDate(user.created_at)}
-                </td>
-
-                <td style={{ ...styles.td, ...styles.cellDate }}>
-                  {formatDate(user.last_active_at)}
-                </td>
-
-                <td style={{ ...styles.td, ...styles.actionsCell }}>
-                  {user.role_name !== "super_admin" && (
-                    <button
-                      style={styles.editBtn}
-                      onClick={() => {
-                        setSelectedUser(user);
-                        setShowEditModal(true);
-                        setErrors({});
-                      }}
-                    >
-                      Edit
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <AdminSupportIssues />
-      <section style={styles.logsSection}>
-        <div style={styles.logsHeaderRow}>
-          <div>
-            <h2 style={styles.logsTitle}>Rule-Based Assistant Chat Logs</h2>
-            <p style={styles.logsSubtitle}>
-              All assistant interactions across operations, sustainability, SOC, and exhibitor users.
-            </p>
+      {activeSection === "logs" && (
+        <section style={styles.logsSection}>
+          <div style={styles.logsHeaderRow}>
+            <div>
+              <h2 style={styles.logsTitle}>Rule-Based Assistant Chat Logs</h2>
+              <p style={styles.logsSubtitle}>
+                All assistant interactions across operations, sustainability, SOC, and exhibitor users.
+              </p>
+            </div>
+            <div style={styles.logsCountBadge}>{assistantLogs.length} total</div>
           </div>
-          <div style={styles.logsCountBadge}>{assistantLogs.length} total</div>
-        </div>
 
-        <div style={styles.logsFiltersRow}>
-          <input
-            style={styles.logsSearchInput}
-            placeholder="Search by user, query, summary, role, or session"
-            value={logsSearch}
-            onChange={(e) => setLogsSearch(e.target.value)}
-          />
+          <div style={styles.logsFiltersRow}>
+            <input
+              style={styles.logsSearchInput}
+              placeholder="Search by user, query, summary, role, or session"
+              value={logsSearch}
+              onChange={(e) => setLogsSearch(e.target.value)}
+            />
 
-          <select
-            style={styles.logsSelect}
-            value={logsRoleFilter}
-            onChange={(e) => setLogsRoleFilter(e.target.value)}
-          >
-            {logsRoleOptions.map((option) => (
-              <option key={option} value={option}>
-                {option === "ALL" ? "All roles" : formatRole(option)}
-              </option>
-            ))}
-          </select>
+            <select
+              style={styles.logsSelect}
+              value={logsRoleFilter}
+              onChange={(e) => setLogsRoleFilter(e.target.value)}
+            >
+              {logsRoleOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option === "ALL" ? "All roles" : formatRole(option)}
+                </option>
+              ))}
+            </select>
 
-          <select
-            style={styles.logsSelect}
-            value={logsStatusFilter}
-            onChange={(e) => setLogsStatusFilter(e.target.value)}
-          >
-            {logsStatusOptions.map((option) => (
-              <option key={option} value={option}>
-                {option === "ALL" ? "All statuses" : prettyLabel(option)}
-              </option>
-            ))}
-          </select>
-        </div>
+            <select
+              style={styles.logsSelect}
+              value={logsStatusFilter}
+              onChange={(e) => setLogsStatusFilter(e.target.value)}
+            >
+              {logsStatusOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option === "ALL" ? "All statuses" : prettyLabel(option)}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {logsError ? <div style={styles.errorBanner}>{logsError}</div> : null}
+          {logsError ? <div style={styles.errorBanner}>{logsError}</div> : null}
 
-        <div style={styles.logsTableWrap}>
-          <table style={styles.logsTable}>
-            <thead>
-              <tr>
-                <th style={{ ...styles.th, width: 180 }}>Time</th>
-                <th style={{ ...styles.th, width: 240 }}>User</th>
-                <th style={{ ...styles.th, width: 160 }}>Role</th>
-                <th style={{ ...styles.th, width: 260 }}>Query</th>
-                <th style={{ ...styles.th, width: 140 }}>Status</th>
-                <th style={{ ...styles.th, minWidth: 420 }}>Summary</th>
-                <th style={{ ...styles.th, width: 200 }}>Session</th>
-                <th style={{ ...styles.th, width: 120, textAlign: "right" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logsLoading ? (
+          <div style={styles.logsTableWrap}>
+            <table style={styles.logsTable}>
+              <thead>
                 <tr>
-                  <td colSpan={8} style={styles.logsEmptyCell}>Loading assistant logs…</td>
+                  <th style={{ ...styles.th, width: 180 }}>Time</th>
+                  <th style={{ ...styles.th, width: 240 }}>User</th>
+                  <th style={{ ...styles.th, width: 160 }}>Role</th>
+                  <th style={{ ...styles.th, width: 260 }}>Query</th>
+                  <th style={{ ...styles.th, width: 140 }}>Status</th>
+                  <th style={{ ...styles.th, minWidth: 420 }}>Summary</th>
+                  <th style={{ ...styles.th, width: 200 }}>Session</th>
+                  <th style={{ ...styles.th, width: 120, textAlign: "right" }}>Actions</th>
                 </tr>
-              ) : filteredAssistantLogs.length ? (
-                filteredAssistantLogs.map((row) => (
-                  <Fragment key={row.log_key}>
-                    <tr key={row.log_key}>
-                      <td style={styles.logsCellTop}>{formatDate(row.timestamp)}</td>
-                      <td style={styles.logsCellTop}>
-                        <div style={styles.userCellPrimary}>{row.user_name || row.user_id || "Unknown user"}</div>
-                        <div style={styles.userCellSecondary}>{row.user_id || "—"}</div>
-                      </td>
-                      <td style={{ ...styles.logsCellTop, ...styles.logsCenterCell }}>
-                        <span style={{ ...styles.softPill, ...rolePillStyle(row.role) }}>
-                          {formatRole(row.role)}
-                        </span>
-                      </td>
-                      <td style={styles.logsCellTop}>
-                        <div style={styles.logQueryTitle}>{prettyLabel(row.analysis_type || row.raw_query)}</div>
-                        <div style={styles.logQueryRange}>{row.date_range || "—"}</div>
-                      </td>
-                      <td style={{ ...styles.logsCellTop, ...styles.logsCenterCell }}>
-                        <span style={{ ...styles.statusPill, ...statusPillStyle(row.response_status) }}>
-                          {prettyLabel(row.response_status)}
-                        </span>
-                      </td>
-                      <td style={styles.logsCellTop}>
-                        <div style={styles.summaryClamp}>{row.summary || "—"}</div>
-                      </td>
-                      <td style={{ ...styles.logsCellTop, ...styles.logsSessionCell }}>
-                        <div style={styles.sessionText}>{row.session_id || "—"}</div>
-                      </td>
-                      <td style={{ ...styles.logsCellTop, ...styles.logsActionCell }}>
-                        <button
-                          type="button"
-                          style={styles.detailsBtn}
-                          onClick={() => toggleLogOpen(row.log_key)}
-                        >
-                          {openLogKeys[row.log_key] ? "Hide" : "View"}
-                        </button>
-                      </td>
-                    </tr>
-                    {openLogKeys[row.log_key] ? (
-                      <tr key={`${row.log_key}-details`}>
-                        <td colSpan={8} style={styles.logDetailsCell}>
-                          <div style={styles.logDetailGrid}>
-                            <div>
-                              <div style={styles.logDetailLabel}>Intent</div>
-                              <div style={styles.logDetailValue}>{row.intent || "—"}</div>
-                            </div>
-                            <div>
-                              <div style={styles.logDetailLabel}>Response type</div>
-                              <div style={styles.logDetailValue}>{row.response_type || "—"}</div>
-                            </div>
-                            <div>
-                              <div style={styles.logDetailLabel}>Scope</div>
-                              <div style={styles.logDetailValue}>{row.scope_type || "—"}</div>
-                            </div>
-                            <div>
-                              <div style={styles.logDetailLabel}>Latency</div>
-                              <div style={styles.logDetailValue}>
-                                {row.latency_ms !== null && row.latency_ms !== undefined
-                                  ? `${row.latency_ms} ms`
-                                  : "—"}
-                              </div>
-                            </div>
-                          </div>
-                          <div style={styles.logJsonWrap}>
-                            <div style={styles.logDetailLabel}>Payload</div>
-                            <pre style={styles.logJson}>{JSON.stringify(row.entities || {}, null, 2)}</pre>
-                          </div>
+              </thead>
+              <tbody>
+                {logsLoading ? (
+                  <tr>
+                    <td colSpan={8} style={styles.logsEmptyCell}>Loading assistant logs…</td>
+                  </tr>
+                ) : filteredAssistantLogs.length ? (
+                  filteredAssistantLogs.map((row) => (
+                    <Fragment key={row.log_key}>
+                      <tr>
+                        <td style={styles.logsCellTop}>{formatDate(row.timestamp)}</td>
+                        <td style={styles.logsCellTop}>
+                          <div style={styles.userCellPrimary}>{row.user_name || row.user_id || "Unknown user"}</div>
+                          <div style={styles.userCellSecondary}>{row.user_id || "—"}</div>
+                        </td>
+                        <td style={{ ...styles.logsCellTop, ...styles.logsCenterCell }}>
+                          <span style={{ ...styles.softPill, ...rolePillStyle(row.role) }}>
+                            {formatRole(row.role)}
+                          </span>
+                        </td>
+                        <td style={styles.logsCellTop}>
+                          <div style={styles.logQueryTitle}>{prettyLabel(row.analysis_type || row.raw_query)}</div>
+                          <div style={styles.logQueryRange}>{row.date_range || "—"}</div>
+                        </td>
+                        <td style={{ ...styles.logsCellTop, ...styles.logsCenterCell }}>
+                          <span style={{ ...styles.statusPill, ...statusPillStyle(row.response_status) }}>
+                            {prettyLabel(row.response_status)}
+                          </span>
+                        </td>
+                        <td style={styles.logsCellTop}>
+                          <div style={styles.summaryClamp}>{row.summary || "—"}</div>
+                        </td>
+                        <td style={{ ...styles.logsCellTop, ...styles.logsSessionCell }}>
+                          <div style={styles.sessionText}>{row.session_id || "—"}</div>
+                        </td>
+                        <td style={{ ...styles.logsCellTop, ...styles.logsActionCell }}>
+                          <button
+                            type="button"
+                            style={styles.detailsBtn}
+                            onClick={() => toggleLogOpen(row.log_key)}
+                          >
+                            {openLogKeys[row.log_key] ? "Hide" : "View"}
+                          </button>
                         </td>
                       </tr>
-                    ) : null}
-                  </Fragment>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={8} style={styles.logsEmptyCell}>No assistant logs found for the selected filters.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+
+                      {openLogKeys[row.log_key] ? (
+                        <tr>
+                          <td colSpan={8} style={styles.logDetailsCell}>
+                            <div style={styles.logDetailGrid}>
+                              <div>
+                                <div style={styles.logDetailLabel}>Intent</div>
+                                <div style={styles.logDetailValue}>{row.intent || "—"}</div>
+                              </div>
+                              <div>
+                                <div style={styles.logDetailLabel}>Response type</div>
+                                <div style={styles.logDetailValue}>{row.response_type || "—"}</div>
+                              </div>
+                              <div>
+                                <div style={styles.logDetailLabel}>Scope</div>
+                                <div style={styles.logDetailValue}>{row.scope_type || "—"}</div>
+                              </div>
+                              <div>
+                                <div style={styles.logDetailLabel}>Latency</div>
+                                <div style={styles.logDetailValue}>
+                                  {row.latency_ms !== null && row.latency_ms !== undefined
+                                    ? `${row.latency_ms} ms`
+                                    : "—"}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style={styles.logJsonWrap}>
+                              <div style={styles.logDetailLabel}>Payload</div>
+                              <pre style={styles.logJson}>{JSON.stringify(row.entities || {}, null, 2)}</pre>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={8} style={styles.logsEmptyCell}>No assistant logs found for the selected filters.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {showAddModal && (
         <div style={styles.overlay}>
@@ -921,6 +1000,50 @@ const styles = {
     marginBottom: 24,
     gap: 16,
     flexWrap: "wrap",
+  },
+  sectionTabsWrap: {
+    display: "flex",
+    gap: 12,
+    marginBottom: 28,
+    flexWrap: "wrap",
+  },
+
+  sectionTab: {
+    border: "1px solid #dbe4ee",
+    background: "#ffffff",
+    color: "#334155",
+    padding: "12px 18px",
+    borderRadius: 14,
+    cursor: "pointer",
+    fontWeight: 800,
+    fontSize: 14,
+    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.04)",
+  },
+
+  sectionTabActive: {
+    background: "#1e3a5d",
+    color: "#ffffff",
+    border: "1px solid #1e3a5d",
+    boxShadow: "0 10px 24px rgba(30, 58, 93, 0.20)",
+  },
+
+  sectionSearchRow: {
+    width: "100%",
+    marginBottom: 20,
+  },
+
+  sectionSearchInput: {
+    width: "100%",
+    height: 56,
+    borderRadius: 18,
+    border: "1px solid #cbd5e1",
+    padding: "0 20px",
+    background: "#fff",
+    fontSize: 15,
+    color: "#0f172a",
+    outline: "none",
+    boxShadow: "inset 0 1px 2px rgba(15, 23, 42, 0.04)",
+    boxSizing: "border-box",
   },
   addBtn: {
     background: "#1e3a5d",

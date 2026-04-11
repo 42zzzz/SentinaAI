@@ -98,6 +98,7 @@ export default function AdminSupportIssues() {
     const [adminNotes, setAdminNotes] = useState("");
     const [saving, setSaving] = useState(false);
     const isClosed = String(selectedIssue?.status || "").toUpperCase() === "CLOSED";
+    const [search, setSearch] = useState("");
 
     const fetchIssues = async () => {
         try {
@@ -178,7 +179,28 @@ export default function AdminSupportIssues() {
         }
     };
 
-    const rows = useMemo(() => issues, [issues]);
+    const rows = useMemo(() => {
+        const q = search.trim().toLowerCase();
+
+        return issues.filter((issue) => {
+            if (!q) return true;
+
+            const haystack = [
+                issue.reason,
+                issue.full_name,
+                issue.email,
+                issue.role_name,
+                issue.employee_id,
+                issue.user_id,
+                issue.status,
+            ]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase();
+
+            return haystack.includes(q);
+        });
+    }, [issues, search]);
 
     return (
         <section style={styles.section}>
@@ -188,6 +210,16 @@ export default function AdminSupportIssues() {
                     <p style={styles.subtitle}>Submitted help requests and reported issues.</p>
                 </div>
                 <div style={styles.countBadge}>{rows.length} total</div>
+            </div>
+
+            <div style={styles.searchRow}>
+                <input
+                    type="text"
+                    placeholder="Search by subject, user, email, role, ID, or status"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={styles.searchInput}
+                />
             </div>
 
             {error ? <div style={styles.errorBanner}>{error}</div> : null}
@@ -345,8 +377,25 @@ const styles = {
         justifyContent: "space-between",
         alignItems: "flex-start",
         gap: 16,
-        marginBottom: 16,
+        marginBottom: 18,
         flexWrap: "wrap",
+    },
+    searchInput: {
+        width: "100%",
+        height: 56,
+        borderRadius: 18,
+        border: "1px solid #cbd5e1",
+        padding: "0 20px",
+        background: "#fff",
+        fontSize: 15,
+        color: "#0f172a",
+        outline: "none",
+        boxShadow: "inset 0 1px 2px rgba(15, 23, 42, 0.04)",
+        boxSizing: "border-box",
+    },
+    searchRow: {
+        width: "100%",
+        marginBottom: 20,
     },
     title: {
         margin: 0,
