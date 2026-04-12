@@ -566,3 +566,81 @@
 .socTheme .pillSelectWrap .pillRightCaret{
   border-top-color: #133250 !important;
 }
+
+/* ===== Desktop/laptop responsive tuning ===== */
+.opsTheme .devicesPage .pageInner,
+.socTheme .devicesPage .pageInner,
+.devicesPage .pageInner{
+  padding: 22px clamp(18px, 1.6vw, 26px);
+}
+
+.opsTheme .devicesHeaderRow,
+.socTheme .devicesHeaderRow,
+.devicesHeaderRow,
+.opsTheme .devicesHeaderRight,
+.socTheme .devicesHeaderRight,
+.devicesHeaderRight,
+.opsTheme .devicesControlsBottomRow,
+.socTheme .devicesControlsBottomRow,
+.devicesControlsBottomRow{
+  flex-wrap: wrap;
+}
+
+.opsTheme .devicesFiltersRow,
+.socTheme .devicesFiltersRow,
+.devicesFiltersRow{
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.opsTheme .devicesFiltersRow .filterPill,
+.socTheme .devicesFiltersRow .filterPill,
+.devicesFiltersRow .filterPill{
+  min-width: 0;
+  max-width: 100%;
+}
+
+.opsTheme .pillSearch,
+.socTheme .pillSearch,
+.pillSearch{
+  flex: 2 1 320px;
+  width: auto;
+  min-width: 260px;
+}
+
+.opsTheme .pillZone, .socTheme .pillZone, .pillZone,
+.opsTheme .pillHall, .socTheme .pillHall, .pillHall,
+.opsTheme .pillDeviceType, .socTheme .pillDeviceType, .pillDeviceType,
+.opsTheme .pillStatus, .socTheme .pillStatus, .pillStatus,
+.opsTheme .pillSort, .socTheme .pillSort, .pillSort{
+  flex: 1 1 150px;
+  width: auto;
+  min-width: 140px;
+  max-width: 190px;
+}
+
+.opsTheme .pillRows, .socTheme .pillRows, .pillRows{
+  flex: 0 0 72px;
+  width: 72px;
+}
+
+.opsTheme .rowsControl,
+.socTheme .rowsControl,
+.rowsControl{
+  margin-left: auto;
+}
+
+.opsTheme .devicesTable,
+.socTheme .devicesTable,
+.devicesTable{
+  width: max(100%, 1080px);
+  min-width: 0;
+}
+
+@media (max-width: 1440px){
+  .opsTheme .devicesTable,
+  .socTheme .devicesTable,
+  .devicesTable{
+    width: max(100%, 980px);
+  }
+}
