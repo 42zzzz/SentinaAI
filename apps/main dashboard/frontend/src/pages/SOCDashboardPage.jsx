@@ -219,7 +219,19 @@ export default function SOCDashboardPage() {
           grid-template-columns: 1fr 1fr;
           gap:22px;
           padding-top:0;
-          align-items:start;
+          align-items:stretch;
+        }
+
+        .socTheme .grid2 > .card{
+          height:100%;
+          display:flex;
+          flex-direction:column;
+        }
+
+        .socTheme .grid2 > .card .cardBody{
+          flex:1;
+          display:flex;
+          flex-direction:column;
         }
 
         .socTheme .cardTitle,

@@ -20,6 +20,13 @@ function subtitleFor(range) {
   return `Total alerts (last ${r})`;
 }
 
+function getAccentForDomain(domain) {
+  const d = String(domain || "OPERATIONS").toUpperCase();
+  if (d === "SECURITY") return "#123150";
+  if (d === "SUSTAINABILITY") return "#178032";
+  return "#E8486F";
+}
+
 export default function AlertsTrendPanel({
   range = "lifetime",
   domain = "OPERATIONS",
@@ -75,14 +82,25 @@ export default function AlertsTrendPanel({
   }, [total]);
 
   const subtitle = useMemo(() => subtitleFor(range), [range]);
+  const accent = useMemo(() => getAccentForDomain(domain), [domain]);
   const r = String(range || "lifetime").toLowerCase();
   const daysMatch = r.match(/^(\d+)\s*d$/);
   const days = daysMatch ? Number(daysMatch[1]) : null;
   const xMode = days === 1 ? "time" : "date";
 
   const body = (
-    <div className="alertsPanel">
-      <div className="alertsLeft">
+    <div
+      className="alertsPanel"
+      style={{
+        display: "flex",
+        gap: 16,
+        alignItems: "stretch",
+        justifyContent: "space-between",
+        minHeight: 190,
+        height: "100%",
+      }}
+    >
+      <div className="alertsLeft" style={{ display: "grid", alignContent: "start", minWidth: 0 }}>
         <div style={{ fontSize: 40, fontWeight: 950, lineHeight: 1.02 }}>{headline}</div>
         <div style={{ marginTop: 10, fontSize: 13, opacity: 0.75 }}>{subtitle}</div>
 
@@ -96,8 +114,8 @@ export default function AlertsTrendPanel({
               marginTop: 8,
               padding: 10,
               borderRadius: 10,
-              background: "#fff1f2",
-              border: "1px solid #fecdd3",
+              background: `${accent}14`,
+              border: `1px solid ${accent}33`,
               fontSize: 12,
             }}
           >
@@ -106,8 +124,8 @@ export default function AlertsTrendPanel({
         ) : null}
       </div>
 
-      <div className="alertsRight">
-        <Sparkline points={points} height={120} xMode={xMode} />
+      <div className="alertsRight" style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>
+        <Sparkline points={points} height={130} xMode={xMode} accent={accent} />
       </div>
     </div>
   );

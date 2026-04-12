@@ -46,7 +46,7 @@ export default function DevicesStatusBars({ hoursLabel = "Now", embedded = false
   }, [counts]);
 
   const body = (
-    <div style={{ display: "grid", gap: 12 }}>
+    <div style={{ display: "grid", gap: 12, minHeight: 190, height: "100%", alignContent: "space-between" }}>
       {err ? (
         <div
           style={{
@@ -66,7 +66,7 @@ export default function DevicesStatusBars({ hoursLabel = "Now", embedded = false
         <span style={{ fontWeight: 800 }}>Total devices: {totalDevices}</span>
       </div>
 
-      <div style={{ height: 140, display: "flex", gap: 18, alignItems: "flex-end", justifyContent: "center" }}>
+      <div style={{ minHeight: 140, flex: 1, display: "flex", gap: 18, alignItems: "flex-end", justifyContent: "center" }}>
         {bars.map((b) => (
           <div key={b.key} style={{ width: 90, textAlign: "center" }}>
             <div
