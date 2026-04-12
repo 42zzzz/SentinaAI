@@ -322,36 +322,3 @@
     grid-template-columns: 1fr;
   }
 }
-
-/* ===== Desktop/laptop responsive tuning ===== */
-.opsTheme .dashboardWrap{
-  max-width:none;
-  padding-top:22px;
-}
-
-.opsTheme .topRow{
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.opsTheme .grid3{
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-@media (max-width: 1500px){
-  .opsTheme .grid3{
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  }
-}
-
-@media (max-width: 1320px){
-  .opsTheme .topRow{
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 820px){
-  .opsTheme .topRow,
-  .opsTheme .grid3{
-    grid-template-columns: 1fr;
-  }
-}
