@@ -73,6 +73,15 @@ function enqueueUnique(existingQueue, incomingAlerts) {
   return merged.sort((a, b) => Number(a.alert_id) - Number(b.alert_id));
 }
 
+function getSeverityHeading(severity) {
+  const normalized = String(severity || "MEDIUM").toUpperCase();
+  if (normalized === "CRITICAL") return "Critical Alert";
+  if (normalized === "HIGH") return "High Priority Alert";
+  if (normalized === "MEDIUM") return "Medium Priority Alert";
+  if (normalized === "LOW") return "Low Priority Alert";
+  return `${toTitleCase(normalized)} Alert`;
+}
+
 export default function LiveAlertOverlay({ section, pollMs = 2500 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -248,6 +257,8 @@ export default function LiveAlertOverlay({ section, pollMs = 2500 }) {
   }
 
   const severityClass = String(activeAlert.severity || "MEDIUM").toLowerCase();
+  const isCritical = severityClass === "critical";
+  const isToast = severityClass === "high" || severityClass === "medium";
   const ruleName = activeAlert.rule_name || activeAlert.rule_key || "Alert";
   const recommendedAction =
     activeAlert.recommended_action || activeAlert.response_action || "Review alert details immediately.";
@@ -275,8 +286,18 @@ export default function LiveAlertOverlay({ section, pollMs = 2500 }) {
   };
 
   return (
-    <div className="liveAlertOverlay" role="presentation">
-      <div className={`liveAlertModal severity-${severityClass}`} role="alertdialog" aria-modal="true" aria-live="assertive">
+    <div
+      className={`liveAlertOverlay ${isCritical ? "criticalMode" : "toastMode"}`}
+      role="presentation"
+    >
+      <div
+        className={`liveAlertModal severity-${severityClass} ${
+          isCritical ? "liveAlertCritical" : "liveAlertToast"
+        }`}
+        role="alertdialog"
+        aria-modal={isCritical ? "true" : "false"}
+        aria-live={isCritical ? "assertive" : "polite"}
+      >
         <button
           type="button"
           className="liveAlertClose"
@@ -286,7 +307,7 @@ export default function LiveAlertOverlay({ section, pollMs = 2500 }) {
           ×
         </button>
 
-        <div className="liveAlertTitle">{toTitleCase(activeAlert.severity)}!</div>
+        <div className="liveAlertTitle">{getSeverityHeading(activeAlert.severity)}</div>
 
         <div className="liveAlertMetaRow">
           <div>
@@ -305,15 +326,22 @@ export default function LiveAlertOverlay({ section, pollMs = 2500 }) {
 
         <div className="liveAlertBody">
           <p className="liveAlertRule">{ruleName}</p>
-          <p>{activeAlert.message || "A new alert has been triggered."}</p>
-          <p className="liveAlertSource"><strong>Source:</strong> {sourceLabel}{aiActionLabel ? ` • ${aiActionLabel}` : ""}</p>
-          <p className="liveAlertAction"><strong>Recommended action:</strong> {recommendedAction}</p>
+          <p className="liveAlertSource">
+            <strong>Source:</strong> {sourceLabel}{aiActionLabel ? ` • ${aiActionLabel}` : ""}
+          </p>
+          {!isToast ? (
+            <p className="liveAlertAction">
+              <strong>Recommended action:</strong> {recommendedAction}
+            </p>
+          ) : null}
         </div>
 
-        <div className="liveAlertFooter">
-          <span>{formatDateTime(activeAlert.detected_at)}</span>
-          {queue.length ? <span>{queue.length} more waiting</span> : <span>Status: {toTitleCase(activeAlert.status)}</span>}
-        </div>
+        {!isToast ? (
+          <div className="liveAlertFooter">
+            <span>{formatDateTime(activeAlert.detected_at)}</span>
+            {queue.length ? <span>{queue.length} more waiting</span> : <span>Status: {toTitleCase(activeAlert.status)}</span>}
+          </div>
+        ) : null}
 
         <button type="button" className="liveAlertDetailsBtn" onClick={openDetails}>
           Alert Details
