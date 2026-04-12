@@ -3,6 +3,9 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import SettingsPage from "../pages/SettingsPage";
 import FloatingAssistant from "../components/FloatingAssistant";
+import LogoutConfirmModal from "../components/LogoutConfirmModal";
+import LiveAlertOverlay from "../components/LiveAlertOverlay";
+import HelpSupportModal from "../components/HelpSupportModal";
 
 const rolePrefixMap = {
   operations_manager: "/operations",
@@ -16,7 +19,9 @@ const SIDEBAR_STORAGE_KEY = "sentina.sidebarCollapsed";
 const HELP_GUIDE_PATHS = {
   operations: "/guides/operations-user-guide.pdf",
   sustainability: "/guides/sustainability-user-guide.pdf",
+  soc: "/guides/soc-user-guide.pdf",
 };
+
 
 function getSectionFromPath(pathname) {
   if (pathname.startsWith("/sustainability")) return "sustainability";
@@ -206,24 +211,27 @@ function SidebarBrand({ collapsed }) {
         alignItems: "center",
         justifyContent: collapsed ? "center" : "flex-start",
         overflow: "hidden",
-        fontSize: 28,
-        fontWeight: 900,
-        letterSpacing: "-0.5px",
         lineHeight: 1,
       }}
     >
       <span
         style={{
-          display: "inline-block",
+          display: "inline-flex",
+          alignItems: "baseline",
+          gap: 0,
           maxWidth: collapsed ? 0 : 220,
           opacity: collapsed ? 0 : 1,
           overflow: "hidden",
           whiteSpace: "nowrap",
           transform: `translateY(${collapsed ? "-4px" : "0"})`,
           transition: "max-width 280ms ease, opacity 180ms ease, transform 280ms ease",
+          fontFamily: "'Oxanium', sans-serif",
+          fontSize: 28,
+          letterSpacing: "-0.5px",
         }}
       >
-        SentinaAI
+        <span style={{ fontWeight: 500 }}>Sentina</span>
+        <span style={{ fontWeight: 800 }}>AI</span>
       </span>
 
       <span
@@ -237,9 +245,13 @@ function SidebarBrand({ collapsed }) {
           transform: `translateY(${collapsed ? "0" : "4px"})`,
           transition: "opacity 180ms ease, transform 280ms ease",
           pointerEvents: "none",
+          fontFamily: "'Oxanium', sans-serif",
+          fontSize: 28,
+          letterSpacing: "-0.5px",
         }}
       >
-        sAI
+        <span style={{ fontWeight: 500 }}>s</span>
+        <span style={{ fontWeight: 800 }}>AI</span>
       </span>
     </div>
   );
@@ -254,6 +266,8 @@ export default function AppLayout() {
   const storedRole = localStorage.getItem("role") || sessionStorage.getItem("role") || "operations_manager";
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
@@ -275,18 +289,18 @@ export default function AppLayout() {
     section === "sustainability"
       ? "/sustainability"
       : section === "operations"
-      ? "/operations"
-      : rolePrefixMap[storedRole] || "/operations";
+        ? "/operations"
+        : rolePrefixMap[storedRole] || "/operations";
 
   const helpGuidePath =
     section === "sustainability"
       ? HELP_GUIDE_PATHS.sustainability
       : section === "soc"
-      ? null
-      : HELP_GUIDE_PATHS.operations;
+        ? HELP_GUIDE_PATHS.soc
+        : HELP_GUIDE_PATHS.operations;
 
   const openHelpGuide = () => {
-    window.open(helpGuidePath, "_blank", "noopener,noreferrer");
+    setShowHelpModal(true);
   };
 
   const isSust = section === "sustainability";
@@ -314,28 +328,34 @@ export default function AppLayout() {
       "background 220ms ease, color 220ms ease, padding 280ms ease, gap 280ms ease, transform 180ms ease",
   });
 
-const handleLogout = (e) => {
-  e?.preventDefault?.();
-  e?.stopPropagation?.();
+  const handleLogoutClick = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    setShowLogoutConfirm(true);
+  };
 
-  const preservedSidebar = localStorage.getItem("sentina.sidebarCollapsed");
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false);
+  };
 
-  localStorage.clear();
-  sessionStorage.clear();
+  const handleLogoutConfirm = () => {
+    const preservedSidebar = localStorage.getItem("sentina.sidebarCollapsed");
 
-  if (preservedSidebar !== null) {
-    localStorage.setItem("sentina.sidebarCollapsed", preservedSidebar);
-  }
+    localStorage.clear();
+    sessionStorage.clear();
 
-  window.location.replace("/");
-};
+    if (preservedSidebar !== null) {
+      localStorage.setItem("sentina.sidebarCollapsed", preservedSidebar);
+    }
+
+    window.location.replace("/");
+  };
 
   const styles = {
     shell: {
       display: "grid",
-      gridTemplateColumns: sidebarCollapsed ? "92px minmax(0, 1fr)" : "clamp(232px, 16vw, 260px) minmax(0, 1fr)",
-      minHeight: "100dvh",
-      height: "100dvh",
+      gridTemplateColumns: sidebarCollapsed ? "96px 1fr" : "260px 1fr",
+      height: "100vh",
       background: "#f6f7fb",
       color: "#111827",
       transition: "grid-template-columns 280ms ease",
@@ -349,8 +369,7 @@ const handleLogout = (e) => {
       flexDirection: "column",
       gap: 6,
       transition: "padding 280ms ease",
-      overflowX: "visible",
-      overflowY: "auto",
+      overflow: "visible",
       zIndex: 3,
     },
     brand: {
@@ -399,28 +418,18 @@ const handleLogout = (e) => {
       minHeight: 0,
       overflowY: "auto",
       overflowX: "hidden",
-      padding: "0 clamp(18px, 1.8vw, 28px) clamp(18px, 1.8vw, 28px)",
+      padding: "0 22px 22px",
     },
     header: {
-      padding: "18px clamp(18px, 1.8vw, 28px)",
+      padding: "18px 22px",
       display: "flex",
       justifyContent: "space-between",
-      alignItems: "flex-start",
-      gap: 16,
-      flexWrap: "wrap",
+      alignItems: "center",
       flexShrink: 0,
     },
     pageTitle: { fontSize: 20, fontWeight: 900, color: ACCENT },
     subTitle: { marginTop: 4, fontSize: 12, opacity: 0.65 },
-    headerRight: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "flex-end",
-      gap: 14,
-      flex: "1 1 auto",
-      minWidth: 0,
-      flexWrap: "wrap",
-    },
+    headerRight: { display: "flex", alignItems: "center", gap: 14 },
     userCard: {
       display: "flex",
       alignItems: "center",
@@ -429,9 +438,6 @@ const handleLogout = (e) => {
       borderRadius: 14,
       background: "#ffffff",
       border: "1px solid #e5e7eb",
-      maxWidth: "100%",
-      minWidth: 0,
-      flexWrap: "wrap",
     },
     avatar: {
       width: 40,
@@ -708,7 +714,7 @@ const handleLogout = (e) => {
           <SidebarText collapsed={sidebarCollapsed}>Settings</SidebarText>
         </button>
 
-        {section !== "soc" && (
+        {section !== "exhibitor" && (
           <button
             type="button"
             onClick={openHelpGuide}
@@ -740,7 +746,7 @@ const handleLogout = (e) => {
         <button
           type="button"
           style={styles.logoutBtn}
-          onClick={handleLogout}
+          onClick={handleLogoutClick}
           title={sidebarCollapsed ? "Logout" : undefined}
         >
           <span style={{ ...iconStyle, color: "#e0565b" }}>
@@ -766,10 +772,10 @@ const handleLogout = (e) => {
               {isSust
                 ? "Sustainability Dashboard"
                 : section === "soc"
-                ? "Security Operations Center"
-                : section === "exhibitor"
-                ? "Exhibitor Portal"
-                : "Operations Dashboard"}
+                  ? "Security Operations Center"
+                  : section === "exhibitor"
+                    ? "Exhibitor Portal"
+                    : "Operations Dashboard"}
             </div>
           </div>
 
@@ -796,58 +802,62 @@ const handleLogout = (e) => {
         <div style={styles.content}>
           <Outlet />
         </div>
+
+        {(section === "operations" || section === "sustainability" || section === "soc") ? (
+          <LiveAlertOverlay section={section} />
+        ) : null}
         {section === "soc" ? (
           <style>{`
-            .socLayout .devicesPage.opsTheme,
-            .socLayout .alertsPage.opsTheme {
-              background: #f6f9ff;
-            }
-            .socLayout .devicesHeaderRight .devicesCountTop,
-            .socLayout .alertsHeaderRight .alertsCountTop {
-              color: #123150 !important;
-            }
-            .socLayout .devicesTable thead th {
-              color: #123150 !important;
-            }
-            .socLayout .devicesPage .devicesControlsCard .clearFiltersBtn,
-            .socLayout .alertsPage .alertsControlsCard .clearFiltersBtn {
-              color: #123150 !important;
-              border-color: #bfdbfe !important;
-              background: #eff6ff !important;
-            }
-            .socLayout .devicesPage .devicesControlsCard .clearFiltersBtn:hover,
-            .socLayout .alertsPage .alertsControlsCard .clearFiltersBtn:hover {
-              background: #dbeafe !important;
-              border-color: #93c5fd !important;
-            }
-            .socLayout .alertsPage {
-              --alerts-accent: #123150;
-              --alerts-accent-bg: rgba(18,49,80,0.08);
-              --alerts-accent-hover: #0f2740;
-            }
-            .socLayout .devicesPage .pillLeftIcon,
-            .socLayout .devicesPage .pillRightCaret,
-            .socLayout .alertsPage .pillLeftIcon,
-            .socLayout .alertsPage .pillRightCaret {
-              color: #123150 !important;
-              border-top-color: #123150 !important;
-            }
-            .socLayout .devicesPage .pillSearchIcon {
-              background: #123150 !important;
-              color: #ffffff !important;
-            }
-            .socLayout .alertInfoCard h2,
-            .socLayout .alertActionsTop h2 {
-              color: #123150 !important;
-            }
-          `}</style>
+              .socLayout .devicesPage.opsTheme,
+              .socLayout .alertsPage.opsTheme {
+                background: #f6f9ff;
+              }
+              .socLayout .devicesHeaderRight .devicesCountTop,
+              .socLayout .alertsHeaderRight .alertsCountTop {
+                color: #123150 !important;
+              }
+              .socLayout .devicesTable thead th {
+                color: #123150 !important;
+              }
+              .socLayout .devicesPage .devicesControlsCard .clearFiltersBtn,
+              .socLayout .alertsPage .alertsControlsCard .clearFiltersBtn {
+                color: #123150 !important;
+                border-color: #bfdbfe !important;
+                background: #eff6ff !important;
+              }
+              .socLayout .devicesPage .devicesControlsCard .clearFiltersBtn:hover,
+              .socLayout .alertsPage .alertsControlsCard .clearFiltersBtn:hover {
+                background: #dbeafe !important;
+                border-color: #93c5fd !important;
+              }
+              .socLayout .alertsPage {
+                --alerts-accent: #123150;
+                --alerts-accent-bg: rgba(18,49,80,0.08);
+                --alerts-accent-hover: #0f2740;
+              }
+              .socLayout .devicesPage .pillLeftIcon,
+              .socLayout .devicesPage .pillRightCaret,
+              .socLayout .alertsPage .pillLeftIcon,
+              .socLayout .alertsPage .pillRightCaret {
+                color: #123150 !important;
+                border-top-color: #123150 !important;
+              }
+              .socLayout .devicesPage .pillSearchIcon {
+                background: #123150 !important;
+                color: #ffffff !important;
+              }
+              .socLayout .alertInfoCard h2,
+              .socLayout .alertActionsTop h2 {
+                color: #123150 !important;
+              }
+            `}</style>
         ) : null}
         {settingsOpen ? (
-            <SettingsPage
-              section={section === "soc" ? "soc" : isSust ? "sustainability" : "operations"}
-              onClose={() => setSettingsOpen(false)}
-            />
-          ) : null}
+          <SettingsPage
+            section={section === "soc" ? "soc" : isSust ? "sustainability" : "operations"}
+            onClose={() => setSettingsOpen(false)}
+          />
+        ) : null}
 
         {section === "operations" || section === "sustainability" ? (
           <FloatingAssistant
@@ -867,7 +877,35 @@ const handleLogout = (e) => {
           />
         ) : null}
       </main>
+      <HelpSupportModal
+        open={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
+        guideUrl={helpGuidePath}
+        accentColor={isSust ? "#178032" : isSoc ? "#1e3a5d" : "#e9456f"}
+        sectionLabel={
+          isSust
+            ? "Sustainability Dashboard"
+            : isSoc
+              ? "Security Operations Center"
+              : "Operations Dashboard"
+        }
+      />
+      <LogoutConfirmModal
+        open={showLogoutConfirm}
+        onConfirm={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+        accentColor={isSust ? "#178032" : isSoc ? "#1e3a5d" : section === "exhibitor" ? "#37005e" : "#e9456f"}
+        roleLabel={
+          isSust
+            ? "Sustainability Dashboard"
+            : isSoc
+              ? "Security Operations Center"
+              : section === "exhibitor"
+                ? "Exhibitor Dashboard"
+                : "Operations Dashboard"
+        }
+      />
     </div>
-    
+
   );
 }

@@ -204,10 +204,7 @@ export default function SOCDashboardPage() {
           display:flex;
           flex-direction:column;
           gap:22px;
-          width:100%;
-          max-width:none;
-          box-sizing:border-box;
-          padding-top:22px;
+          padding-top:24px;
         }
 
         .socTheme .topRow{
@@ -219,10 +216,22 @@ export default function SOCDashboardPage() {
 
         .socTheme .grid2{
           display:grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: 1fr 1fr;
           gap:22px;
           padding-top:0;
-          align-items:start;
+          align-items:stretch;
+        }
+
+        .socTheme .grid2 > .card{
+          height:100%;
+          display:flex;
+          flex-direction:column;
+        }
+
+        .socTheme .grid2 > .card .cardBody{
+          flex:1;
+          display:flex;
+          flex-direction:column;
         }
 
         .socTheme .cardTitle,
@@ -235,19 +244,19 @@ export default function SOCDashboardPage() {
           background: #123150 !important;
         }
 
-        @media (max-width: 1360px){
-          .socTheme .grid2{
-            grid-template-columns: 1fr;
-          }
-        }
-
-        @media (max-width: 1180px){
+        @media (max-width: 1200px){
           .socTheme .topRow{
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
         }
 
-        @media (max-width: 760px){
+        @media (max-width: 1100px){
+          .socTheme .grid2{
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 700px){
           .socTheme .topRow{
             grid-template-columns: 1fr;
           }
