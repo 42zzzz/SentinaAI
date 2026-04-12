@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Sparkline from "../components/Sparkline";
 import InfoTooltip from "../components/InfoTooltip";
+import TopHallsEnergyBar from "../components/TopHallsEnergyBar";
 import {
   getDashboardRefreshMs,
   useDashboardSettings,
@@ -204,20 +205,6 @@ export default function EnergyPage() {
     return filtered.sort((a, b) => b.value - a.value);
   }, [zones, q, sortBy]);
 
-  // ✅ REVERT: always show the device-type bar list (even if it’s only derived_csv)
-  const sourcesFiltered = useMemo(() => {
-    const qq = q.trim().toLowerCase();
-    const rows = (sources || []).map((s) => ({
-      label: String(s.source || "unknown"),
-      value: Number(s.total_kwh || 0),
-    }));
-
-    const filtered = !qq ? rows : rows.filter((r) => String(r.label || "").toLowerCase().includes(qq));
-
-    if (sortBy === "kwh_asc") return filtered.sort((a, b) => a.value - b.value);
-    return filtered.sort((a, b) => b.value - a.value);
-  }, [sources, q, sortBy]);
-
   const barsPoints = useMemo(() => energyPoints24h.slice(-36), [energyPoints24h]);
 
   const tooltipText = {
@@ -309,10 +296,24 @@ export default function EnergyPage() {
             </CardShell>
 
             <CardShell
-              title="Energy Consumption By Device Type"
-              tooltip={tooltipText.energyByDeviceType}
+              title="Top Halls by Energy Use"
+              tooltip="Ranks halls by total energy consumption so the highest-usage halls are visible at a glance."
             >
-              <HorizontalBars rows={sourcesFiltered} />
+              <div
+                style={{
+                  transform: "scale(0.9)",
+                  transformOrigin: "top left",
+                  width: "111%",
+                  marginBottom: "-28px",
+                }}
+              >
+                <TopHallsEnergyBar
+                  title={null}
+                  limit={3}
+                  zoneId={zoneId || undefined}
+                  embedded
+                />
+              </div>
             </CardShell>
           </div>
 
@@ -362,8 +363,8 @@ export default function EnergyPage() {
               </div>
             </CardShell>
           </div>
-          
-          
+
+
         </div>
       </div>
     </div>
