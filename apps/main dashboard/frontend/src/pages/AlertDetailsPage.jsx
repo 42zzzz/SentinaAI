@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./AlertDetailsPage.css";
@@ -23,16 +23,6 @@ function formatDateTime(value) {
   return d.toLocaleString();
 }
 
-function safeJsonParse(value) {
-  if (!value) return {};
-  if (typeof value === "object") return value;
-  try {
-    return JSON.parse(String(value));
-  } catch {
-    return {};
-  }
-}
-
 function toTitleCase(value) {
   return String(value || "")
     .toLowerCase()
@@ -55,10 +45,7 @@ function getMetricLabel(alert) {
   return "Trigger Value";
 }
 
-function getInfoFields(alert, metadata = {}) {
-  const sourceLabel = metadata.source === "AI_ENGINE" ? "AI Engine" : metadata.source === "RULE_ENGINE" ? "Rule Engine" : (metadata.source || "Alert Stream");
-  const aiActionLabel = metadata.ai_action ? toTitleCase(metadata.ai_action) : "-";
-
+function getInfoFields(alert) {
   return [
     { label: "Alert ID", value: alert.alert_id ?? "-" },
     { label: "Rule", value: alert.rule_name || alert.rule_key || "-" },
@@ -72,14 +59,13 @@ function getInfoFields(alert, metadata = {}) {
     { label: "Status", value: alert.status || "-" },
     { label: "Response Type", value: alert.response_type || alert.default_response_type || "Manual" },
     { label: "Action Status", value: alert.action_status || "Pending" },
-    { label: "Detection Source", value: sourceLabel },
-    { label: "AI Action", value: aiActionLabel },
   ];
 }
 
 export default function AlertDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   const [alert, setAlert] = useState(null);
   const [actions, setActions] = useState([]);
@@ -201,6 +187,12 @@ export default function AlertDetailsPage() {
     [selectedActions]
   );
 
+  const alertsListPath = pathname.startsWith("/soc/")
+    ? "/soc/alerts"
+    : pathname.startsWith("/sustainability/")
+      ? "/sustainability/alerts"
+      : "/operations/alerts";
+
   if (loading) {
     return <div className="alertDetailsLoading">Loading...</div>;
   }
@@ -216,8 +208,7 @@ export default function AlertDetailsPage() {
     );
   }
 
-  const metadata = safeJsonParse(alert.metadata);
-  const infoFields = getInfoFields(alert, metadata);
+  const infoFields = getInfoFields(alert);
   const metricLabel = getMetricLabel(alert);
 
   return (
@@ -285,15 +276,6 @@ export default function AlertDetailsPage() {
             </div>
 
             <div style={{ gridColumn: "1 / -1" }}>
-              <label>Detection Context</label>
-              <div>
-                Source: {metadata.source === "AI_ENGINE" ? "AI Engine" : metadata.source === "RULE_ENGINE" ? "Rule Engine" : (metadata.source || "Alert Stream")}
-                {metadata.ai_action ? ` • AI Action: ${toTitleCase(metadata.ai_action)}` : ""}
-                {metadata.worker ? ` • Worker: ${metadata.worker}` : ""}
-              </div>
-            </div>
-
-            <div style={{ gridColumn: "1 / -1" }}>
               <label>Recommended Action</label>
               <div>{alert.recommended_action || alert.response_action || "Investigate alert and confirm containment steps."}</div>
             </div>
@@ -343,7 +325,7 @@ export default function AlertDetailsPage() {
             </div>
 
             <div className="alertActionsFooter">
-              <button className="secondaryBtn" type="button" onClick={() => navigate("/soc/alerts")}>Back to Alerts</button>
+              <button className="secondaryBtn" type="button" onClick={() => navigate(alertsListPath)}>Back to Alerts</button>
               <button
                 className="primaryBtn"
                 type="button"
