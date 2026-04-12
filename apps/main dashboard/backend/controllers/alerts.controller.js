@@ -424,23 +424,31 @@ exports.getAlertDetails = async (req, res) => {
       SELECT 
         a.alert_id,
         a.rule_key,
-        r.rule_name,
+        COALESCE(r.rule_name, a.rule_key) AS rule_name,
+        a.domain,
         a.severity,
         a.status,
         a.zone_id,
         a.hall_id,
         a.device_id,
+        a.event_timestamp,
         a.trigger_value,
         a.threshold_value,
         a.detected_at,
         a.message,
+        a.metadata,
+        a.recommended_action,
+        a.action_status,
+        a.response_type,
+        a.response_action,
+        a.auto_response_executed,
         a.action_taken,
         r.default_response_action,
         r.default_response_type,
         r.auto_mitigation_enabled,
         r.recommended_actions
       FROM alerts a
-      JOIN rules r
+      LEFT JOIN rules r
         ON a.rule_key = r.rule_key
       WHERE a.alert_id = $1
     `;

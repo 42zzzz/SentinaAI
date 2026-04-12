@@ -23,6 +23,16 @@ function formatDateTime(value) {
   return d.toLocaleString();
 }
 
+function safeJsonParse(value) {
+  if (!value) return {};
+  if (typeof value === "object") return value;
+  try {
+    return JSON.parse(String(value));
+  } catch {
+    return {};
+  }
+}
+
 function toTitleCase(value) {
   return String(value || "")
     .toLowerCase()
@@ -45,7 +55,10 @@ function getMetricLabel(alert) {
   return "Trigger Value";
 }
 
-function getInfoFields(alert) {
+function getInfoFields(alert, metadata = {}) {
+  const sourceLabel = metadata.source === "AI_ENGINE" ? "AI Engine" : metadata.source === "RULE_ENGINE" ? "Rule Engine" : (metadata.source || "Alert Stream");
+  const aiActionLabel = metadata.ai_action ? toTitleCase(metadata.ai_action) : "-";
+
   return [
     { label: "Alert ID", value: alert.alert_id ?? "-" },
     { label: "Rule", value: alert.rule_name || alert.rule_key || "-" },
@@ -59,6 +72,8 @@ function getInfoFields(alert) {
     { label: "Status", value: alert.status || "-" },
     { label: "Response Type", value: alert.response_type || alert.default_response_type || "Manual" },
     { label: "Action Status", value: alert.action_status || "Pending" },
+    { label: "Detection Source", value: sourceLabel },
+    { label: "AI Action", value: aiActionLabel },
   ];
 }
 
@@ -201,7 +216,8 @@ export default function AlertDetailsPage() {
     );
   }
 
-  const infoFields = getInfoFields(alert);
+  const metadata = safeJsonParse(alert.metadata);
+  const infoFields = getInfoFields(alert, metadata);
   const metricLabel = getMetricLabel(alert);
 
   return (
@@ -266,6 +282,15 @@ export default function AlertDetailsPage() {
             <div style={{ gridColumn: "1 / -1" }}>
               <label>Message</label>
               <div>{alert.message || "No description provided."}</div>
+            </div>
+
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label>Detection Context</label>
+              <div>
+                Source: {metadata.source === "AI_ENGINE" ? "AI Engine" : metadata.source === "RULE_ENGINE" ? "Rule Engine" : (metadata.source || "Alert Stream")}
+                {metadata.ai_action ? ` • AI Action: ${toTitleCase(metadata.ai_action)}` : ""}
+                {metadata.worker ? ` • Worker: ${metadata.worker}` : ""}
+              </div>
             </div>
 
             <div style={{ gridColumn: "1 / -1" }}>
