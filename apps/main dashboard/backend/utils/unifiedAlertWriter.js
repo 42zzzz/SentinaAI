@@ -48,7 +48,6 @@ function entityKeyParts(payload = {}) {
   return [
     String(payload.rule_key || ""),
     String(payload.domain || ""),
-    String(payload.device_id || ""),
     String(payload.zone_id || ""),
     String(payload.hall_id || ""),
   ];
@@ -118,22 +117,18 @@ async function findOpenAlert(payload) {
       response_action
     FROM alerts
     WHERE rule_key = $1
-      AND domain = $2
-      AND COALESCE(device_id, '') = COALESCE($3, '')
-      AND COALESCE(zone_id, '') = COALESCE($4, '')
-      AND COALESCE(hall_id, '') = COALESCE($5, '')
-      AND event_timestamp = $6
-      AND status = 'NEW'
+  AND domain = $2
+  AND COALESCE(zone_id, '') = COALESCE($3, '')
+  AND COALESCE(hall_id, '') = COALESCE($4, '')
+  AND status = 'NEW'
     ORDER BY detected_at DESC, alert_id DESC
     LIMIT 1
     `,
     [
       payload.rule_key,
       payload.domain,
-      payload.device_id || "",
       payload.zone_id || "",
       payload.hall_id || "",
-      payload.event_timestamp,
     ]
   );
 
@@ -157,11 +152,46 @@ async function findHandledAlertForSameEvent(payload) {
     FROM alerts
     WHERE rule_key = $1
       AND domain = $2
+      AND COALESCE(zone_id, '') = COALESCE($3, '')
+      AND COALESCE(hall_id, '') = COALESCE($4, '')
+      AND status IN ('ACKNOWLEDGED', 'RESOLVED', 'CLOSED')
+      AND detected_at >= NOW() - INTERVAL '30 seconds'
+    ORDER BY detected_at DESC, alert_id DESC
+    LIMIT 1
+    `,
+    [
+      payload.rule_key,
+      payload.domain,
+      payload.zone_id || "",
+      payload.hall_id || "",
+    ]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function findActiveAlertByEntity(payload) {
+  const result = await coreDb.query(
+    `
+    SELECT
+      alert_id,
+      rule_key,
+      domain,
+      severity,
+      status,
+      device_id,
+      zone_id,
+      hall_id,
+      event_timestamp,
+      detected_at,
+      metadata
+    FROM alerts
+    WHERE rule_key = $1
+      AND domain = $2
       AND COALESCE(device_id, '') = COALESCE($3, '')
       AND COALESCE(zone_id, '') = COALESCE($4, '')
       AND COALESCE(hall_id, '') = COALESCE($5, '')
-      AND event_timestamp = $6
-      AND status IN ('ACKNOWLEDGED', 'RESOLVED', 'CLOSED')
+      AND status IN ('NEW', 'ACKNOWLEDGED')
     ORDER BY detected_at DESC, alert_id DESC
     LIMIT 1
     `,
@@ -171,7 +201,6 @@ async function findHandledAlertForSameEvent(payload) {
       payload.device_id || "",
       payload.zone_id || "",
       payload.hall_id || "",
-      payload.event_timestamp,
     ]
   );
 
@@ -200,6 +229,14 @@ async function insertAlert(rule, payload) {
     last_detected_at: payload.detected_at || nowIso(),
     occurrences: 1,
   };
+
+  const meta = safeJsonParse(payload.metadata);
+
+  const finalDeviceId =
+    payload.device_id ||
+    meta.camera_device_id ||
+    meta.env_device_id ||
+    null;
 
   const result = await coreDb.query(
     `
@@ -238,7 +275,7 @@ async function insertAlert(rule, payload) {
       payload.domain,
       payload.severity,
       payload.status,
-      payload.device_id,
+      finalDeviceId,
       payload.zone_id,
       payload.hall_id,
       payload.event_timestamp,
@@ -273,28 +310,39 @@ async function updateAlert(existingAlert, payload) {
     Number(payload.escalation_level || 0)
   );
 
+  const meta = safeJsonParse(payload.metadata);
+
+  const finalDeviceId =
+    payload.device_id ||
+    meta.camera_device_id ||
+    meta.env_device_id ||
+    existingAlert.device_id ||
+    null;
+
   const result = await coreDb.query(
     `
     UPDATE alerts
     SET
-      severity = $2,
-      event_timestamp = $3,
-      detected_at = $4,
-      trigger_value = $5,
-      threshold_value = $6,
-      message = $7,
-      escalation_level = $8,
-      metadata = $9::jsonb,
-      recommended_action = $10,
-      action_status = COALESCE($11, action_status),
-      response_type = COALESCE($12, response_type),
-      response_action = COALESCE($13, response_action)
+  severity = $2,
+  device_id = COALESCE(alerts.device_id, $3),
+  event_timestamp = $4,
+  detected_at = $5,
+  trigger_value = $6,
+  threshold_value = $7,
+  message = $8,
+  escalation_level = $9,
+  metadata = $10::jsonb,
+  recommended_action = $11,
+  action_status = COALESCE($12, action_status),
+  response_type = COALESCE($13, response_type),
+  response_action = COALESCE($14, response_action)
     WHERE alert_id = $1
     RETURNING alert_id, status, severity
     `,
     [
       existingAlert.alert_id,
       nextSeverity,
+      finalDeviceId,
       payload.event_timestamp,
       payload.detected_at,
       payload.trigger_value,
@@ -333,7 +381,11 @@ async function upsertAlert(inputPayload) {
     domain: String(inputPayload.domain || rule.domain || "OPERATIONS").toUpperCase(),
     severity: normalizeSeverity(inputPayload.severity || rule.base_severity || "MEDIUM"),
     status: String(inputPayload.status || "NEW").toUpperCase(),
-    device_id: inputPayload.device_id || null,
+    device_id:
+      inputPayload.device_id ||
+      safeJsonParse(inputPayload.metadata).camera_device_id ||
+      safeJsonParse(inputPayload.metadata).env_device_id ||
+      null,
     zone_id: inputPayload.zone_id || null,
     hall_id: inputPayload.hall_id || null,
     event_timestamp: inputPayload.event_timestamp || nowIso(),
@@ -389,9 +441,21 @@ async function upsertAlert(inputPayload) {
     return insertAlert(rule, payload);
   }
 
-  const existingOpenAlert = await findOpenAlert(payload);
-  if (existingOpenAlert) {
-    return updateAlert(existingOpenAlert, payload);
+  const existingActiveAlert = await findActiveAlertByEntity(payload);
+  if (existingActiveAlert) {
+    if (existingActiveAlert.status === "NEW") {
+      return updateAlert(existingActiveAlert, payload);
+    }
+
+    if (existingActiveAlert.status === "ACKNOWLEDGED") {
+      return {
+        action: "skipped_acknowledged_active",
+        alert_id: existingActiveAlert.alert_id,
+        status: existingActiveAlert.status,
+        severity: existingActiveAlert.severity,
+        entity_key: buildEntityKey(payload),
+      };
+    }
   }
 
   const existingHandledSameEvent = await findHandledAlertForSameEvent(payload);

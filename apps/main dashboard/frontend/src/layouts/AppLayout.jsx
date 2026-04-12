@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import SettingsPage from "../pages/SettingsPage";
 import FloatingAssistant from "../components/FloatingAssistant";
+import LiveAlertOverlay from "../components/LiveAlertOverlay";
 
 const rolePrefixMap = {
   operations_manager: "/operations",
@@ -275,15 +276,15 @@ export default function AppLayout() {
     section === "sustainability"
       ? "/sustainability"
       : section === "operations"
-      ? "/operations"
-      : rolePrefixMap[storedRole] || "/operations";
+        ? "/operations"
+        : rolePrefixMap[storedRole] || "/operations";
 
   const helpGuidePath =
     section === "sustainability"
       ? HELP_GUIDE_PATHS.sustainability
       : section === "soc"
-      ? null
-      : HELP_GUIDE_PATHS.operations;
+        ? null
+        : HELP_GUIDE_PATHS.operations;
 
   const openHelpGuide = () => {
     window.open(helpGuidePath, "_blank", "noopener,noreferrer");
@@ -314,21 +315,21 @@ export default function AppLayout() {
       "background 220ms ease, color 220ms ease, padding 280ms ease, gap 280ms ease, transform 180ms ease",
   });
 
-const handleLogout = (e) => {
-  e?.preventDefault?.();
-  e?.stopPropagation?.();
+  const handleLogout = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
 
-  const preservedSidebar = localStorage.getItem("sentina.sidebarCollapsed");
+    const preservedSidebar = localStorage.getItem("sentina.sidebarCollapsed");
 
-  localStorage.clear();
-  sessionStorage.clear();
+    localStorage.clear();
+    sessionStorage.clear();
 
-  if (preservedSidebar !== null) {
-    localStorage.setItem("sentina.sidebarCollapsed", preservedSidebar);
-  }
+    if (preservedSidebar !== null) {
+      localStorage.setItem("sentina.sidebarCollapsed", preservedSidebar);
+    }
 
-  window.location.replace("/");
-};
+    window.location.replace("/");
+  };
 
   const styles = {
     shell: {
@@ -766,10 +767,10 @@ const handleLogout = (e) => {
               {isSust
                 ? "Sustainability Dashboard"
                 : section === "soc"
-                ? "Security Operations Center"
-                : section === "exhibitor"
-                ? "Exhibitor Portal"
-                : "Operations Dashboard"}
+                  ? "Security Operations Center"
+                  : section === "exhibitor"
+                    ? "Exhibitor Portal"
+                    : "Operations Dashboard"}
             </div>
           </div>
 
@@ -842,12 +843,15 @@ const handleLogout = (e) => {
             }
           `}</style>
         ) : null}
+        {section === "operations" || section === "sustainability" || section === "soc" ? (
+          <LiveAlertOverlay section={section} />
+        ) : null}
         {settingsOpen ? (
-            <SettingsPage
-              section={section === "soc" ? "soc" : isSust ? "sustainability" : "operations"}
-              onClose={() => setSettingsOpen(false)}
-            />
-          ) : null}
+          <SettingsPage
+            section={section === "soc" ? "soc" : isSust ? "sustainability" : "operations"}
+            onClose={() => setSettingsOpen(false)}
+          />
+        ) : null}
 
         {section === "operations" || section === "sustainability" ? (
           <FloatingAssistant
@@ -868,6 +872,6 @@ const handleLogout = (e) => {
         ) : null}
       </main>
     </div>
-    
+
   );
 }
