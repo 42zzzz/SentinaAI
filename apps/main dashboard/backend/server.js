@@ -144,18 +144,39 @@ try {
     String(process.env.ALERT_ENGINE_ENABLED ?? "true").toLowerCase() !== "false";
 
   if (enabled) {
-    const { runOnce } = require("./utils/alertEngine");
+    const { runOnce: runRuleEngine } = require("./utils/alertEngine");
 
-    runOnce().catch((e) =>
+    runRuleEngine().catch((e) =>
       console.warn("[alertEngine] first run failed:", e.message)
     );
 
     setInterval(() => {
-      runOnce().catch((e) =>
+      runRuleEngine().catch((e) =>
         console.warn("[alertEngine] run failed:", e.message)
       );
     }, 15000);
   }
 } catch (e) {
   console.warn("[alertEngine] disabled or not available:", e.message);
+}
+
+try {
+  const aiEnabled =
+    String(process.env.AI_ALERT_WORKER_ENABLED ?? "true").toLowerCase() !== "false";
+
+  if (aiEnabled) {
+    const { runOnce: runAiAlerts } = require("./utils/aiAlertWorker");
+
+    runAiAlerts().catch((e) =>
+      console.warn("[aiAlertWorker] first run failed:", e.message)
+    );
+
+    setInterval(() => {
+      runAiAlerts().catch((e) =>
+        console.warn("[aiAlertWorker] run failed:", e.message)
+      );
+    }, 15000);
+  }
+} catch (e) {
+  console.warn("[aiAlertWorker] disabled or not available:", e.message);
 }

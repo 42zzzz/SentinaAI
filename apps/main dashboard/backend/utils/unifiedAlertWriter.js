@@ -122,7 +122,8 @@ async function findOpenAlert(payload) {
       AND COALESCE(device_id, '') = COALESCE($3, '')
       AND COALESCE(zone_id, '') = COALESCE($4, '')
       AND COALESCE(hall_id, '') = COALESCE($5, '')
-      AND status IN ('NEW', 'ACKNOWLEDGED')
+      AND event_timestamp = $6
+      AND status = 'NEW'
     ORDER BY detected_at DESC, alert_id DESC
     LIMIT 1
     `,
@@ -132,6 +133,45 @@ async function findOpenAlert(payload) {
       payload.device_id || "",
       payload.zone_id || "",
       payload.hall_id || "",
+      payload.event_timestamp,
+    ]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function findHandledAlertForSameEvent(payload) {
+  const result = await coreDb.query(
+    `
+    SELECT
+      alert_id,
+      rule_key,
+      domain,
+      severity,
+      status,
+      device_id,
+      zone_id,
+      hall_id,
+      event_timestamp,
+      detected_at
+    FROM alerts
+    WHERE rule_key = $1
+      AND domain = $2
+      AND COALESCE(device_id, '') = COALESCE($3, '')
+      AND COALESCE(zone_id, '') = COALESCE($4, '')
+      AND COALESCE(hall_id, '') = COALESCE($5, '')
+      AND event_timestamp = $6
+      AND status IN ('ACKNOWLEDGED', 'RESOLVED', 'CLOSED')
+    ORDER BY detected_at DESC, alert_id DESC
+    LIMIT 1
+    `,
+    [
+      payload.rule_key,
+      payload.domain,
+      payload.device_id || "",
+      payload.zone_id || "",
+      payload.hall_id || "",
+      payload.event_timestamp,
     ]
   );
 
@@ -349,12 +389,23 @@ async function upsertAlert(inputPayload) {
     return insertAlert(rule, payload);
   }
 
-  const existingAlert = await findOpenAlert(payload);
-  if (!existingAlert) {
-    return insertAlert(rule, payload);
+  const existingOpenAlert = await findOpenAlert(payload);
+  if (existingOpenAlert) {
+    return updateAlert(existingOpenAlert, payload);
   }
 
-  return updateAlert(existingAlert, payload);
+  const existingHandledSameEvent = await findHandledAlertForSameEvent(payload);
+  if (existingHandledSameEvent) {
+    return {
+      action: "skipped_handled",
+      alert_id: existingHandledSameEvent.alert_id,
+      status: existingHandledSameEvent.status,
+      severity: existingHandledSameEvent.severity,
+      entity_key: buildEntityKey(payload),
+    };
+  }
+
+  return insertAlert(rule, payload);
 }
 
 async function resolveStaleAiAlerts({ domain, worker, hallIds = [], activeEntityKeys = new Set() }) {
