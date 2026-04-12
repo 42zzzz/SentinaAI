@@ -19,6 +19,7 @@ const SIDEBAR_STORAGE_KEY = "sentina.sidebarCollapsed";
 const HELP_GUIDE_PATHS = {
   operations: "/guides/operations-user-guide.pdf",
   sustainability: "/guides/sustainability-user-guide.pdf",
+  soc: "/guides/soc-user-guide.pdf",
 };
 
 
@@ -295,7 +296,7 @@ export default function AppLayout() {
     section === "sustainability"
       ? HELP_GUIDE_PATHS.sustainability
       : section === "soc"
-        ? null
+        ? HELP_GUIDE_PATHS.soc
         : HELP_GUIDE_PATHS.operations;
 
   const openHelpGuide = () => {
@@ -713,7 +714,7 @@ export default function AppLayout() {
           <SidebarText collapsed={sidebarCollapsed}>Settings</SidebarText>
         </button>
 
-        {section !== "soc" && (
+        {section !== "exhibitor" && (
           <button
             type="button"
             onClick={openHelpGuide}
@@ -885,7 +886,7 @@ export default function AppLayout() {
           isSust
             ? "Sustainability Dashboard"
             : isSoc
-              ? "Security Dashboard"
+              ? "Security Operations Center"
               : "Operations Dashboard"
         }
       />
@@ -898,7 +899,7 @@ export default function AppLayout() {
           isSust
             ? "Sustainability Dashboard"
             : isSoc
-              ? "Security Dashboard"
+              ? "Security Operations Center"
               : section === "exhibitor"
                 ? "Exhibitor Dashboard"
                 : "Operations Dashboard"
