@@ -30,8 +30,13 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+
 async function getLatestTs() {
-  const result = await analyticsDb.query(`SELECT MAX(ts) AS max_ts FROM interval_metrics`);
+  const result = await analyticsDb.query(`
+    SELECT MAX(ts) AS max_ts
+    FROM interval_metrics
+    WHERE hall_id IS NOT NULL
+  `);
   return result.rows[0]?.max_ts || null;
 }
 
@@ -111,20 +116,23 @@ function buildOperationsMessage(row, ruleInfo, severity) {
 async function processOperations(ts) {
   const result = await analyticsDb.query(
     `
-    SELECT
-      zone_id,
-      hall_id,
-      hall_name,
-      hall_capacity,
-      current_occupancy,
-      occupancy_ratio,
-      flow_congestion_index
-    FROM interval_metrics
-    WHERE ts = $1
-      AND hall_id IS NOT NULL
-    ORDER BY hall_id ASC
-    `,
-    [ts]
+  SELECT
+    zone_id,
+    hall_id,
+    hall_name,
+    hall_capacity,
+    current_occupancy,
+    occupancy_ratio,
+    flow_congestion_index
+  FROM interval_metrics
+  WHERE ts = (
+      SELECT MAX(ts)
+      FROM interval_metrics
+      WHERE hall_id IS NOT NULL
+    )
+    AND hall_id IS NOT NULL
+  ORDER BY hall_id ASC
+  `
   );
 
   const halls = (result.rows || []).map((row) => ({
@@ -181,12 +189,35 @@ async function processOperations(ts) {
   for (const hall of inferred) {
     hallIds.push(String(hall.hall_id));
 
-    if (!hall.isAnomaly || String(hall.aiAction || "").toLowerCase() === "none") {
+    const thresholdHit =
+      hall.occupancyRatio >= 0.85 ||
+      hall.flowCongestionIndex >= 0.8 ||
+      hall.co2 >= 1200;
+
+    const aiAction =
+      hall.aiAction && String(hall.aiAction).toLowerCase() !== "none"
+        ? hall.aiAction
+        : (hall.flowCongestionIndex >= 0.9 || hall.occupancyRatio >= 0.95
+          ? "dispatchSecurity"
+          : thresholdHit
+            ? "redirectCrowd"
+            : "none");
+
+    const isAnomaly =
+      (typeof hall.isAnomaly === "boolean" ? hall.isAnomaly : false) || thresholdHit;
+
+
+    if (!isAnomaly || String(aiAction || "").toLowerCase() === "none") {
       continue;
     }
 
-    const ruleInfo = selectOperationsRule(hall);
-    const severity = computeOperationsSeverity(hall);
+    const mergedHall = {
+      ...hall,
+      aiAction,
+    };
+
+    const ruleInfo = selectOperationsRule(mergedHall);
+    const severity = computeOperationsSeverity(mergedHall);
     const payload = {
       rule_key: ruleInfo.rule_key,
       domain: "OPERATIONS",
@@ -197,16 +228,16 @@ async function processOperations(ts) {
       detected_at: nowIso(),
       trigger_value: ruleInfo.metric_value,
       threshold_value: ruleInfo.threshold_value,
-      message: buildOperationsMessage(hall, ruleInfo, severity),
+      message: buildOperationsMessage(mergedHall, ruleInfo, severity),
       metadata: {
         source: "AI_ENGINE",
         worker: "OPS_AI_PRIMARY",
-        ai_action: hall.aiAction,
-        occupancy_ratio: hall.occupancyRatio,
-        co2_proxy_ppm: hall.co2,
-        flow_congestion_index: hall.flowCongestionIndex,
-        current_occupancy: hall.current_occupancy,
-        hall_capacity: hall.hall_capacity,
+        ai_action: mergedHall.aiAction,
+        occupancy_ratio: mergedHall.occupancyRatio,
+        co2_proxy_ppm: mergedHall.co2,
+        flow_congestion_index: mergedHall.flowCongestionIndex,
+        current_occupancy: mergedHall.current_occupancy,
+        hall_capacity: mergedHall.hall_capacity,
       },
     };
 
@@ -290,28 +321,31 @@ function buildSustainabilityMessage(row, ruleInfo, severity) {
 async function processSustainability(ts) {
   const result = await analyticsDb.query(
     `
-    SELECT
-      zone_id,
-      hall_id,
-      hall_name,
-      day_of_week,
-      hour_of_day,
-      venue_role,
-      occupancy_ratio,
-      comfort_index,
-      indoor_temp_c,
-      outdoor_temp_c,
-      humidity_pct,
-      hvac_energy_kwh,
-      carbon_kg_co2,
-      energy_efficiency_score,
-      sustainability_status
-    FROM interval_metrics
-    WHERE ts = $1
-      AND hall_id IS NOT NULL
-    ORDER BY hall_id ASC
-    `,
-    [ts]
+  SELECT
+    zone_id,
+    hall_id,
+    hall_name,
+    day_of_week,
+    hour_of_day,
+    venue_role,
+    occupancy_ratio,
+    comfort_index,
+    indoor_temp_c,
+    outdoor_temp_c,
+    humidity_pct,
+    hvac_energy_kwh,
+    carbon_kg_co2,
+    energy_efficiency_score,
+    sustainability_status
+  FROM interval_metrics
+  WHERE ts = (
+      SELECT MAX(ts)
+      FROM interval_metrics
+      WHERE hall_id IS NOT NULL
+    )
+    AND hall_id IS NOT NULL
+  ORDER BY hall_id ASC
+  `
   );
 
   const halls = (result.rows || []).map((row) => ({
@@ -360,6 +394,7 @@ async function processSustainability(ts) {
     });
 
     const data = await readJsonSafe(response);
+
     if (response.ok && data?.status === "success") {
       for (const row of data.rows || []) {
         if (row?.hall_id) {
@@ -367,7 +402,7 @@ async function processSustainability(ts) {
         }
       }
     }
-  } catch {
+  } catch (error) {
     aiRowsByHall = new Map();
   }
 
@@ -378,62 +413,79 @@ async function processSustainability(ts) {
   const hallIds = [];
 
   for (const hall of halls) {
-    hallIds.push(String(hall.hall_id));
-    const ai = aiRowsByHall.get(String(hall.hall_id));
-    const sustainabilityStatus = ai?.sustainabilityStatus || hall.sustainabilityStatusRaw || "unknown";
-    const aiAction =
-      ai?.aiAction ||
-      (String(sustainabilityStatus).toLowerCase() === "red"
-        ? "reduceHVACLoad"
-        : String(sustainabilityStatus).toLowerCase() === "amber"
-          ? "optimizeHVAC"
+    try {
+      hallIds.push(String(hall.hall_id));
+      const ai = aiRowsByHall.get(String(hall.hall_id));
+      const sustainabilityStatus = ai?.sustainabilityStatus || hall.sustainabilityStatusRaw || "unknown";
+
+      const thresholdHit =
+        hall.energyEfficiencyScore < 65 ||
+        hall.hvacEnergyKWh > 50 ||
+        hall.carbonKgCO2 > 60;
+
+      const aiAction =
+        ai?.aiAction ||
+        (thresholdHit
+          ? (String(sustainabilityStatus).toLowerCase() === "red"
+            ? "reduceHVACLoad"
+            : "optimizeHVAC")
           : "none");
 
-    const isAnomaly = typeof ai?.isAnomaly === "boolean"
-      ? ai.isAnomaly
-      : String(sustainabilityStatus).toLowerCase() !== "green";
+      const isAnomaly =
+        (typeof ai?.isAnomaly === "boolean" ? ai.isAnomaly : false)
+        || thresholdHit;
 
-    if (!isAnomaly || String(aiAction || "").toLowerCase() === "none") {
-      continue;
+      if (!isAnomaly || String(aiAction || "").toLowerCase() === "none") {
+        continue;
+      }
+
+      const mergedHall = {
+        ...hall,
+        sustainabilityStatus,
+        aiAction,
+      };
+
+      const ruleInfo = selectSustainabilityRule(mergedHall);
+      const severity = computeSustainabilitySeverity(mergedHall);
+      const payload = {
+        rule_key: ruleInfo.rule_key,
+        domain: "SUSTAINABILITY",
+        severity,
+        zone_id: hall.zone_id || null,
+        hall_id: hall.hall_id || null,
+        event_timestamp: ts,
+        detected_at: nowIso(),
+        trigger_value: ruleInfo.metric_value,
+        threshold_value: ruleInfo.threshold_value,
+        message: buildSustainabilityMessage(mergedHall, ruleInfo, severity),
+        metadata: {
+          source: "AI_ENGINE",
+          worker: "SUS_AI_PRIMARY",
+          ai_action: aiAction,
+          sustainability_status: sustainabilityStatus,
+          hvac_energy_kwh: hall.hvacEnergyKWh,
+          carbon_kg_co2: hall.carbonKgCO2,
+          energy_efficiency_score: hall.energyEfficiencyScore,
+          comfort_index: hall.comfortIndex,
+          occupancy_ratio: hall.occupancyRatio,
+        },
+      };
+
+      const out = await upsertAlert(payload);
+
+      activeEntityKeys.add(buildEntityKey(payload));
+      alerts.push({
+        hall_id: hall.hall_id,
+        alert_id: out.alert_id,
+        severity,
+        rule_key: ruleInfo.rule_key,
+        action: out.action
+      });
+
+      if (out.action === "inserted") inserted += 1;
+      if (out.action === "updated") updated += 1;
+    } catch (error) {
     }
-
-    const mergedHall = {
-      ...hall,
-      sustainabilityStatus,
-      aiAction,
-    };
-
-    const ruleInfo = selectSustainabilityRule(mergedHall);
-    const severity = computeSustainabilitySeverity(mergedHall);
-    const payload = {
-      rule_key: ruleInfo.rule_key,
-      domain: "SUSTAINABILITY",
-      severity,
-      zone_id: hall.zone_id || null,
-      hall_id: hall.hall_id || null,
-      event_timestamp: ts,
-      detected_at: nowIso(),
-      trigger_value: ruleInfo.metric_value,
-      threshold_value: ruleInfo.threshold_value,
-      message: buildSustainabilityMessage(mergedHall, ruleInfo, severity),
-      metadata: {
-        source: "AI_ENGINE",
-        worker: "SUS_AI_PRIMARY",
-        ai_action: aiAction,
-        sustainability_status: sustainabilityStatus,
-        hvac_energy_kwh: hall.hvacEnergyKWh,
-        carbon_kg_co2: hall.carbonKgCO2,
-        energy_efficiency_score: hall.energyEfficiencyScore,
-        comfort_index: hall.comfortIndex,
-        occupancy_ratio: hall.occupancyRatio,
-      },
-    };
-
-    const out = await upsertAlert(payload);
-    activeEntityKeys.add(buildEntityKey(payload));
-    alerts.push({ hall_id: hall.hall_id, alert_id: out.alert_id, severity, rule_key: ruleInfo.rule_key, action: out.action });
-    if (out.action === "inserted") inserted += 1;
-    if (out.action === "updated") updated += 1;
   }
 
   const resolvedResult = await resolveStaleAiAlerts({
@@ -491,6 +543,7 @@ async function runOnce() {
     processOperations(ts),
     processSustainability(ts),
   ]);
+
 
   return {
     startedAt,

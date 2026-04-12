@@ -156,7 +156,7 @@ export default function LiveAlertOverlay({ section, pollMs = 2500 }) {
       const res = await axios.get(`${API_BASE}/alerts`, {
         params: {
           domain,
-          status: "NEW,ACKNOWLEDGED",
+          status: "NEW",
           sort: "detected_desc",
           page: 1,
           pageSize: 1,
@@ -185,7 +185,7 @@ export default function LiveAlertOverlay({ section, pollMs = 2500 }) {
       const res = await axios.get(`${API_BASE}/alerts/live`, {
         params: {
           domain,
-          status: "NEW,ACKNOWLEDGED",
+          status: "NEW",
           since_alert_id: lastSeenIdRef.current || 0,
           limit: 10,
         },
