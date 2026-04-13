@@ -921,7 +921,15 @@ def spa_fallback(e):
     return send_from_directory(frontend_dir, "index.html")
 
 
-initialize_system()
+try:
+    initialize_system()
+except Exception as _init_err:
+    import traceback
+    print("\n" + "=" * 60)
+    print("ERROR: Navigation system failed to initialize:")
+    traceback.print_exc()
+    print("Flask will start, but all /api/* endpoints will return 500.")
+    print("=" * 60 + "\n")
 
 if __name__ == "__main__":
     print("\nStarting Flask server on http://localhost:5000")
