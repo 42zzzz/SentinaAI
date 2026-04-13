@@ -140,28 +140,23 @@ exports.getOpsLive = async (req, res) => {
 
     
 
-        const resp = await fetch(`${AI_BASE}/api/infer-action`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        try {
+          const resp = await fetch(`${AI_BASE}/api/infer-action`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
 
-        const data = await readJsonSafe(resp);
+          const data = await readJsonSafe(resp);
 
-        if (!resp.ok || data?.status !== "success") {
-          return {
-            ...h,
-            aiAction: "ai_error",
-            isAnomaly: false,
-            aiRaw: data,
-          };
+          if (!resp.ok || data?.status !== "success") {
+            return { ...h, aiAction: "ai_unavailable", isAnomaly: false };
+          }
+
+          return { ...h, aiAction: data.aiAction, isAnomaly: !!data.isAnomaly };
+        } catch {
+          return { ...h, aiAction: "ai_unavailable", isAnomaly: false };
         }
-
-        return {
-          ...h,
-          aiAction: data.aiAction,
-          isAnomaly: !!data.isAnomaly,
-        };
       })
     );
     // ✅ Apply simulation overlays (if any) on top of telemetry-driven rows
@@ -200,7 +195,6 @@ const merged = inferred.map((h) => {
 });
 
 return res.json({ ok: true, ts, rows: merged });
-    return res.json({ ok: true, ts, rows: inferred });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message });
   }
@@ -247,20 +241,43 @@ exports.getOccupancyForecast = async (req, res) => {
       dayOfWeek,
     };
 
-    const resp = await fetch(`${AI_BASE}/api/occupancy-forecast`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await readJsonSafe(resp);
-    if (!resp.ok || data?.status !== "success") {
-      return res.status(502).json({ ok: false, error: "AI occupancy-forecast failed", data });
-    }
-
     const capacity = Number(row.hall_capacity || 0);
     const baseOccRatio = Number(row.occupancy_ratio || 0);
     const baseCurrent = Number(row.current_occupancy || 0);
+
+    let data;
+    try {
+      const resp = await fetch(`${AI_BASE}/api/occupancy-forecast`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const parsed = await readJsonSafe(resp);
+      if (resp.ok && parsed?.status === "success") {
+        data = parsed;
+      }
+    } catch {
+      // AI service unavailable — fall through to synthetic forecast
+    }
+
+    // Synthetic fallback: flat forecast at current occupancy for next 60 min
+    if (!data) {
+      const baseCount = baseCurrent || Math.round(baseOccRatio * capacity);
+      const syntheticPoints = [10, 20, 30, 40, 50, 60].map((offsetMinutes) => ({
+        offsetMinutes,
+        predictedOccupancy: baseCount,
+      }));
+      return res.json({
+        ok: true,
+        ts,
+        hall_id: row.hall_id,
+        hall_name: row.hall_name,
+        venue_role: row.venue_role,
+        scaleApplied: 1,
+        points: syntheticPoints,
+        synthetic: true,
+      });
+    }
 
     // ✅ Apply simulation override (if exists) by scaling forecast
     const ov = SIM_OVERRIDES.get(String(row.hall_id));
