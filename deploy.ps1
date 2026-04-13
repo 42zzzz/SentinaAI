@@ -203,6 +203,8 @@ $backendUrl = Deploy-Service "dashboard-backend" $backendImage $backendEnv
 Write-Section "=== Wave 3: Frontends ==="
 
 $frontendImage = "$REPO/dashboard-frontend"
+# Write VITE env vars so they are baked into the production build
+Set-Content -Path "$FRONTEND_PATH/.env" -Value "VITE_API_BASE_URL=$backendUrl"
 Build-Image "dashboard-frontend" $FRONTEND_PATH $frontendImage
 $frontendUrl = Deploy-Service "dashboard-frontend" $frontendImage
 
