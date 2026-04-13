@@ -1,3 +1,11 @@
+/**
+ * Displays the exhibitor dashboard overview page using shared exhibitor outlet
+ * context, including KPI cards for booth assignment, AI confidence, competitive
+ * density, and linked events, plus overview insights and profile details.
+ * This page reads shared exhibitor data from Outlet context and uses
+ * InfoTooltip for dashboard guidance.
+ */
+
 import { useOutletContext } from "react-router-dom";
 import InfoTooltip from "../components/InfoTooltip";
 

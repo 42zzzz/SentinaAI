@@ -1,5 +1,11 @@
+/**
+ * Manages client-side idle logout by tracking user activity, resetting an
+ * inactivity timer, clearing session storage on timeout, and redirecting the
+ * user back to the login page. This utility also listens for login events and
+ * storage updates to start or refresh the idle session timer.
+ */
+
 const DEFAULT_IDLE_MS = 20 * 60 * 1000; // 20 mins
-//const DEFAULT_IDLE_MS = 10 * 1000; // 10 secs for testing
 
 let timer = null;
 let idleMs = DEFAULT_IDLE_MS;
@@ -39,7 +45,7 @@ export function initIdleLogout() {
 
   window.addEventListener("storage", (e) => {
     if (e.key === "token" && e.newValue) {
-      markActivity(); // start the timer once right after login
+      markActivity();
     }
   });
 

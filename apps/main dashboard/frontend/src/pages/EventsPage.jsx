@@ -1,4 +1,11 @@
-// frontend/src/pages/EventsPage.jsx
+/**
+ * Displays the events page with searchable, filterable, and paginated event
+ * listings, including status, venue, date range, sorting, and row count controls.
+ * This page fetches event rows and filter options from the events API, uses
+ * MultiSelectPill for filter inputs, and uses React Router navigation to open
+ * event detail pages.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -21,7 +28,6 @@ function formatAED(n) {
   return `AED ${num.toLocaleString()}`;
 }
 
-/* ---- Inline SVG Icons (match Devices/Alerts pink) ---- */
 function IconSearch() {
   return (
     <svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -53,7 +59,6 @@ function IconStatus() {
 }
 
 function IconVenue() {
-  // reuse "globe" style from earlier (ok for venue)
   return (
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
@@ -121,7 +126,7 @@ export default function EventsPage() {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
 
-  const [openSelect, setOpenSelect] = useState(null); // "sort" | "rows"
+  const [openSelect, setOpenSelect] = useState(null);
 
   const [qLive, setQLive] = useState("");
   useEffect(() => {
@@ -191,16 +196,14 @@ export default function EventsPage() {
     <div className="eventsPage">
       <div className="pageInner">
         <div className="eventsHeaderRow">
-          <div className="eventsTitleWrap">{/* keep empty (global header handles title) */}</div>
+          <div className="eventsTitleWrap"></div>
           <div className="eventsHeaderRight">
             <div className="eventsCountTop">{loading ? "Loading…" : `${total} events`}</div>
           </div>
         </div>
 
-        {/* Controls */}
         <div className="eventsControlsCard">
           <div className="eventsFiltersRow">
-            {/* Search */}
             <div className="filterPill pillSearch" role="search">
               <span className="pillLeftIcon" aria-hidden>
                 <IconSearch />
@@ -232,8 +235,6 @@ export default function EventsPage() {
               getOptionValue={(option) => option.venue_id}
               getOptionLabel={(option) => `${option.venue_name} (${option.venue_id})`}
             />
-
-            {/* From */}
             <div className="filterPill pillDate pillFrom">
               <span className="pillLeftIcon" aria-hidden>
                 <IconCalendar />
@@ -247,7 +248,6 @@ export default function EventsPage() {
               />
             </div>
 
-            {/* To */}
             <div className="filterPill pillDate pillTo">
               <span className="pillLeftIcon" aria-hidden>
                 <IconCalendar />
@@ -261,7 +261,6 @@ export default function EventsPage() {
               />
             </div>
 
-            {/* Sort */}
             <div className={`filterPill pillSelectWrap pillSort ${openSelect === "sort" ? "isOpen" : ""}`}>
               <span className="pillLeftIcon" aria-hidden>
                 <IconSort />
@@ -287,7 +286,6 @@ export default function EventsPage() {
             </div>
           </div>
 
-          {/* Bottom row: Clear left, Rows right */}
           <div className="eventsControlsBottomRow">
             <button onClick={clearFilters} className="clearFiltersBtn">
               Clear filters
@@ -320,7 +318,6 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* Error */}
         {error ? (
           <div className="eventsError">
             <div className="eventsErrorTitle">Error</div>
@@ -328,7 +325,6 @@ export default function EventsPage() {
           </div>
         ) : null}
 
-        {/* Table */}
         <div className="eventsTableCard">
           <div className="eventsTableScroll">
             <table className="eventsTable">
@@ -393,7 +389,6 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* Pagination */}
         <div className="eventsPager">
           <div className="eventsPagerLeft">
             Page {page} of {totalPages}

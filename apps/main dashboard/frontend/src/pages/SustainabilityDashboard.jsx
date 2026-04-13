@@ -1,4 +1,12 @@
-// frontend/src/pages/SustainabilityDashboard.jsx
+/**
+ * Displays the sustainability dashboard page with live sustainability KPI cards,
+ * electricity and carbon trend panels, top-hall energy ranking, environment
+ * health scoring, and AI sustainability status. This page fetches KPI data from
+ * the sustainability AI API, uses dashboard refresh settings utilities, and
+ * composes TrendPanel, TopHallsEnergyBar, ComfortGauge, AiSustPanel, and
+ * InfoTooltip for the main dashboard views.
+ */
+
 import "./SustainabilityDashboard.css";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
@@ -15,10 +23,8 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-/* ✅ icon wrapper (Sust theme controls circle color via CSS) */
 const IconCircle = ({ children }) => <div className="iconCircle">{children}</div>;
 
-/* ✅ Figma SVG icons */
 
 const CurrentEnergyIcon = () => (
   <svg fill="#FFFFFF" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -59,7 +65,6 @@ const AutomationIcon = () => (
   </svg>
 );
 
-/* section icon */
 const ElectricityIcon = () => (
   <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <path

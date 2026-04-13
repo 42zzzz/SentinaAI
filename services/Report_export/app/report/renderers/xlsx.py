@@ -60,29 +60,24 @@ def _clean_excel_value(val: Any) -> Any:
     if val is None:
         return ""
 
-    # pandas Timestamp
     if pd is not None and isinstance(val, pd.Timestamp):
         if val.tzinfo is not None:
             return val.tz_localize(None).to_pydatetime()
         return val.to_pydatetime()
 
-    # pandas NaT
     if pd is not None and val is pd.NaT:
         return ""
 
-    # standard datetime
     if isinstance(val, datetime):
         if val.tzinfo is not None:
             return val.replace(tzinfo=None)
         return val
 
-    # standard time
     if isinstance(val, time):
         if val.tzinfo is not None:
             return val.replace(tzinfo=None)
         return val
 
-    # containers: stringify to keep sheet safe
     if isinstance(val, (list, dict, set, tuple)):
         return str(val)
 
@@ -92,9 +87,6 @@ def _clean_excel_value(val: Any) -> Any:
 def render_xlsx(payload: dict) -> bytes:
     wb = Workbook()
 
-    # ===============================
-    # CREATE SUMMARY SHEET
-    # ===============================
     summary_ws = cast(Worksheet, wb.active)
     summary_ws.title = "Summary"
 
@@ -132,26 +124,20 @@ def render_xlsx(payload: dict) -> bytes:
     sheets = xlsx_obj.get("sheets") or []
     sheet_registry = []
 
-    # ===============================
-    # CREATE DATA SHEETS
-    # ===============================
     for sh in sheets:
         columns = sh.get("columns") or []
         rows = sh.get("rows") or []
 
-        # Skip fully empty sheets before creating one
         if not columns:
             continue
 
         sheet_name = _unique_sheet_name(wb, sh.get("name", "Sheet"))
         ws = wb.create_sheet(sheet_name)
 
-        # Header
         for col_idx, col in enumerate(columns, start=1):
             cell = ws.cell(row=1, column=col_idx, value=_clean_excel_value(col))
             cell.font = Font(bold=True)
 
-        # Data
         for r in rows:
             if isinstance(r, dict):
                 ws.append([_clean_excel_value(r.get(col, "")) for col in columns])
@@ -161,9 +147,6 @@ def render_xlsx(payload: dict) -> bytes:
         _autosize(ws)
         sheet_registry.append({"name": sheet_name, "rows": len(rows)})
 
-    # ===============================
-    # POPULATE SUMMARY INDEX
-    # ===============================
     for entry in sheet_registry:
         row = summary_ws.max_row + 1
 
@@ -175,7 +158,6 @@ def render_xlsx(payload: dict) -> bytes:
 
     _autosize(summary_ws)
 
-    # Safety fallback
     if len(wb.sheetnames) == 1:
         summary_ws.append([])
         summary_ws.append(["No analytical data available."])

@@ -1,3 +1,11 @@
+/**
+ * Runs the backend AI alert worker for operations and sustainability by reading
+ * the latest interval metrics, calling the AI services, selecting alert rules,
+ * computing severity, upserting alerts, and resolving stale AI alerts. This
+ * service uses analytics and core database connections together with
+ * aiAvailability and unifiedAlertWriter helpers to control AI-driven alert flow.
+ */
+
 const analyticsDb = require("../dbs/analytics.db");
 const coreDb = require("../dbs/core.db");
 const {

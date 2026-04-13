@@ -39,7 +39,6 @@
   margin: 0;
 }
 
-/* Zoom Controls */
 .zoom-controls {
   display: flex;
   align-items: center;
@@ -349,7 +348,6 @@
   color: #4ade80;
 }
 
-/* Mode Switcher */
 .mode-switcher {
   display: flex;
   gap: 10px;
@@ -378,7 +376,6 @@
   font-weight: var(--font-semibold);
 }
 
-/* Mode Indicator */
 .mode-indicator {
   padding: 12px;
   background: var(--bg-tertiary);
@@ -393,7 +390,6 @@
   color: #4ade80;
 }
 
-/* Selected Hall Info */
 .selected-hall-info {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
@@ -411,7 +407,6 @@
   color: var(--text-accent);
 }
 
-/* Vertex Help */
 .vertex-help {
   margin-top: 16px;
   padding: 12px;
@@ -437,7 +432,6 @@
   margin-bottom: 4px;
 }
 
-/* Keyboard shortcuts */
 kbd {
   display: inline-block;
   padding: 2px 6px;

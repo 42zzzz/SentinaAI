@@ -1,10 +1,16 @@
+/**
+ * Renders a Digital Twin device marker at the device’s mapped world position,
+ * showing the device icon, status indicator, label, and hover tooltip with
+ * live telemetry details. This component uses hall layout scaling data,
+ * device type and status config metadata, and Drei Html overlays for UI
+ * rendering inside the 3D scene.
+ */
+
 import React, { useState } from 'react';
 import { Html } from '@react-three/drei';
 import { DEVICE_TYPE_CONFIG, DEVICE_STATUS_CONFIG } from '../data/devicesLayout.jsx';
 import { SCALE, DWTC_OUTLINE } from '../data/hallsLayout';
 
-// Devices sit inside the hall at floor level — visible through semi-transparent
-// walls when the hall is selected.
 const BASE_Y = 3;
 
 function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
@@ -24,10 +30,8 @@ function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
   const Icon = typeConfig.icon;
 
   return (
-    // Hidden entirely when hall is not selected — keeps default view uncluttered.
     <group position={[worldX, BASE_Y, worldZ]} visible={isHallSelected}>
 
-      {/* Clipart icon badge — highest z-index so it's never covered by labels */}
       <Html
         position={[0, 0.5, 0]}
         center
@@ -65,7 +69,6 @@ function DeviceMarker({ device, isHallSelected, deviceTelemetry }) {
         </div>
       </Html>
 
-      {/* Label shown when hall is focused — floats above the icon badge */}
       <Html
         position={[0, 2.0, 0]}
         center

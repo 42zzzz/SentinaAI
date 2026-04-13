@@ -16,7 +16,6 @@ INTENT_MAP = {
     'exh_comparison': 'exh_comparison',
 }
 
-# Comparison is available, but it should feel deliberate for exhibitors rather than repeated on every card.
 FOLLOW_UPS: Dict[str, List[Dict[str, Any]]] = {
     'exh_overview': [
         {'label': 'Traffic Context', 'analysis_type': 'exh_traffic_context'},

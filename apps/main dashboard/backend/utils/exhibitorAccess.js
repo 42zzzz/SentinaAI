@@ -1,3 +1,9 @@
+/**
+ * Provides exhibitor ownership and access-control helpers by resolving the
+ * logged-in exhibitor context, enforcing ownership checks, and fetching the
+ * exhibitor’s assigned events and booth details from the core database.
+ */
+
 const core = require("../dbs/core.db");
 
 async function resolveExhibitorContext(userId) {

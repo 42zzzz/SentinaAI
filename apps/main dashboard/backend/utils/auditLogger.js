@@ -1,3 +1,8 @@
+/**
+ * Writes authentication and access audit records to the core database, capturing
+ * request context such as IP address, user agent, request path, status, and
+ * structured metadata for security and access tracking.
+ */
 const core = require("../dbs/core.db");
 
 function getClientIp(req) {

@@ -1,3 +1,11 @@
+/**
+ * Displays the exhibitors page with searchable and filterable exhibitor listings,
+ * event-linked package tier filtering, exhibitor detail modal viewing, and total
+ * exhibitor count display. This page fetches exhibitor rows, exhibitor filters,
+ * and event options from the API, and uses MultiSelectPill for multi-select
+ * filter controls.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./ExhibitorsPage.css";

@@ -1,5 +1,3 @@
-/* ===== page base ===== */
-
 .opsTheme .exhibitorsPage,
 .exhibitorsPage{
   background:#f5f6f8;
@@ -14,7 +12,6 @@
   padding: 22px 26px;
 }
 
-/* ===== header ===== */
 
 .exhibitorsHeaderRow{
   display:flex;
@@ -35,8 +32,6 @@
   text-align:right;
 }
 
-/* ===== controls card ===== */
-
 .exhibitorsControlsCard{
   margin-top:14px;
   background:#fff;
@@ -44,8 +39,6 @@
   border-radius:14px;
   padding:14px;
 }
-
-/* ===== filters ===== */
 
 .exhibitorsFiltersRow{
   display:flex;
@@ -60,7 +53,6 @@
   }
 }
 
-/* ===== filter pills ===== */
 
 .filterPill{
   height:34px;
@@ -82,16 +74,12 @@
   background:#d4d8db;
 }
 
-/* pill widths */
-
 .pillSearch{width:300px;min-width:240px}
 .pillEvent{width:240px}
 .pillTier{width:170px}
 .pillIndustry{width:170px}
 .pillCountry{width:170px}
 .pillStatus{width:150px}
-
-/* input */
 
 .pillInput{
   width:100%;
@@ -119,8 +107,6 @@
   opacity:1;
 }
 
-/* select */
-
 .pillSelectWrap{
   position:relative;
 }
@@ -145,8 +131,6 @@
   line-height:34px;
 }
 
-/* caret */
-
 .pillRightCaret{
   position:absolute;
   right:12px;
@@ -158,7 +142,6 @@
   border-top:6px solid #133250;
 }
 
-/* ===== bottom row ===== */
 
 .exhibitorsControlsBottomRow{
   margin-top:12px;
@@ -167,7 +150,6 @@
   align-items:center;
 }
 
-/* clear button */
 
 .clearFiltersBtn{
   height:34px;
@@ -185,7 +167,6 @@
   background:#d93f65;
 }
 
-/* ===== table ===== */
 
 .exhibitorsTableCard{
   margin-top:14px;
@@ -227,8 +208,6 @@
   cursor:pointer;
 }
 
-/* exhibitor cell */
-
 .exhibitorName{
   font-weight:800;
 }
@@ -239,14 +218,11 @@
   margin-top:4px;
 }
 
-/* contact */
 
 .exhibitorContact{
   font-size:12px;
   opacity:.8;
 }
-
-/* status pill */
 
 .statusPill{
   display:inline-flex;
@@ -269,7 +245,6 @@
   color:#475569;
 }
 
-/* ===== modal ===== */
 
 .modalOverlay{
   position:fixed;
@@ -308,8 +283,6 @@
 }
 
 
-/* ===== MODAL IMPROVEMENTS ===== */
-
 .modalOverlay{
   position:fixed;
   inset:0;
@@ -334,8 +307,6 @@
   margin-bottom:20px;
 }
 
-/* modal grid */
-
 .modalGrid{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -343,7 +314,6 @@
   margin-top:10px;
 }
 
-/* label / value */
 
 .modalLabel{
   font-size:12px;
@@ -356,7 +326,6 @@
   color:#0f172a;
 }
 
-/* close button */
 
 .modalFooter{
   display:flex;
@@ -378,7 +347,6 @@
   background:#0f253d;
 }
 
-/* ---- Icon consistency pass for Exhibitors filters ---- */
 .exhibitorsFiltersRow .filterPill,
 .exhibitorsControlsBottomRow .filterPill {
   color: #64748b;

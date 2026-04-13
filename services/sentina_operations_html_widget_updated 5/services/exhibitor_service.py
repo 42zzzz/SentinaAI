@@ -46,7 +46,6 @@ class ExhibitorAnalyticsService:
     def _merged_assignments(self, exhibitor_id: str) -> pd.DataFrame:
         assignments = self.assignments_df[self.assignments_df['exhibitorId'].astype(str) == str(exhibitor_id)].copy()
         if assignments.empty:
-            # Demo mode falls back to the latest assignments so the widget still opens.
             assignments = self.assignments_df.copy()
 
         merged = assignments.merge(self.events_df, on='eventId', how='left', suffixes=('', '_event'))
@@ -116,7 +115,6 @@ class ExhibitorAnalyticsService:
         booth_hall = payload.hall_ids[0] if payload.hall_ids else str(assignment['hallId'])
         start, end = self.resolve_dates(payload, assignment)
 
-        # Exhibitor scope stays assignment-bound: event, zone, and hall come from the assignment.
         df = df[df['eventId'] == event_id]
         df = df[df['zoneId'] == booth_zone]
         df = df[df['hallId'] == booth_hall]
@@ -339,7 +337,7 @@ class ExhibitorAnalyticsService:
             x_axis='Day',
             y_axis='Occupancy / congestion',
         )
-        # The frontend uses this table as the fallback when the selected range is too short for a useful chart.
+
         table_rows = hour_pattern[['label', 'occupancyRatio', 'flowCongestionIndex', 'comfortIndex', 'engagement_truth']].rename(
             columns={
                 'label': 'hour_band',

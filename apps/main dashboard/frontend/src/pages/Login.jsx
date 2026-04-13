@@ -1,4 +1,11 @@
-﻿import { useEffect, useState } from "react";
+﻿/**
+ * Displays the login page with email and password authentication, optional MFA
+ * verification, session storage setup, login flash messaging, and role-based
+ * navigation after successful sign-in. This page uses the auth login API,
+ * React Router navigation, and Login.css styling for the login flow.
+ */
+
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./Login.css";

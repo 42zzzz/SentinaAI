@@ -5,7 +5,6 @@ from typing import Any, Dict, List
 from repositories.saved_view_repository import SavedViewRepository
 from services.response_service import USER_GUIDE_LINK
 
-# Keep these labels stable so the frontend can key off them without extra mapping.
 PRIMARY_ACTIONS: List[Dict[str, Any]] = [
     {'id': 'overview', 'label': 'Overview', 'analysis_type': 'occupancy_summary', 'icon': 'layout-dashboard'},
     {'id': 'occupancy', 'label': 'Occupancy', 'analysis_type': 'occupancy_summary', 'icon': 'users'},

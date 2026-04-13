@@ -1,3 +1,11 @@
+/**
+ * Displays the settings modal for dashboard and portal preferences, including
+ * local dashboard refresh settings, account session details, password change,
+ * and two-factor authentication management. This component uses dashboard
+ * settings utilities, auth API endpoints, section-based UI metadata, and
+ * modal subviews for password and MFA workflows.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./SettingsPage.css";
@@ -696,7 +704,6 @@ export default function SettingsPage({ section = "operations", onClose }) {
                 <span className="settingsInlineStatus">Loading…</span>
               )}
 
-              {/* Setup flow */}
               {!mfaState.enabled && mfaState.status !== "loading" && mfaState.qr ? (
                 <form onSubmit={handleMfaVerify}>
                   <div style={{ textAlign: "center", marginBottom: 16 }}>
@@ -750,14 +757,12 @@ export default function SettingsPage({ section = "operations", onClose }) {
                 </form>
               ) : null}
 
-              {/* Error state before QR loads */}
               {!mfaState.enabled && mfaState.status === "error" && !mfaState.qr ? (
                 <div className="settingsPasswordMessage settingsPasswordMessage--error">
                   {mfaState.message}
                 </div>
               ) : null}
 
-              {/* Enabled state */}
               {mfaState.enabled && mfaState.status !== "loading" ? (
                 <div>
                   <div className="settingsSecuritySummary">

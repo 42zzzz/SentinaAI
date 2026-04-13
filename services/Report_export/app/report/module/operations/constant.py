@@ -1,4 +1,3 @@
-# Section display names
 SECTION_LABELS = {
     "executive": "Executive Overview",
     "hall_utilization": "Hall Utilization Ranking",

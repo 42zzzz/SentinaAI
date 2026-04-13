@@ -1,3 +1,10 @@
+/**
+ * Defines the main application router, role-based redirects, and protected route
+ * structure for admin, operations, SOC, sustainability, and exhibitor flows.
+ * This file wires shared layouts, guarded routes, nested dashboard pages, and
+ * report, alert, navigation, and digital twin pages across the full frontend app.
+ */
+
 import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 

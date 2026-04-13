@@ -1,3 +1,11 @@
+/**
+ * Displays the report generation page for operations and exhibitor workflows,
+ * including report configuration, multi-select zone and hall selection, section
+ * toggles, aggregation settings, notes, draft saving, and final report generation.
+ * This page uses report API helpers, route-based domain config from reportConfig,
+ * and React Router navigation and params to load, edit, save, and generate reports.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import "./GenerateReportPage.css";

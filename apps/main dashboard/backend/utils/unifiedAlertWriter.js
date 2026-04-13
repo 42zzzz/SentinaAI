@@ -1,3 +1,11 @@
+/**
+ * Provides unified alert upsert and stale-alert resolution logic for backend
+ * alert workflows, including rule lookup, severity normalization, entity-key
+ * matching, metadata merging, alert insert/update decisions, and AI alert
+ * auto-resolution. This service uses the core database and supports both
+ * AI-driven and security rule-engine alert handling.
+ */
+
 const coreDb = require("../dbs/core.db");
 
 const ruleCache = new Map();

@@ -23,7 +23,6 @@ function FrameLimiter() {
   return null;
 }
 
-// 🔥 Scene3D with Floating Block Labels and Theme Support
 function Scene3D({ telemetryData, currentView, currentLayer, devices, deviceTelemetry, simMode }) {
   const { halls, selectedHallId, setSelectedHallId } = useHalls();
   const { theme } = useTheme();
@@ -32,10 +31,8 @@ function Scene3D({ telemetryData, currentView, currentLayer, devices, deviceTele
   const centerX = (DWTC_OUTLINE.minX + DWTC_OUTLINE.maxX) / 2;
   const centerY = (DWTC_OUTLINE.minY + DWTC_OUTLINE.maxY) / 2;
 
-  // Is any hall currently focused? Used by HallMesh to fade unfocused halls.
   const anyHallSelected = !!selectedHallId;
 
-  // Theme-based colors
   const sceneColors = {
     dark: {
       background: '#0a0a0a',
@@ -82,7 +79,6 @@ function Scene3D({ telemetryData, currentView, currentLayer, devices, deviceTele
         maxPolarAngle={Math.PI / 2}
       />
 
-      {/* Camera focus animation — listens to selectedHallId and lerps camera */}
       <HallFocusCamera />
 
       <ambientLight intensity={colors.ambient} />
@@ -100,7 +96,6 @@ function Scene3D({ telemetryData, currentView, currentLayer, devices, deviceTele
       </mesh>
 
       {halls.map((hall) => {
-        // Calculate the physical position for the label
         const x = hall.x - centerX;
         const z = hall.z - centerY;
 
@@ -119,7 +114,6 @@ function Scene3D({ telemetryData, currentView, currentLayer, devices, deviceTele
               simMode={simMode}
             />
 
-            {/* 🔥 THE HALL NAME ON THE BLOCK 🔥 */}
             <Text
               position={[x, HALL_HEIGHT + 1, z]}
               rotation={[-Math.PI / 2, 0, 0]}
@@ -139,7 +133,6 @@ function Scene3D({ telemetryData, currentView, currentLayer, devices, deviceTele
         );
       })}
 
-      {/* IoT device layer — rendered after halls so devices appear on top */}
       {devices && devices.length > 0 && (
         <DeviceLayer
           devices={devices}
@@ -149,7 +142,6 @@ function Scene3D({ telemetryData, currentView, currentLayer, devices, deviceTele
         />
       )}
 
-      {/* AI reroute flow arrows on anomalous halls */}
       <FlowArrowLayer telemetryData={telemetryData} currentLayer={currentLayer} />
 
       <gridHelper

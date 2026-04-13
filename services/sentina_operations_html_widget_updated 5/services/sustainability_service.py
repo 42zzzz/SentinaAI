@@ -279,7 +279,6 @@ class SustainabilityAnalyticsService:
         top_inflow_row = grouped.sort_values('total_inflow', ascending=False).iloc[0]
         top_occupancy_row = grouped.sort_values('avg_occupancy_ratio', ascending=False).iloc[0]
 
-        # For one event we show the selected event cleanly. For multiple events we keep the summary range-wide.
         if len(grouped) == 1:
             focus_row = grouped.iloc[0]
             focus_label = str(focus_row['eventName'])

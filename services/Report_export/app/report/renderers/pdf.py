@@ -9,16 +9,12 @@ import shutil
 
 
 def _find_wkhtmltopdf() -> str:
-    # 1) explicit env var, if provided
     env_path = os.getenv("WKHTMLTOPDF_PATH")
     if env_path and Path(env_path).exists():
         return str(Path(env_path).resolve())
 
-    # pdf.py = services/Report_export/app/report/renderers/pdf.py
-    # project root we want = services/Report_export
     project_root = Path(__file__).resolve().parents[3]
 
-    # 2) bundled copy inside the repo
     bundled_candidates = [
         project_root / "wkhtmltopdf" / "bin" / "wkhtmltopdf.exe",
         project_root / "wkhtmltopdf" / "wkhtmltopdf.exe",
@@ -29,7 +25,6 @@ def _find_wkhtmltopdf() -> str:
         if p.exists():
             return str(p.resolve())
 
-    # 3) common system install locations
     system_candidates = [
         Path(r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"),
         Path(r"C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe"),
@@ -41,7 +36,6 @@ def _find_wkhtmltopdf() -> str:
         if p.exists():
             return str(p.resolve())
 
-    # 4) PATH lookup
     found = shutil.which("wkhtmltopdf")
     if found:
         return str(Path(found).resolve())

@@ -1,3 +1,10 @@
+/**
+ * Displays the SOC logs page with searchable and filterable audit log records,
+ * including outcome, event type, and HTTP method filters, plus timed refresh of
+ * the latest SOC log data. This page fetches SOC log rows from the dashboard API
+ * and renders an in-page searchable audit table with inline status styling.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 

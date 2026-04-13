@@ -22,20 +22,16 @@ function AppContent() {
   const [currentLayer, setCurrentLayer] = useState('occupancy');
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // The 4 Modes: 'live', 'history', 'sandbox', 'forecast'
   const [simMode, setSimMode] = useState('live');
   const [timeIndex, setTimeIndex] = useState(12);
   const [forecastHours, setForecastHours] = useState(1);
 
-  // Pulling the new data engine (forecast branch built into useTelemetry)
   const { telemetryData, injectData, activeAnomalies } = useTelemetry(simMode, timeIndex, forecastHours);
 
-  // IoT device telemetry (live status per device)
   const { deviceTelemetry } = useDeviceTelemetry(simMode === 'live');
 
   return (
     <div className="app">
-      {/* GLOBAL ANOMALY ALERT BANNER */}
       {activeAnomalies && activeAnomalies.length > 0 && (
         <div style={{
           position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)',

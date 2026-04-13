@@ -1,3 +1,11 @@
+/**
+ * Renders the Digital Twin hall layout editor with pan and zoom controls,
+ * hall selection, move and vertex edit modes, geometry editing for rectangle
+ * and polygon halls, SVG import, and layout export. This component uses hall
+ * editor state from HallsContext together with hallsLayout helpers and svgParser
+ * utilities to update, reshape, and manage hall geometry interactively.
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useHalls } from '../context/HallsContext';
 import { isPolygonHall, getRectBounds, getHallCenter } from '../data/hallsLayout';
@@ -32,7 +40,6 @@ function HallEditor({ onClose }) {
 
   const selectedHall = halls.find(h => h.id === selectedHallId);
 
-  // Calculate canvas bounds
   const allBounds = halls.map(h => getRectBounds(h));
   const allX = allBounds.map(b => b.x);
   const allY = allBounds.map(b => b.y);
@@ -54,7 +61,6 @@ function HallEditor({ onClose }) {
   const offsetX = (canvasWidth - layoutWidth * scale) / 2 - minX * scale;
   const offsetY = (canvasHeight - layoutHeight * scale) / 2 - minY * scale;
 
-  // ESC key handler
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -75,27 +81,23 @@ function HallEditor({ onClose }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedHallId, selectedVertexIndex, editMode, onClose, setEditMode, removeVertex, setSelectedVertexIndex]);
 
-  // Reset selectedVertexIndex when leaving vertex mode
   useEffect(() => {
     if (editMode !== 'vertex') {
       setSelectedVertexIndex(null);
     }
   }, [editMode, setSelectedVertexIndex]);
 
-  // Fit all halls on mount
   useEffect(() => {
     if (halls.length > 0) {
       handleFitAll();
     }
-  }, []); // Empty dependency - only run on mount
+  }, []);
 
-  // Mouse wheel zoom handler
   const handleWheel = (e) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     const newZoom = Math.max(0.1, Math.min(4, zoom * delta));
     
-    // Zoom towards mouse position
     if (svgRef.current) {
       const rect = svgRef.current.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
@@ -113,7 +115,6 @@ function HallEditor({ onClose }) {
     setZoom(newZoom);
   };
 
-  // Background pan handler
   const handleCanvasMouseDown = (e) => {
     if (e.target.tagName === 'svg' || e.target.classList.contains('grid-background')) {
       setIsPanning(true);
@@ -121,7 +122,7 @@ function HallEditor({ onClose }) {
     }
   };
 
-  // Fit all halls in view
+
   const handleFitAll = () => {
     const allBounds = halls.map(h => getRectBounds(h));
     const allX = allBounds.map(b => b.x);
@@ -148,7 +149,6 @@ function HallEditor({ onClose }) {
     });
   };
 
-  // Mouse handlers
   const handleMouseDown = (e, hall, type, index) => {
     e.stopPropagation();
     setSelectedHallId(hall.id);
@@ -157,14 +157,12 @@ function HallEditor({ onClose }) {
       setDragState({ type: 'vertex', hallId: hall.id, vertexIndex: index });
       setSelectedVertexIndex(index);
     } else if (type === 'edge' && editMode === 'vertex') {
-      // Get proper SVG coordinates for midpoint addition
       if (svgRef.current) {
         const svgPoint = svgRef.current.createSVGPoint();
         svgPoint.x = e.clientX;
         svgPoint.y = e.clientY;
         const transformed = svgPoint.matrixTransform(svgRef.current.getScreenCTM().inverse());
         
-        // Convert from canvas space to world space
         const worldX = (transformed.x - panOffset.x) / zoom;
         const worldY = (transformed.y - panOffset.y) / zoom;
         
@@ -201,7 +199,6 @@ function HallEditor({ onClose }) {
         let newX = vertex[0] + dx;
         let newY = vertex[1] + dy;
 
-        // Snap to grid if Shift is pressed
         if (e.shiftKey) {
           const gridSize = 10;
           newX = Math.round(newX / gridSize) * gridSize;

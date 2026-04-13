@@ -12,17 +12,15 @@ export default function FlowArrow({ from, to, color = '#10b981' }) {
   const pulseRef = useRef();
   const tRef = useRef(0);
 
-  // Build a quadratic bezier arc: from → midpoint (raised) → to
   const { tubeGeo, curve, conePosition, coneQuat } = useMemo(() => {
     const a = new THREE.Vector3(...from);
     const b = new THREE.Vector3(...to);
     const mid = a.clone().lerp(b, 0.5);
-    mid.y += 2; // arc above floor
+    mid.y += 2;
 
     const c = new THREE.QuadraticBezierCurve3(a, mid, b);
     const geo = new THREE.TubeGeometry(c, TUBE_SEGMENTS, TUBE_RADIUS, 8, false);
 
-    // Arrowhead orientation at t=1
     const endPt = c.getPoint(1);
     const tangent = c.getTangent(1).normalize();
     const quat = new THREE.Quaternion();
@@ -34,7 +32,6 @@ export default function FlowArrow({ from, to, color = '#10b981' }) {
   const coneGeo = useMemo(() => new THREE.ConeGeometry(CONE_RADIUS, CONE_HEIGHT, 8), []);
   const pulseGeo = useMemo(() => new THREE.SphereGeometry(PULSE_RADIUS, 8, 8), []);
 
-  // Animate pulse sphere sliding along the curve
   useFrame((_, delta) => {
     tRef.current = (tRef.current + delta * 0.4) % 1;
     if (pulseRef.current) {

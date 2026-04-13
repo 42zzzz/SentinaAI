@@ -11,8 +11,6 @@ const ARRIVE_THRESHOLD = 0.05;
 
 function HallFocusCamera() {
   const { selectedHallId } = useHalls();
-  // useThree().controls is set by OrbitControls makeDefault — guaranteed available
-  // before any useEffect runs, unlike a forwarded ref which may be null on first effect.
   const { camera, controls } = useThree();
 
   const centerX = (DWTC_OUTLINE.minX + DWTC_OUTLINE.maxX) / 2;
@@ -24,7 +22,6 @@ function HallFocusCamera() {
     animating: false,
   });
 
-  // Cancel animation the moment the user starts orbiting/zooming.
   useEffect(() => {
     if (!controls) return;
     const stopAnimation = () => { state.current.animating = false; };

@@ -1,3 +1,11 @@
+/**
+ * Displays the SOC dashboard page with security KPI cards, alert trend and device
+ * status panels, recent critical alert activity, hotspot zone summaries, and
+ * quick navigation actions. This page fetches SOC overview data from the dashboard
+ * API, uses dashboard refresh settings utilities, and composes AlertsTrendPanel
+ * and DeviceStatusBars for live monitoring widgets.
+ */
+
 import "./DashboardPage.css";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";

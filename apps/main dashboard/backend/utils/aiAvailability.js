@@ -1,3 +1,9 @@
+/**
+ * Provides backend AI availability checks and non-security mode control by
+ * resolving the AI service base URL, checking health status, and determining
+ * whether AI-primary processing should run or fallback behavior should apply.
+ */
+
 const fetchFn = typeof fetch === "function" ? fetch : require("node-fetch");
 
 function getAiBaseUrl() {

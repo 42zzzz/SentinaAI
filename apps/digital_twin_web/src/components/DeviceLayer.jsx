@@ -1,10 +1,17 @@
+/**
+ * Renders the Digital Twin device layer by grouping devices by hall, filtering
+ * them by the current zone view, and switching between individual device markers
+ * and hall-level count badges based on camera distance and selected hall state.
+ * This component uses React Three Fiber frame updates together with DeviceMarker,
+ * HallCountBadge, and hall layout metadata for LOD behavior.
+ */
+
 import React, { useState, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import DeviceMarker from './DeviceMarker';
 import HallCountBadge from './HallCountBadge';
 import { HALLS_LAYOUT } from '../data/hallsLayout';
 
-// Build a quick lookup: hallId → zone, so we can filter by currentView
 const HALL_ZONE_MAP = {};
 HALLS_LAYOUT.forEach(h => { HALL_ZONE_MAP[h.id] = (h.zone || '').toLowerCase(); });
 
@@ -18,7 +25,6 @@ function DeviceLayer({ devices, selectedHallId, currentView, deviceTelemetry }) 
 
   useFrame(({ camera }) => {
     const d = camera.position.length();
-    // Only trigger a re-render when crossing either threshold boundary.
     const crossed =
       (d > LOD_THRESHOLD)          !== (prevDist.current > LOD_THRESHOLD) ||
       (d > LOD_THRESHOLD_SELECTED) !== (prevDist.current > LOD_THRESHOLD_SELECTED);

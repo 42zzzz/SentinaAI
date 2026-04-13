@@ -1,3 +1,11 @@
+/**
+ * Displays the exhibitor analytics page using shared exhibitor dashboard context,
+ * including engagement trends, competitive density trends, hall rankings, linked
+ * event summaries, and quick runtime insights. This page reads shared data and
+ * formatting helpers from Outlet context and composes Sparkline and InfoTooltip
+ * components for analytics display.
+ */
+
 import { useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import Sparkline from "../components/Sparkline";

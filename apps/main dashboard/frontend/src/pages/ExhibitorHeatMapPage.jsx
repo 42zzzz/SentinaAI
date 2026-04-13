@@ -1,3 +1,10 @@
+/**
+ * Displays the exhibitor heat map page using shared exhibitor outlet context,
+ * including hall heat snapshots, time-bucket heat map tables, and the current
+ * engagement legend. This page reads shared heat map data, hall summaries,
+ * heat color scaling, and metric formatting helpers from Outlet context.
+ */
+
 import { useOutletContext } from "react-router-dom";
 
 export default function ExhibitorHeatMapPage() {

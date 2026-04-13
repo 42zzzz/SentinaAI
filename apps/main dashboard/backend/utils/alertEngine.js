@@ -1,3 +1,11 @@
+/**
+ * Runs the backend security rule engine by loading enabled security rules,
+ * evaluating security event tables against rule thresholds, applying cooldown
+ * checks, and writing triggered alerts through the unified alert writer.
+ * This service uses core and security database connections and supports
+ * auth, integrity, identity, edge status, and heartbeat security rules.
+ */
+
 const coreDb = require("../dbs/core.db");
 const securityDb = require("../dbs/security.db");
 const { upsertAlert } = require("./unifiedAlertWriter");

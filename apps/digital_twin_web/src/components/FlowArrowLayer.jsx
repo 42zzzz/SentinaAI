@@ -3,8 +3,8 @@ import FlowArrow from './FlowArrow';
 import { useHalls } from '../context/HallsContext';
 import { getHallWorldPosition } from '../data/hallsLayout';
 
-const ARROW_Y = 0.5; // just above the floor plane
-const TARGET_COUNT = 3; // redirect to 3 lowest-occupancy halls
+const ARROW_Y = 0.5;
+const TARGET_COUNT = 3;
 
 function findTelemetry(hall, telemetryData) {
   if (!telemetryData) return {};
@@ -26,7 +26,6 @@ export default function FlowArrowLayer({ telemetryData, currentLayer }) {
     for (const srcHall of anomalousHalls) {
       const srcPos = getHallWorldPosition(srcHall);
 
-      // Find low-occupancy targets: prefer same zone, fall back to all halls
       const sameZone = halls.filter(h => h.zone === srcHall.zone && h.id !== srcHall.id);
       const pool = sameZone.length >= TARGET_COUNT ? sameZone : halls.filter(h => h.id !== srcHall.id);
 

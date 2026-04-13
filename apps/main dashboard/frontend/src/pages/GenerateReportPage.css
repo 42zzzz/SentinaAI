@@ -379,7 +379,6 @@
   min-height: 260px;
 }
 
-/* ---- Exhibitor Generate Report only: slightly more breathing room ---- */
 .exhibitorReportPage .generateReportGrid {
   grid-template-columns: 1.08fr 1fr 0.82fr;
   gap: 30px;
@@ -423,7 +422,6 @@
   }
 }
 
-/* ---- Operations Generate Report only: pink theme + a bit more column spacing ---- */
 .operationsReportPage .generateReportGrid {
   gap: 32px;
 }
@@ -470,7 +468,6 @@
   }
 }
 
-/* ---- Exhibitor Generate Report only: more space between columns ---- */
 .exhibitorReportPage .generateReportGrid {
   grid-template-columns: 1.08fr 1fr 0.82fr;
   gap: 30px;

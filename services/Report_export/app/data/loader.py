@@ -29,7 +29,6 @@ NUMERIC_COLUMNS = [
     "energyEfficiencyScore",
     "xCoord",
     "yCoord",
-    # snake_case fallbacks
     "day_of_week",
     "hall_capacity",
     "current_occupancy",
@@ -59,7 +58,6 @@ BOOLEAN_COLUMNS = [
     "isOvercrowded",
     "isQueue",
     "isWeekend",
-    # snake_case fallbacks
     "is_holiday",
     "is_event",
     "is_overcrowded",

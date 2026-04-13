@@ -80,9 +80,6 @@ class OperationsAnalyticsService:
         latest_ts = filtered["timestamp"].max()
         return filtered[filtered["timestamp"] == latest_ts].copy()
 
-    # -----------------------------
-    # Occupancy Summary
-    # -----------------------------
     def live_overview(self, payload: FilterPayload) -> Dict[str, Any]:
         snap = self._latest_snapshot(payload)
 
@@ -145,9 +142,6 @@ class OperationsAnalyticsService:
     def occupancy_summary(self, payload: FilterPayload) -> Dict[str, Any]:
         return self.live_overview(payload)
 
-    # -----------------------------
-    # Occupancy cards (legacy)
-    # -----------------------------
     def venue_occupancy(self, payload: FilterPayload) -> Dict[str, Any]:
         snap = self._latest_snapshot(payload)
         rows = []
@@ -171,9 +165,6 @@ class OperationsAnalyticsService:
             "highlight": selected,
         }
 
-    # -----------------------------
-    # Hall Performance
-    # -----------------------------
     def top_busiest_halls(self, payload: FilterPayload) -> Dict[str, Any]:
         snap = self._latest_snapshot(payload)
         ranked = snap.sort_values(["occupancyRatio", "currentOccupancy"], ascending=False).head(payload.limit)
@@ -195,9 +186,6 @@ class OperationsAnalyticsService:
     def hall_performance(self, payload: FilterPayload) -> Dict[str, Any]:
         return self.top_busiest_halls(payload)
 
-    # -----------------------------
-    # Crowd issue helpers
-    # -----------------------------
     def overcrowded_areas(self, payload: FilterPayload) -> Dict[str, Any]:
         snap = self._latest_snapshot(payload)
         filtered = snap[snap["isOvercrowded"]].copy()
@@ -253,9 +241,6 @@ class OperationsAnalyticsService:
 
         return {"rows": rows}
 
-    # -----------------------------
-    # Crowd Movement
-    # -----------------------------
     def crowd_movement(self, payload: FilterPayload) -> Dict[str, Any]:
         filtered = self.filter_df(payload)
 
@@ -348,7 +333,7 @@ class OperationsAnalyticsService:
 
         hall_group = df[group_cols + agg_cols].copy()
         hall_group = hall_group.groupby(group_cols, dropna=False, as_index=False).agg(agg_map)
-        hall_group = df[group_cols + agg_cols].copy()  # type: ignore[index]
+        hall_group = df[group_cols + agg_cols].copy()
         rows = [
             {
                 "hall_id": row["hallId"],
@@ -379,9 +364,6 @@ class OperationsAnalyticsService:
             "rows": rows,
         }
 
-    # -----------------------------
-    # Event Performance
-    # -----------------------------
     def event_wise_breakdown(self, payload: FilterPayload) -> Dict[str, Any]:
         filtered = self.filter_df(payload)
 
@@ -437,9 +419,6 @@ class OperationsAnalyticsService:
             "rows": breakdown.get("rows", []),
         }
 
-    # -----------------------------
-    # Time Comparison
-    # -----------------------------
     def compare_periods(self, payload: FilterPayload) -> Dict[str, Any]:
         current = self.filter_df(payload)
         current_value = current["currentOccupancy"].mean() if not current.empty else 0
@@ -481,9 +460,6 @@ class OperationsAnalyticsService:
     def time_comparison(self, payload: FilterPayload) -> Dict[str, Any]:
         return self.compare_periods(payload)
 
-    # -----------------------------
-    # Peak period helper
-    # -----------------------------
     def peak_time_detection(self, payload: FilterPayload) -> Dict[str, Any]:
         filtered = self.filter_df(payload)
         if filtered.empty:
@@ -494,16 +470,13 @@ class OperationsAnalyticsService:
             {"currentOccupancy": "sum"}
         )
 
-        peak_df = peak_df.nlargest(1, "currentOccupancy").reset_index(drop=True)  # pyright: ignore[reportArgumentType]
+        peak_df = peak_df.nlargest(1, "currentOccupancy").reset_index(drop=True)
         peak = peak_df.iloc[0]
 
         return {
             "peak_timestamp": str(peak["timestamp"]),
             "peak_occupancy": int(peak["currentOccupancy"]),
         }
-    # -----------------------------
-    # Trends
-    # -----------------------------
     def trends(self, payload: FilterPayload) -> Dict[str, Any]:
         filtered = self.filter_df(payload)
 
@@ -567,8 +540,8 @@ class OperationsAnalyticsService:
             series = group["occupancyRatio"].mean().reset_index(name="value")
             title = "Occupancy trend"
 
-        peak_series = series.nlargest(1, "value")  # pyright: ignore[reportArgumentType]
-        low_series = series.nsmallest(1, "value")  # pyright: ignore[reportArgumentType]
+        peak_series = series.nlargest(1, "value")
+        low_series = series.nsmallest(1, "value")
 
         peak_row = peak_series.iloc[0]
         low_row = low_series.iloc[0]

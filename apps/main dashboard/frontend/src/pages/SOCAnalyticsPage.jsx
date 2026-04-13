@@ -1,3 +1,10 @@
+/**
+ * Displays the login page with email and password authentication, optional MFA
+ * verification, session storage setup, login flash messaging, and role-based
+ * navigation after successful sign-in. This page uses the auth login API,
+ * React Router navigation, and Login.css styling for the login flow.
+ */
+
 import { useEffect, useState } from "react";
 import axios from "axios";
 

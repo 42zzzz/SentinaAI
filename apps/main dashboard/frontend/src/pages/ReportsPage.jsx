@@ -1,3 +1,11 @@
+/**
+ * Displays the reports page with searchable, filterable, and paginated report
+ * listings across dashboard domains, including draft generation, draft editing,
+ * downloading, previewing, deleting, and success toast feedback. This page uses
+ * report API helpers, route-based domain config from reportConfig, React Router
+ * navigation, and the MultiSelectPill component for status filtering.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import MultiSelectPill from "../components/MultiSelectPill";

@@ -1,4 +1,3 @@
-# Section display names
 SECTION_LABELS = {
     "booth_profile": "Exhibitor Profile",
     "traffic_overview": "Booth Traffic Overview",

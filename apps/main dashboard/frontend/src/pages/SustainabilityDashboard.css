@@ -2,7 +2,6 @@
   --sust-accent:#00802B;
   --spark-accent: #00802B;
 
-  /* optional helpers */
   --sust-accent-soft: rgba(0,128,43,.15);
   --sust-accent-border: rgba(0,128,43,.25);
 
@@ -241,7 +240,6 @@
   padding-top:24px;
 }
 
-/* subtle hover interaction */
 
 .sustTheme .card:hover{
   transform:translateY(-2px);

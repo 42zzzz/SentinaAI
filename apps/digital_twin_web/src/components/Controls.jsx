@@ -1,3 +1,11 @@
+/**
+ * Renders the Digital Twin control panel for zone views, simulation modes,
+ * playback controls, manual data injection, forecast horizon settings, layer
+ * selection, snapshot export, and theme switching. This component uses shared
+ * theme context, manages UI state for live, history, simulator, and forecast
+ * modes, and triggers callbacks that control the Digital Twin scene behavior.
+ */
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 

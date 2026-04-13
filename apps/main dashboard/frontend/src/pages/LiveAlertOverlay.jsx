@@ -1,3 +1,11 @@
+/**
+ * Displays and manages live alert popups for operations, sustainability, and SOC
+ * sections by polling the alerts API, queueing unseen alerts, persisting seen and
+ * dismissed state in session storage, and routing users to alert detail pages.
+ * This component uses React Router navigation, section-to-domain mappings, and
+ * LiveAlertOverlay.css styling for the modal presentation.
+ */
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -111,7 +119,6 @@ export default function LiveAlertOverlay({ section, pollMs = 2500 }) {
         JSON.stringify(Array.from(dismissedIdsRef.current).slice(-100))
       );
     } catch {
-      // ignore storage failures
     }
   }, [storageKeyBase]);
 
@@ -166,7 +173,6 @@ export default function LiveAlertOverlay({ section, pollMs = 2500 }) {
         persistState();
       }
     } catch {
-      // swallow bootstrap failures; next poll will retry
     } finally {
       if (mountedRef.current) {
         setBootstrapped(true);
@@ -203,7 +209,6 @@ export default function LiveAlertOverlay({ section, pollMs = 2500 }) {
 
       setQueue((currentQueue) => enqueueUnique(currentQueue, unseen));
     } catch {
-      // intentionally quiet to avoid interrupting the dashboard experience
     } finally {
       pollingRef.current = false;
     }

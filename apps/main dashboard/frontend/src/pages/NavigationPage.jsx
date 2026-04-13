@@ -1,4 +1,11 @@
-// frontend/src/pages/NavigationPage.jsx
+/**
+ * Displays the navigation page with room selection, pathfinding controls,
+ * heatmap and crowd-avoidance toggles, and the embedded NavigationMap view.
+ * This page fetches room options from the navigation API, sends pathfinding
+ * requests, applies route-based theme colors, and passes map state into
+ * the NavigationMap component.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import NavigationMap from "../components/NavigationMap.jsx";
@@ -108,7 +115,6 @@ export default function NavigationPage() {
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const options = useMemo(

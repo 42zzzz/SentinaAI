@@ -1,4 +1,12 @@
-﻿import { useParams, useNavigate } from "react-router-dom";
+﻿/**
+ * Displays the sustainability hall details page for a selected hall, including
+ * hall overview data, environmental metrics, sustainability KPIs, and AI-driven
+ * insight such as recommended action and anomaly status. This page uses React
+ * Router params and navigation, fetches hall details from the sustainability API,
+ * and applies SustainabilityHallDetails.css styling for the layout.
+ */
+
+import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import "./SustainabilityHallDetails.css";
@@ -54,7 +62,6 @@ export default function SustainabilityHallDetails() {
 
         <div className="sustPage">
 
-            {/* HEADER */}
 
             <div className="sustHeader">
 
@@ -77,8 +84,6 @@ export default function SustainabilityHallDetails() {
 
             </div>
 
-
-            {/* KPI ROW */}
 
             <div className="kpiRow">
 
@@ -115,8 +120,6 @@ export default function SustainabilityHallDetails() {
             </div>
 
 
-            {/* AI INSIGHT */}
-
             <div className="aiCard">
 
                 <div className="aiHeader">
@@ -149,11 +152,8 @@ export default function SustainabilityHallDetails() {
 
 
 
-            {/* MAIN GRID */}
 
             <div className="contentGrid">
-
-                {/* HALL OVERVIEW */}
 
                 <div className="card">
 
@@ -196,7 +196,6 @@ export default function SustainabilityHallDetails() {
                 </div>
 
 
-                {/* ENVIRONMENT METRICS */}
 
                 <div className="card">
 
@@ -235,7 +234,6 @@ export default function SustainabilityHallDetails() {
             </div>
 
 
-            {/* FOOTER */}
 
             <div className="footer">
 

@@ -1,19 +1,23 @@
+/**
+ * Renders an individual hall mesh in the Digital Twin scene, applying telemetry-
+ * driven coloring, glow intensity, transparency, forecast styling, selection
+ * animation, and hall labeling. This component supports both rectangular and
+ * polygon hall geometry using hallsLayout metadata, matches hall telemetry data,
+ * and uses React Three Fiber, Three.js geometry, and Drei Text/Html overlays
+ * for interactive 3D hall rendering.
+ */
+
 import React, { useState, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Text, Html } from '@react-three/drei';
 import { SCALE, HALL_HEIGHT, isPolygonHall } from '../data/hallsLayout';
 
-// 🔥 THE UNIVERSAL TRANSLATOR 🔥
-// This forces the Live API, the Sandbox, and the 3D map to all share data perfectly
 const findMatchingTelemetry = (hall, telemetryData) => {
   if (!telemetryData || Object.keys(telemetryData).length === 0) return {};
-
-  // 1. Try a direct exact match first
   if (telemetryData[hall.id]) return telemetryData[hall.id];
   if (telemetryData[hall.telemetryId]) return telemetryData[hall.telemetryId];
 
-  // 2. Strip formatting (turns "Central_Hall_3" and "Hall3" both into "hall3")
   const normId = String(hall.id).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
   const normTel = String(hall.telemetryId).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
@@ -24,7 +28,6 @@ const findMatchingTelemetry = (hall, telemetryData) => {
       return telemetryData[key];
     }
 
-    // 3. Fix the "Central Hall" prefix bug (if API says "centralhall3" but map says "hall3")
     if (hall.zone && hall.zone.toLowerCase() === 'central') {
       if (normKey === `central${normId}`) return telemetryData[key];
     }
@@ -36,7 +39,6 @@ const findMatchingTelemetry = (hall, telemetryData) => {
 function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView, isSelected, anyHallSelected, currentLayer = 'occupancy', simMode }) {
   const [hovered, setHovered] = useState(false);
 
-  // 🔥 Use the new smart matcher to grab the data!
   const data = findMatchingTelemetry(hall, telemetryData);
 
   let blockColor = '#4ade80';
@@ -69,7 +71,7 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
   } else if (currentLayer === 'sustainability') {
     const co2Footprint = data.co2 || 400;
     if (co2Footprint > 800) {
-      blockColor = '#2563eb'; // HVAC Active — blue tint
+      blockColor = '#2563eb';
       glowIntensity = 0.4;
     } else if (co2Footprint < 500) { blockColor = '#22c55e'; glowIntensity = 0.1; }
     else if (co2Footprint < 700) { blockColor = '#94a3b8'; glowIntensity = 0.1; }
@@ -82,10 +84,6 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
     glowIntensity = 0.6;
   }
 
-  // Transparency logic:
-  //   selected hall → semi-transparent so devices inside show through
-  //   other halls when something IS selected → slightly faded back
-  //   default (nothing selected) → fully opaque
   const isTransparent = isSelected || anyHallSelected;
   const opacity = isSelected ? 0.35 : anyHallSelected ? 0.55 : 1.0;
 
@@ -124,7 +122,6 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
   const targetY = isSelected ? basePosition[1] + 2 : basePosition[1];
   const isForecast = simMode === 'forecast' && data.isForecast;
 
-  // Edges geometry for forecast dashed outline
   const edgesGeo = useMemo(() => {
     if (!isForecast) return null;
     return new THREE.EdgesGeometry(geometry);
@@ -137,7 +134,6 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
       targetY,
       0.1
     );
-    // Forecast pulsing opacity
     if (isForecast && meshRef.current) {
       const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.003);
       meshRef.current.material.opacity = 0.4 + pulse * 0.4;
@@ -150,7 +146,6 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
 
   return (
     <group position={[basePosition[0], 0, basePosition[2]]} rotation={rotation}>
-      {/* Animated mesh group — only this rises on hover/select */}
       <group ref={groupRef} position={[0, basePosition[1], 0]}>
         <mesh
           ref={meshRef}
@@ -173,7 +168,6 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
             depthWrite={!(isTransparent || isForecast)}
           />
         </mesh>
-        {/* Forecast dashed outline */}
         {isForecast && edgesGeo && (
           <lineSegments geometry={edgesGeo}>
             <lineDashedMaterial color="#f59e0b" dashSize={0.4} gapSize={0.25} linewidth={1} />
@@ -181,7 +175,6 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
         )}
       </group>
 
-      {/* Label pinned at fixed world Y — never moves with the pop animation */}
       <Text
         position={[0, HALL_HEIGHT + 0.2, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
@@ -197,7 +190,6 @@ function HallMesh({ hall, centerX, centerY, onClick, telemetryData, currentView,
         {hall.id.replace(/hall/i, ' HALL ').toUpperCase()}
       </Text>
 
-      {/* 🔥 THE IOT SECURITY BEACON 🔥 */}
       {data.isAnomaly && currentLayer === 'aiAction' && (
         <Html
           position={[0, HALL_HEIGHT + 3, 0]}
