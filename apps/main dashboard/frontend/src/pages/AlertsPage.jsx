@@ -112,8 +112,8 @@ export default function AlertsPage() {
   const settingsSection = isSustainability
     ? "sustainability"
     : isExhibitor
-      ? "exhibitor"
-      : "operations";
+    ? "exhibitor"
+    : "operations";
 
   const dashboardSettings = useDashboardSettings(settingsSection);
   const refreshMs = getDashboardRefreshMs(dashboardSettings);
@@ -121,10 +121,10 @@ export default function AlertsPage() {
   const domain = isSustainability
     ? "SUSTAINABILITY"
     : isSoc
-      ? "SECURITY"
-      : isExhibitor
-        ? "EXHIBITOR"
-        : "OPERATIONS";
+    ? "SECURITY"
+    : isExhibitor
+    ? "EXHIBITOR"
+    : "OPERATIONS";
 
   const themeClass = isSustainability ? "sustTheme" : "opsTheme";
 
@@ -243,15 +243,9 @@ export default function AlertsPage() {
 
   const ack = async (alertId) => {
     try {
-      const res = await axios.patch(
-        `${API_BASE}/alerts/${alertId}/ack`,
-        {
-          user_id: localStorage.getItem("user_id") || null,
-        },
-        {
-          params: { domain },
-        }
-      );
+      const res = await axios.patch(`${API_BASE}/alerts/${alertId}/ack`, {
+        user_id: localStorage.getItem("user_id") || null,
+      });
 
       const updated = res.data?.alert;
       if (updated) {
@@ -259,11 +253,11 @@ export default function AlertsPage() {
           prev.map((r) =>
             r.alert_id === alertId
               ? {
-                ...r,
-                status: updated.status,
-                acknowledged_by: updated.acknowledged_by,
-                acknowledged_at: updated.acknowledged_at,
-              }
+                  ...r,
+                  status: updated.status,
+                  acknowledged_by: updated.acknowledged_by,
+                  acknowledged_at: updated.acknowledged_at,
+                }
               : r
           )
         );
@@ -275,23 +269,12 @@ export default function AlertsPage() {
 
   const resolve = async (alertId) => {
     try {
-      const res = await axios.patch(
-        `${API_BASE}/alerts/${alertId}/resolve`,
-        {},
-        {
-          params: { domain },
-        }
-      );
-
+      const res = await axios.patch(`${API_BASE}/alerts/${alertId}/resolve`);
       const updated = res.data?.alert;
-      
+
       if (updated) {
         setRows((prev) =>
-          prev.map((r) =>
-            r.alert_id === alertId
-              ? { ...r, status: updated.status, resolved_at: updated.resolved_at }
-              : r
-          )
+          prev.map((r) => (r.alert_id === alertId ? { ...r, status: updated.status, resolved_at: updated.resolved_at } : r))
         );
       }
     } catch (e) {
@@ -502,10 +485,10 @@ export default function AlertsPage() {
                               const basePath = isSustainability
                                 ? "sustainability"
                                 : isSoc
-                                  ? "soc"
-                                  : isExhibitor
-                                    ? "exhibitor"
-                                    : "operations";
+                                ? "soc"
+                                : isExhibitor
+                                ? "exhibitor"
+                                : "operations";
 
                               navigate(`/${basePath}/alerts/${r.alert_id}`);
                             }}
@@ -521,7 +504,7 @@ export default function AlertsPage() {
                                 {String(r.status || "").toLowerCase()}
                               </span>
                             </td>
-                            <td className="tdStrong">{r.rule_name || r.rule_key}</td>
+                            <td className={isExhibitor ? "tdStrong" : "tdStrong tdRuleClickable"}>{r.rule_name || r.rule_key}</td>
 
                             <td className="tdMono">{r.zone_id || "-"}</td>
                             <td className="tdMono">{r.hall_id || "-"}</td>
@@ -542,8 +525,9 @@ export default function AlertsPage() {
                                 <button
                                   disabled={r.status === "RESOLVED" || r.status === "CLOSED"}
                                   onClick={() => resolve(r.alert_id)}
-                                  className={`alertsTinyBtn ${r.status === "RESOLVED" || r.status === "CLOSED" ? "isDisabled" : ""
-                                    }`}
+                                  className={`alertsTinyBtn ${
+                                    r.status === "RESOLVED" || r.status === "CLOSED" ? "isDisabled" : ""
+                                  }`}
                                 >
                                   Resolve
                                 </button>
