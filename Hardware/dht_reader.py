@@ -1,3 +1,10 @@
+"""
+Handles DHT22 sensor readings for temperature and humidity.
+
+This file sets up the sensor connection and provides a function that returns
+rounded temperature and humidity values. If the sensor data is unavailable or
+the read fails, the function returns (None, None).
+"""
 import board
 import adafruit_dht
 

@@ -1,16 +1,21 @@
+"""
+Handles camera setup, frame capture, and people detection using YOLO on the Raspberry Pi.
+
+This file initializes the Pi camera, captures frames, and runs person detection
+using a lightweight YOLO model. It applies basic smoothing to reduce jumpy count
+changes and returns both the raw count and smoothed count with an annotated frame.
+"""
+
 import cv2
 import time
 from collections import deque
 from ultralytics import YOLO
 from picamera2 import Picamera2
 
-# Lightweight YOLO model for Raspberry Pi
 model = YOLO("yolov8n.pt")
 
-# Smoothing for less jumpy count output
 recent_counts = deque(maxlen=6)
 
-# Performance tuning
 CAMERA_WIDTH = 640
 CAMERA_HEIGHT = 480
 DETECT_WIDTH = 320

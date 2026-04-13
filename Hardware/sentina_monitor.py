@@ -1,3 +1,13 @@
+"""
+Runs the Raspberry Pi hall monitoring workflow for people counting, environmental
+reading, CSV logging, and database upload.
+
+This file coordinates the camera feed, YOLO-based people detection, DHT22 sensor
+reading, local CSV storage, and analytics database upload for the test hall. It
+also displays the live monitoring window with hall, count, temperature, and
+humidity information.
+"""
+
 import csv
 import time
 from datetime import datetime
@@ -9,7 +19,6 @@ from dht_reader import get_dht_reading
 from init_csv import ensure_csv_exists
 from db_uploader import upload_interval_metrics
 
-# Test Hall metadata
 HALL_ID = "HT01"
 HALL_NAME = "Test Hall"
 ZONE_ID = "zoneT"

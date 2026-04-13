@@ -1,3 +1,11 @@
+"""
+Handles creation of the local CSV file used to store hall monitoring data.
+
+This file checks whether the CSV file already exists and, if needed, creates it
+with the required column headers for timestamps, hall details, device IDs,
+people counts, temperature, and humidity readings.
+"""
+
 import csv
 import os
 

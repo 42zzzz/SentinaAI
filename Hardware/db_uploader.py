@@ -1,9 +1,16 @@
+"""
+Handles uploading processed hall analytics data to the interval_metrics table.
+
+This file builds a complete analytics record from basic hall inputs such as
+timestamp, people count, temperature, and humidity. It calculates occupancy,
+comfort, congestion, energy, carbon, and sustainability values, then inserts
+the final result into the PostgreSQL analytics database.
+"""
+
 import psycopg2
 from datetime import datetime
 import json
 import math
-
-# ---- HARD-CODED DB CONNECTION FOR PROJECT USE ----
 DB_HOST = "34.18.41.72"
 DB_PORT = 5432
 DB_NAME = "sentina_analytics"
@@ -15,8 +22,6 @@ HALL_CAPACITY = 4
 THRESHOLD = 3
 VENUE_ROLE = "testHall"
 NODE_ID = "EDGEHT01"
-
-# Optional fixed coordinates for the test hall
 X_COORD = 10.0
 Y_COORD = 10.0
 
