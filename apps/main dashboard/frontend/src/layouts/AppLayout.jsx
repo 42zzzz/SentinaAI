@@ -22,7 +22,6 @@ const HELP_GUIDE_PATHS = {
   soc: "/guides/soc-user-guide.pdf",
 };
 
-
 function getSectionFromPath(pathname) {
   if (pathname.startsWith("/sustainability")) return "sustainability";
   if (pathname.startsWith("/operations")) return "operations";
@@ -73,6 +72,18 @@ function getPageTitle(pathname) {
   if (pathname.startsWith("/operations/settings")) return "Settings";
 
   return "SentinaAI";
+}
+
+function formatHeaderClock(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 const iconStyle = {
@@ -265,6 +276,7 @@ export default function AppLayout() {
   const section = getSectionFromPath(pathname);
   const storedRole = localStorage.getItem("role") || sessionStorage.getItem("role") || "operations_manager";
 
+  const [now, setNow] = useState(new Date());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -276,6 +288,11 @@ export default function AppLayout() {
       return false;
     }
   });
+
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 60000);
+    return () => window.clearInterval(t);
+  }, []);
 
   useEffect(() => {
     try {
@@ -769,13 +786,14 @@ export default function AppLayout() {
           <div>
             <div style={styles.pageTitle}>{getPageTitle(pathname)}</div>
             <div style={styles.subTitle}>
-              {isSust
+              {(isSust
                 ? "Sustainability Dashboard"
                 : section === "soc"
                   ? "Security Operations Center"
                   : section === "exhibitor"
                     ? "Exhibitor Portal"
-                    : "Operations Dashboard"}
+                    : "Operations Dashboard")}{" "}
+              | {formatHeaderClock(now)}
             </div>
           </div>
 
@@ -909,6 +927,5 @@ export default function AppLayout() {
         }
       />
     </div>
-
   );
 }

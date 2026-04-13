@@ -345,7 +345,11 @@ export default function GenerateReportPage() {
       } else {
         await generateReport(domain, buildPayload());
       }
-      navigate(config.listPath);
+      navigate(config.listPath, {
+        state: {
+          reportGeneratedToast: "Report has been successfully generated.",
+        },
+      });
     } catch (err) {
       setError(err?.response?.data?.error || err.message || "Failed to generate report.");
     } finally {
