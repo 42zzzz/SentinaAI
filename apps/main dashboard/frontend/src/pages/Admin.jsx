@@ -138,6 +138,324 @@ export default function Admin() {
   const [usersSearch, setUsersSearch] = useState("");
   const [issuesSearch, setIssuesSearch] = useState("");
 
+  const [accountProfile, setAccountProfile] = useState({
+    status: "idle",
+    email:
+      sessionStorage.getItem("email") ||
+      localStorage.getItem("email") ||
+      "superadmin@sentina.ai",
+    full_name:
+      sessionStorage.getItem("full_name") ||
+      localStorage.getItem("full_name") ||
+      "Super Admin",
+    role:
+      sessionStorage.getItem("role") ||
+      localStorage.getItem("role") ||
+      "super_admin",
+    last_active_at:
+      sessionStorage.getItem("last_login") ||
+      localStorage.getItem("last_login") ||
+      null,
+    mfa_enabled: false,
+  });
+
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordState, setPasswordState] = useState({
+    status: "idle",
+    message: "",
+  });
+  const [passwordVisibility, setPasswordVisibility] = useState({
+    newPassword: false,
+    confirmPassword: false,
+  });
+
+  const [mfaModalOpen, setMfaModalOpen] = useState(false);
+  const [mfaState, setMfaState] = useState({
+    status: "idle",
+    message: "",
+    qr: null,
+    secret: null,
+    code: "",
+    enabled: false,
+  });
+
+
+
+
+  const formatLastActivity = (value) => {
+    if (!value) return "Not available";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Not available";
+    return new Intl.DateTimeFormat("en-GB", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(date);
+  };
+
+  const handlePasswordFieldChange = (key, value) => {
+    setPasswordForm((current) => ({
+      ...current,
+      [key]: value,
+    }));
+
+    if (passwordState.status !== "idle") {
+      setPasswordState({ status: "idle", message: "" });
+    }
+  };
+
+  const togglePasswordVisibility = (key) => {
+    setPasswordVisibility((current) => ({
+      ...current,
+      [key]: !current[key],
+    }));
+  };
+
+  const openPasswordModal = () => {
+    setPasswordForm({ newPassword: "", confirmPassword: "" });
+    setPasswordVisibility({ newPassword: false, confirmPassword: false });
+    setPasswordState({ status: "idle", message: "" });
+    setPasswordModalOpen(true);
+  };
+
+  const closePasswordModal = () => {
+    if (passwordState.status === "submitting") return;
+    setPasswordModalOpen(false);
+    setPasswordVisibility({ newPassword: false, confirmPassword: false });
+    setPasswordState({ status: "idle", message: "" });
+  };
+
+  const openMfaModal = async () => {
+    setMfaModalOpen(true);
+    setMfaState({
+      status: "loading",
+      message: "",
+      qr: null,
+      secret: null,
+      code: "",
+      enabled: false,
+    });
+
+    try {
+      const meRes = await fetch(`${API_BASE}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const meData = await meRes.json();
+
+      if (meData?.mfa_enabled) {
+        setMfaState((s) => ({
+          ...s,
+          status: "ready",
+          enabled: true,
+        }));
+        return;
+      }
+
+      const setupRes = await fetch(`${API_BASE}/auth/mfa/setup`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const setupData = await setupRes.json();
+
+      if (!setupRes.ok) {
+        throw new Error(setupData?.error || "Could not load MFA setup");
+      }
+
+      setMfaState((s) => ({
+        ...s,
+        status: "ready",
+        enabled: false,
+        qr: setupData.qr,
+        secret: setupData.secret,
+      }));
+    } catch {
+      setMfaState((s) => ({
+        ...s,
+        status: "error",
+        message: "Could not load MFA setup. Please try again.",
+      }));
+    }
+  };
+
+  const closeMfaModal = () => {
+    if (mfaState.status === "submitting" || mfaState.status === "disabling") return;
+    setMfaModalOpen(false);
+    setMfaState({
+      status: "idle",
+      message: "",
+      qr: null,
+      secret: null,
+      code: "",
+      enabled: false,
+    });
+  };
+
+  const handleMfaVerify = async (e) => {
+    e.preventDefault();
+
+    if (!mfaState.code || mfaState.code.length !== 6) {
+      setMfaState((s) => ({
+        ...s,
+        status: "error",
+        message: "Enter the 6-digit code from your authenticator app.",
+      }));
+      return;
+    }
+
+    setMfaState((s) => ({
+      ...s,
+      status: "submitting",
+      message: "Verifying...",
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/mfa/verify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ totp_code: mfaState.code }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Invalid code. Please try again.");
+      }
+
+      setMfaState((s) => ({
+        ...s,
+        status: "success",
+        message: data.message || "Two-factor authentication enabled.",
+        enabled: true,
+      }));
+
+      fetchAccountProfile();
+    } catch (err) {
+      setMfaState((s) => ({
+        ...s,
+        status: "error",
+        message: err.message || "Invalid code. Please try again.",
+        code: "",
+      }));
+    }
+  };
+
+  const handleMfaDisable = async () => {
+    setMfaState((s) => ({
+      ...s,
+      status: "disabling",
+      message: "Disabling...",
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/mfa/disable`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Could not disable MFA.");
+      }
+
+      const setupRes = await fetch(`${API_BASE}/auth/mfa/setup`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const setupData = await setupRes.json();
+
+      setMfaState((s) => ({
+        ...s,
+        status: "ready",
+        enabled: false,
+        message: "",
+        qr: setupData?.qr || null,
+        secret: setupData?.secret || null,
+        code: "",
+      }));
+
+      fetchAccountProfile();
+    } catch {
+      setMfaState((s) => ({
+        ...s,
+        status: "error",
+        message: "Could not disable MFA. Please try again.",
+      }));
+    }
+  };
+
+  const handlePasswordSubmit = async (event) => {
+    event.preventDefault();
+
+    const { newPassword, confirmPassword } = passwordForm;
+
+    if (!newPassword.trim() || !confirmPassword.trim()) {
+      setPasswordState({
+        status: "error",
+        message: "Please complete both password fields.",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordState({
+        status: "error",
+        message: "New password and confirm password must match.",
+      });
+      return;
+    }
+
+    setPasswordState({
+      status: "submitting",
+      message: "Updating password...",
+    });
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/change-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          newPassword,
+          confirmPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          Array.isArray(data?.error) ? data.error.join(" ") : data?.error || "Could not update password."
+        );
+      }
+
+      setPasswordState({
+        status: "success",
+        message: data?.message || "Password changed successfully.",
+      });
+
+      setPasswordForm({ newPassword: "", confirmPassword: "" });
+      setPasswordVisibility({ newPassword: false, confirmPassword: false });
+
+      window.setTimeout(() => {
+        setPasswordModalOpen(false);
+        setPasswordState({ status: "idle", message: "" });
+      }, 1200);
+    } catch (error) {
+      setPasswordState({
+        status: "error",
+        message: error.message || "Could not update password. Please try again.",
+      });
+    }
+  };
+
+
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -274,6 +592,36 @@ export default function Admin() {
     }
   };
 
+  const fetchAccountProfile = async () => {
+    try {
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) return;
+
+      if (data?.email) sessionStorage.setItem("email", data.email);
+      if (data?.full_name) sessionStorage.setItem("full_name", data.full_name);
+      if (data?.role) sessionStorage.setItem("role", data.role);
+      if (data?.last_active_at) sessionStorage.setItem("last_login", data.last_active_at);
+
+      setAccountProfile({
+        status: "ready",
+        email: data?.email || "superadmin@sentina.ai",
+        full_name: data?.full_name || "Super Admin",
+        role: data?.role || "super_admin",
+        last_active_at: data?.last_active_at || null,
+        mfa_enabled: Boolean(data?.mfa_enabled),
+      });
+    } catch (err) {
+      console.error("Failed to fetch account profile:", err);
+    }
+  };
+
   const fetchAssistantLogs = async () => {
     try {
       if (!token) {
@@ -310,10 +658,31 @@ export default function Admin() {
     fetchUsers();
     fetchRoles();
     fetchAssistantLogs();
+    fetchAccountProfile();
+
+
+
     const logsTimer = setInterval(fetchAssistantLogs, 15000);
     return () => clearInterval(logsTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        if (mfaModalOpen) {
+          closeMfaModal();
+          return;
+        }
+        if (passwordModalOpen) {
+          closePasswordModal();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mfaModalOpen, passwordModalOpen]);
 
   const passwordRules = {
     length: form.password.length >= 12,
@@ -562,6 +931,17 @@ export default function Admin() {
           }}
         >
           Assistant Chat Logs
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSection("settings")}
+          style={{
+            ...styles.sectionTab,
+            ...(activeSection === "settings" ? styles.sectionTabActive : {}),
+          }}
+        >
+          Settings
         </button>
       </div>
 
@@ -817,6 +1197,349 @@ export default function Admin() {
             </table>
           </div>
         </section>
+      )}
+
+      {activeSection === "settings" && (
+        <section style={styles.settingsSection}>
+          <div style={styles.settingsHeaderRow}>
+            <div>
+              <div style={styles.settingsEyebrow}>SUPER ADMIN PREFERENCES</div>
+              <h2 style={styles.settingsTitle}>Dashboard Settings</h2>
+              <p style={styles.settingsSubtitle}>
+                Control admin dashboard behaviour and account session settings.
+              </p>
+            </div>
+          </div>
+
+
+          <div style={styles.settingsGrid}>
+            <div style={styles.settingsCard}>
+              <h3 style={styles.settingsCardTitle}>Account & session</h3>
+              <p style={styles.settingsCardText}>
+                Cloud-linked account details for the current admin session.
+              </p>
+
+              <div style={styles.settingsActionRow}>
+                <button type="button" style={styles.settingsActionBtn} onClick={openPasswordModal}>
+                  Change Password
+                </button>
+                <button type="button" style={styles.settingsActionBtn} onClick={openMfaModal}>
+                  {accountProfile.mfa_enabled ? "Manage Two-Factor Authentication" : "Two-Factor Authentication"}
+                </button>
+              </div>
+
+              <div style={styles.settingsInfoGrid}>
+                <div style={styles.settingsInfoBlock}>
+                  <div style={styles.settingsInfoLabel}>SIGNED IN AS</div>
+                  <div style={styles.settingsReadonlyBox}>
+                    {accountProfile.email || "superadmin@sentina.ai"}
+                  </div>
+                </div>
+
+                <div style={styles.settingsInfoBlock}>
+                  <div style={styles.settingsInfoLabel}>ROLE</div>
+                  <div style={styles.settingsReadonlyBox}>
+                    {formatRole(accountProfile.role || "super_admin")}
+                  </div>
+                </div>
+
+                <div style={styles.settingsInfoBlock}>
+                  <div style={styles.settingsInfoLabel}>LAST ACTIVITY</div>
+                  <div style={styles.settingsReadonlyBox}>
+                    {formatLastActivity(accountProfile.last_active_at)}
+                  </div>
+                </div>
+
+                <div style={styles.settingsInfoBlock}>
+                  <div style={styles.settingsInfoLabel}>SESSION TIMEOUT</div>
+                  <div style={styles.settingsReadonlyBox}>
+                    20 minutes of inactivity
+                  </div>
+                  <div style={styles.settingsHintText}>
+                    After timeout, re-authentication is required.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {passwordModalOpen && (
+        <div
+          style={styles.settingsSubModalOverlay}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closePasswordModal();
+          }}
+        >
+          <div style={styles.settingsSubModal} role="dialog" aria-modal="true">
+            <div style={styles.settingsSubModalHeader}>
+              <div>
+                <div style={styles.settingsEyebrowAdmin}>ACCOUNT SECURITY</div>
+                <h2 style={styles.settingsSubModalTitle}>Change Password</h2>
+                <p style={styles.settingsSubModalText}>
+                  Update your password for the current SentinaAI account.
+                </p>
+              </div>
+              <button
+                type="button"
+                style={styles.settingsModalClose}
+                onClick={closePasswordModal}
+                aria-label="Close change password dialog"
+              >
+                ×
+              </button>
+            </div>
+
+            <form style={styles.settingsSubModalBody} onSubmit={handlePasswordSubmit}>
+              <div style={styles.settingsFieldBlock}>
+                <div style={styles.settingsInfoLabel}>NEW PASSWORD</div>
+                <div style={styles.settingsPasswordInputWrap}>
+                  <input
+                    type={passwordVisibility.newPassword ? "text" : "password"}
+                    style={styles.settingsInputWithAction}
+                    value={passwordForm.newPassword}
+                    onChange={(e) => handlePasswordFieldChange("newPassword", e.target.value)}
+                    placeholder="Enter your new password"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    style={styles.settingsPasswordToggle}
+                    onClick={() => togglePasswordVisibility("newPassword")}
+                  >
+                    {passwordVisibility.newPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </div>
+
+              <div style={styles.settingsFieldBlock}>
+                <div style={styles.settingsInfoLabel}>CONFIRM PASSWORD</div>
+                <div style={styles.settingsPasswordInputWrap}>
+                  <input
+                    type={passwordVisibility.confirmPassword ? "text" : "password"}
+                    style={styles.settingsInputWithAction}
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => handlePasswordFieldChange("confirmPassword", e.target.value)}
+                    placeholder="Re-enter your new password"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    style={styles.settingsPasswordToggle}
+                    onClick={() => togglePasswordVisibility("confirmPassword")}
+                  >
+                    {passwordVisibility.confirmPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </div>
+
+              <div style={styles.settingsPasswordRules}>
+                <div style={styles.settingsInfoLabel}>PASSWORD REQUIREMENTS</div>
+                <ul style={styles.settingsPasswordRulesList}>
+                  <li>At least 12 characters</li>
+                  <li>Include uppercase, lowercase, number, and symbol</li>
+                  <li>Must not include your name or email</li>
+                </ul>
+              </div>
+
+              {passwordState.message ? (
+                <div
+                  style={{
+                    ...styles.settingsPasswordMessage,
+                    ...(passwordState.status === "error"
+                      ? styles.settingsPasswordMessageError
+                      : passwordState.status === "success"
+                        ? styles.settingsPasswordMessageSuccess
+                        : styles.settingsPasswordMessageNeutral),
+                  }}
+                >
+                  {passwordState.message}
+                </div>
+              ) : null}
+
+              <div style={styles.settingsSubModalActions}>
+                <button
+                  type="button"
+                  style={styles.settingsGhostButtonModal}
+                  onClick={closePasswordModal}
+                  disabled={passwordState.status === "submitting"}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={styles.settingsPrimaryButtonAdmin}
+                  disabled={passwordState.status === "submitting"}
+                >
+                  {passwordState.status === "submitting" ? "Saving..." : "Update password"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {mfaModalOpen && (
+        <div
+          style={styles.settingsSubModalOverlay}
+          onMouseDown={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              mfaState.status !== "submitting" &&
+              mfaState.status !== "disabling"
+            ) {
+              closeMfaModal();
+            }
+          }}
+        >
+          <div style={styles.settingsSubModal} role="dialog" aria-modal="true">
+            <div style={styles.settingsSubModalHeader}>
+              <div>
+                <div style={styles.settingsEyebrowPink}>ACCOUNT SECURITY</div>
+                <h2 style={styles.settingsSubModalTitle}>Two-Factor Authentication</h2>
+                <p style={styles.settingsSubModalText}>
+                  {mfaState.enabled
+                    ? "Your account is protected with an authenticator app."
+                    : "Scan the QR code with Google Authenticator or any TOTP app."}
+                </p>
+              </div>
+              <button
+                type="button"
+                style={styles.settingsModalClose}
+                onClick={closeMfaModal}
+                aria-label="Close two-factor authentication dialog"
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={styles.settingsSubModalBody}>
+              {mfaState.status === "loading" && (
+                <div style={styles.settingsInlineStatus}>Loading…</div>
+              )}
+
+              {!mfaState.enabled && mfaState.status !== "loading" && mfaState.qr ? (
+                <form onSubmit={handleMfaVerify}>
+                  <div style={styles.settingsQrWrap}>
+                    <img
+                      src={mfaState.qr}
+                      alt="Scan with your authenticator app"
+                      style={styles.settingsQrImage}
+                    />
+                  </div>
+
+                  <p style={styles.settingsManualKey}>
+                    Manual entry key: <code style={{ userSelect: "all" }}>{mfaState.secret}</code>
+                  </p>
+
+                  <div style={styles.settingsFieldBlock}>
+                    <div style={styles.settingsInfoLabel}>VERIFICATION CODE</div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="000000"
+                      style={styles.settingsMfaCodeInput}
+                      value={mfaState.code}
+                      onChange={(e) =>
+                        setMfaState((s) => ({
+                          ...s,
+                          code: e.target.value.replace(/\D/g, ""),
+                        }))
+                      }
+                      autoFocus
+                      autoComplete="one-time-code"
+                    />
+                  </div>
+
+                  {mfaState.message ? (
+                    <div
+                      style={{
+                        ...styles.settingsPasswordMessage,
+                        ...(mfaState.status === "error"
+                          ? styles.settingsPasswordMessageError
+                          : mfaState.status === "success"
+                            ? styles.settingsPasswordMessageSuccess
+                            : styles.settingsPasswordMessageNeutral),
+                      }}
+                    >
+                      {mfaState.message}
+                    </div>
+                  ) : null}
+
+                  <div style={styles.settingsSubModalActions}>
+                    <button
+                      type="button"
+                      style={styles.settingsGhostButtonModal}
+                      onClick={closeMfaModal}
+                      disabled={mfaState.status === "submitting"}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      style={styles.settingsPrimaryButtonPink}
+                      disabled={mfaState.status === "submitting"}
+                    >
+                      {mfaState.status === "submitting" ? "Verifying..." : "Activate 2FA"}
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+
+              {!mfaState.enabled && mfaState.status === "error" && !mfaState.qr ? (
+                <div style={{ ...styles.settingsPasswordMessage, ...styles.settingsPasswordMessageError }}>
+                  {mfaState.message}
+                </div>
+              ) : null}
+
+              {mfaState.enabled && mfaState.status !== "loading" ? (
+                <div>
+                  <div style={styles.settingsSecuritySummary}>
+                    <div>
+                      <div style={styles.settingsMiniLabel}>STATUS</div>
+                      <strong>Active — authenticator app enrolled</strong>
+                    </div>
+                  </div>
+
+                  {mfaState.message ? (
+                    <div
+                      style={{
+                        ...styles.settingsPasswordMessage,
+                        ...(mfaState.status === "error"
+                          ? styles.settingsPasswordMessageError
+                          : mfaState.status === "success"
+                            ? styles.settingsPasswordMessageSuccess
+                            : styles.settingsPasswordMessageNeutral),
+                      }}
+                    >
+                      {mfaState.message}
+                    </div>
+                  ) : null}
+
+                  <div style={styles.settingsSubModalActions}>
+                    <button
+                      type="button"
+                      style={styles.settingsGhostButtonPinkModal}
+                      onClick={closeMfaModal}
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      style={styles.settingsDangerButton}
+                      onClick={handleMfaDisable}
+                      disabled={mfaState.status === "disabling"}
+                    >
+                      {mfaState.status === "disabling" ? "Disabling..." : "Disable 2FA"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
       )}
 
       {showAddModal && (
@@ -1476,5 +2199,484 @@ const styles = {
     background: "#ffffff",
     outline: "none",
     boxSizing: "border-box",
+  },
+
+  successBanner: {
+    background: "#dcfce7",
+    color: "#166534",
+    border: "1px solid #bbf7d0",
+    padding: "10px 14px",
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+
+  settingsSection: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 20,
+  },
+
+  settingsHeaderRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 20,
+    flexWrap: "wrap",
+  },
+
+  settingsEyebrow: {
+    display: "inline-flex",
+    alignItems: "center",
+    minHeight: 32,
+    padding: "0 14px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 800,
+    letterSpacing: 0.5,
+    color: "#1e3a5d",
+    background: "rgba(30, 58, 93, 0.08)",
+    border: "1px solid rgba(30, 58, 93, 0.14)",
+    marginBottom: 16,
+  },
+
+  settingsTitle: {
+    margin: 0,
+    fontSize: 24,
+    fontWeight: 900,
+    color: "#0f172a",
+  },
+
+  settingsSubtitle: {
+    margin: "8px 0 0",
+    fontSize: 14,
+    color: "#64748b",
+  },
+
+  settingsHeaderActions: {
+    display: "flex",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+
+  settingsGhostBtn: {
+    height: 48,
+    padding: "0 18px",
+    borderRadius: 14,
+    border: "1px solid #d7dee8",
+    background: "#ffffff",
+    color: "#0f172a",
+    fontSize: 14,
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+
+  settingsPrimaryBtn: {
+    height: 48,
+    padding: "0 18px",
+    borderRadius: 14,
+    border: "none",
+    background: "#1e3a5d",
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: 800,
+    cursor: "pointer",
+    boxShadow: "0 10px 24px rgba(30, 58, 93, 0.16)",
+  },
+
+  settingsGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 20,
+  },
+
+  settingsCard: {
+    background: "#ffffff",
+    border: "1px solid #dbe4ee",
+    borderRadius: 18,
+    padding: 20,
+    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.04)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+  },
+
+  settingsCardTitle: {
+    margin: 0,
+    fontSize: 16,
+    fontWeight: 900,
+    color: "#1e3a5d",
+  },
+
+  settingsCardText: {
+    margin: 0,
+    color: "#64748b",
+    fontSize: 13,
+    lineHeight: 1.5,
+  },
+
+  settingsField: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  },
+
+  settingsLabel: {
+    fontSize: 12,
+    fontWeight: 800,
+    letterSpacing: 0.4,
+    color: "#64748b",
+  },
+
+  settingsSelect: {
+    height: 52,
+    borderRadius: 14,
+    border: "1px solid #cbd5e1",
+    padding: "0 16px",
+    background: "#ffffff",
+    fontSize: 15,
+    color: "#0f172a",
+    outline: "none",
+  },
+
+  settingsActionRow: {
+    display: "flex",
+    gap: 12,
+    flexWrap: "wrap",
+    marginTop: 2,
+    marginBottom: 2,
+  },
+
+  settingsInfoGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 14,
+  },
+
+  settingsInfoBlock: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+
+  settingsInfoLabel: {
+    color: "#6b7280",
+    fontSize: 12,
+    fontWeight: 800,
+    textTransform: "uppercase",
+    letterSpacing: "0.02em",
+  },
+
+  settingsActionBtn: {
+    minHeight: 46,
+    padding: "0 16px",
+    borderRadius: 14,
+    border: "1px solid #d1d5db",
+    background: "#ffffff",
+    color: "#1e3a5d",
+    fontSize: 14,
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+
+  settingsHintText: {
+    color: "#64748b",
+    fontSize: 12,
+    lineHeight: 1.45,
+    marginTop: 2,
+  },
+
+  settingsSubModalOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 3100,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    background: "rgba(15, 23, 42, 0.5)",
+    backdropFilter: "blur(4px)",
+  },
+
+  settingsSubModal: {
+    width: "min(560px, calc(100vw - 40px))",
+    maxHeight: "calc(100vh - 40px)",
+    overflowY: "auto",
+    borderRadius: 24,
+    border: "1px solid rgba(255, 255, 255, 0.6)",
+    background: "#f6f7fb",
+    boxShadow: "0 28px 80px rgba(15, 23, 42, 0.28)",
+    color: "#0f172a",
+    padding: "4px 20px 22px",
+  },
+
+  settingsSubModalHeader: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 16,
+    padding: "22px 20px 0",
+    margin: "0 -20px",
+  },
+
+  settingsEyebrowAdmin: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 30,
+    padding: "0 12px",
+    borderRadius: 999,
+    background: "rgba(30, 58, 93, 0.1)",
+    color: "#1e3a5d",
+    fontSize: 12,
+    fontWeight: 800,
+    letterSpacing: "0.02em",
+    textTransform: "uppercase",
+  },
+
+  settingsSubModalTitle: {
+    margin: "14px 0 8px",
+    fontSize: 28,
+    fontWeight: 900,
+    lineHeight: 1.05,
+    letterSpacing: "-0.03em",
+    color: "#0f172a",
+  },
+
+  settingsSubModalText: {
+    maxWidth: 740,
+    margin: 0,
+    color: "#6b7280",
+    fontSize: 15,
+    lineHeight: 1.6,
+  },
+
+  settingsModalClose: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    border: "1px solid #d1d5db",
+    background: "#f9fafb",
+    color: "#111827",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    flexShrink: 0,
+    position: "relative",
+    zIndex: 20,
+    boxShadow: "0 4px 14px rgba(15, 23, 42, 0.08)",
+    fontSize: 22,
+    fontWeight: 900,
+    lineHeight: 1,
+  },
+
+  settingsSubModalBody: {
+    padding: "18px 20px 20px",
+    margin: "0 -20px",
+    display: "flex",
+    flexDirection: "column",
+  },
+
+  settingsFieldBlock: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    minWidth: 0,
+  },
+
+  settingsPasswordInputWrap: {
+    position: "relative",
+  },
+
+  settingsInputWithAction: {
+    width: "100%",
+    boxSizing: "border-box",
+    minHeight: 46,
+    padding: "0 84px 0 14px",
+    borderRadius: 14,
+    border: "1px solid #e5e7eb",
+    fontSize: 14,
+    fontWeight: 700,
+    background: "#fff",
+    color: "#0f172a",
+    outline: "none",
+  },
+
+  settingsPasswordToggle: {
+    position: "absolute",
+    top: "50%",
+    right: 12,
+    transform: "translateY(-50%)",
+    border: 0,
+    background: "transparent",
+    color: "#1e3a5d",
+    fontSize: 13,
+    fontWeight: 800,
+    cursor: "pointer",
+    lineHeight: 1,
+    padding: 0,
+  },
+
+  settingsPasswordRules: {
+    marginTop: 16,
+    padding: "14px 16px",
+    borderRadius: 16,
+    border: "1px solid #d1d5db",
+    background: "#f3f4f6",
+  },
+
+  settingsPasswordRulesList: {
+    margin: "8px 0 0",
+    paddingLeft: 18,
+    color: "#475569",
+    fontSize: 13,
+    lineHeight: 1.6,
+  },
+
+  settingsPasswordMessage: {
+    marginTop: 14,
+    padding: "12px 14px",
+    borderRadius: 14,
+    fontSize: 13,
+    fontWeight: 700,
+    lineHeight: 1.5,
+  },
+
+  settingsPasswordMessageError: {
+    background: "rgba(239, 68, 68, 0.1)",
+    color: "#991b1b",
+    border: "1px solid rgba(239, 68, 68, 0.18)",
+  },
+
+  settingsPasswordMessageSuccess: {
+    background: "rgba(16, 185, 129, 0.12)",
+    color: "#065f46",
+    border: "1px solid rgba(16, 185, 129, 0.2)",
+  },
+
+  settingsPasswordMessageNeutral: {
+    background: "rgba(59, 130, 246, 0.1)",
+    color: "#1d4ed8",
+    border: "1px solid rgba(59, 130, 246, 0.18)",
+  },
+
+  settingsSubModalActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    flexWrap: "wrap",
+    marginTop: 14,
+  },
+
+  settingsGhostButtonModal: {
+    minHeight: 46,
+    padding: "0 16px",
+    borderRadius: 14,
+    fontWeight: 800,
+    fontSize: 14,
+    cursor: "pointer",
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    color: "#0f172a",
+  },
+
+  settingsPrimaryButtonAdmin: {
+    minHeight: 46,
+    padding: "0 16px",
+    borderRadius: 14,
+    fontWeight: 800,
+    fontSize: 14,
+    cursor: "pointer",
+    border: "1px solid #1e3a5d",
+    background: "#1e3a5d",
+    color: "#fff",
+    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.08)",
+  },
+
+  settingsDangerButton: {
+    minHeight: 46,
+    padding: "0 16px",
+    borderRadius: 14,
+    fontWeight: 800,
+    fontSize: 14,
+    cursor: "pointer",
+    border: "1px solid #b91c1c",
+    background: "#b91c1c",
+    color: "#fff",
+  },
+
+  settingsQrWrap: {
+    textAlign: "center",
+    marginBottom: 16,
+  },
+
+  settingsQrImage: {
+    width: 180,
+    height: 180,
+  },
+
+  settingsManualKey: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 12,
+  },
+
+  settingsMfaCodeInput: {
+    width: "100%",
+    boxSizing: "border-box",
+    minHeight: 46,
+    padding: "0 14px",
+    borderRadius: 14,
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    color: "#0f172a",
+    outline: "none",
+    letterSpacing: "0.3em",
+    textAlign: "center",
+    fontSize: 20,
+    fontWeight: 700,
+  },
+
+  settingsInlineStatus: {
+    color: "#6b7280",
+    fontSize: 13,
+    fontWeight: 700,
+  },
+
+  settingsSecuritySummary: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 12,
+  },
+
+  settingsMiniLabel: {
+    color: "#6b7280",
+    fontSize: 12,
+    fontWeight: 800,
+    textTransform: "uppercase",
+    letterSpacing: "0.02em",
+  },
+
+  settingsInfoLabel: {
+    color: "#6b7280",
+    fontSize: 12,
+    fontWeight: 800,
+    textTransform: "uppercase",
+    letterSpacing: "0.02em",
+  },
+
+  settingsReadonlyBox: {
+    width: "100%",
+    boxSizing: "border-box",
+    minHeight: 46,
+    padding: "0 14px",
+    borderRadius: 14,
+    border: "1px solid #d1d5db",
+    background: "#f3f4f6",
+    color: "#6b7280",
+    display: "flex",
+    alignItems: "center",
+    fontSize: 14,
+    fontWeight: 700,
   },
 };
