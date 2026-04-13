@@ -478,6 +478,10 @@ export default function ReportsPage() {
                       const isPdf = normalizedFormat === "PDF";
                       const deleteBusy = busyKey === `delete:${row.report_id}`;
                       const generateBusy = busyKey === `generate:${row.report_id}`;
+                      const canPreview = isPdf;
+                      const previewTitle = canPreview ? "Preview" : "Cannot preview xlsx file";
+                      
+                      
 
                       return (
                         <tr key={row.report_id}>
@@ -485,7 +489,6 @@ export default function ReportsPage() {
                           <td>{row.report_title}</td>
                           <td className="reportsDesc">{row.description}</td>
                           <td>{formatDateTime(row.timestamp)}</td>
-                          <td>{row.report_type}</td>
                           <td>{row.format}</td>
                           <td>
                             <span className="statusTag" style={statusStyle}>{formatReportStatus(row.status)}</span>
@@ -533,17 +536,20 @@ export default function ReportsPage() {
                                   >
                                     <IconDownload />
                                   </button>
-                                  {isPdf ? (
-                                    <button
+                                  <button
                                       type="button"
-                                      className="actionIconBtn"
-                                      title="Preview"
-                                      onClick={() => openReportFile(row.report_id)}
-                                      disabled={deleteBusy}
+                                      className={`actionIconBtn ${canPreview ? "" : "isDisabledPreview"}`}
+                                      title={previewTitle}
+                                      aria-disabled={!canPreview}
+                                      onClick={() => {
+                                        if (!canPreview || deleteBusy) return;
+                                        openReportFile(row.report_id);
+                                      }}
+                                      disabled={canPreview ? deleteBusy : false}
                                     >
                                       <IconPreview />
                                     </button>
-                                  ) : null}
+                                  
                                   <button
                                     type="button"
                                     className="actionIconBtn isDanger"

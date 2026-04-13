@@ -2041,6 +2041,33 @@ function renderResultCard(result, runIndex) {
   return card;
 }
 
+function applySaveButtonVisualState(save) {
+  if (!save) return;
+
+  const canSave = canSaveCurrentView();
+
+  save.className = `primary-btn ${canSave ? 'danger-btn' : 'danger-btn danger-btn--muted'}`;
+  save.disabled = !canSave;
+  save.title = canSave ? 'Save this view' : 'Run an analysis before saving this view';
+  save.dataset.saveState = canSave ? 'ready' : 'empty';
+
+  if (canSave) {
+    save.style.background = '';
+    save.style.color = '';
+    save.style.border = '';
+    save.style.boxShadow = '';
+    save.style.opacity = '';
+    save.style.cursor = '';
+  } else {
+    save.style.background = '#f6d6da';
+    save.style.color = '#b96a74';
+    save.style.border = 'none';
+    save.style.boxShadow = 'none';
+    save.style.opacity = '1';
+    save.style.cursor = 'not-allowed';
+  }
+}
+
 function buildQuickActionsCard() {
   const box = document.createElement('div');
   box.className = 'card quick-card';
@@ -2067,14 +2094,11 @@ function buildQuickActionsCard() {
   const save = document.createElement('button');
   save.dataset.action = 'save-view';
   save.textContent = 'Save this view';
+
+  applySaveButtonVisualState(save);
+
   save.onclick = () => {
-    if (!canSaveCurrentView()) {
-      state.saveIntent = 'error';
-      state.validationMessage = 'Run analysis first.';
-      render();
-      scrollToForm();
-      return;
-    }
+    if (!canSaveCurrentView()) return;
     showSaveViewBar();
   };
 
@@ -2119,7 +2143,7 @@ function syncQuickActionsCard() {
   }
 
   if (save) {
-    save.className = `primary-btn ${canSaveCurrentView() ? 'success-btn' : 'danger-btn'}`;
+    applySaveButtonVisualState(save);
   }
 }
 

@@ -2121,3 +2121,31 @@ body.assistant-embedded .guided-input--locked::-webkit-calendar-picker-indicator
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+/* ---- FINAL user query bubble width fix ---- */
+.widget .message-row--user {
+  justify-content: flex-end !important;
+}
+
+.widget .message-row--user .message-bubble--user {
+  display: inline-block;
+  flex: 0 1 auto;
+  width: auto !important;
+  max-width: 420px !important;
+  margin-left: auto !important;
+  white-space: normal;
+  word-break: break-word;
+  text-align: left;
+}
+
+@media (max-width: 980px) {
+  .widget .message-row--user .message-bubble--user {
+    max-width: 82% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .widget .message-row--user .message-bubble--user {
+    max-width: 88% !important;
+  }
+}
