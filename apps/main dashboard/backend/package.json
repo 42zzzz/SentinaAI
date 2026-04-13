@@ -5,12 +5,12 @@
   "main": "server.js",
   "scripts": {
     "dev": "concurrently \"npm:dev:api\" \"npm:dev:nav\" \"npm:dev:ai\" \"npm:dev:reports\" \"npm:dev:assistant\" \"npm:dev:exhibitor\"",
-    "dev:exhibitor": "cmd /c \"pushd ..\\..\\..\\services\\exhibitor-ai-pipeline && py -m uvicorn app:app --reload --port 8001\"",
+    "dev:exhibitor": "cmd /c \"pushd ..\\..\\..\\services\\exhibitor-ai-pipeline && (py -m uvicorn app:app --reload --port 8001 || python -m uvicorn app:app --reload --port 8001)\"",
     "dev:api": "nodemon server.js",
-    "dev:nav": "cmd /c \"pushd ..\\..\\navigation_web\\backend && py app.py\"",
-    "dev:ai": "cmd /c \"pushd ..\\..\\..\\services\\ai-detection && py -m uvicorn app:app --reload --port 8000\"",
-    "dev:reports": "cmd /c \"pushd ..\\..\\..\\services\\Report_export && py -m uvicorn app.main:app --reload --port 8010\"",
-    "dev:assistant": "cmd /c \"pushd ..\\..\\..\\services\\sentina_operations_html_widget_updated 5 && py -m uvicorn main:app --reload --port 8002\""
+    "dev:nav": "cmd /c \"pushd ..\\..\\navigation_web\\backend && (py app.py || python app.py)\"",
+    "dev:ai": "cmd /c \"pushd ..\\..\\..\\services\\ai-detection && (py -m uvicorn app:app --reload --port 8000 || python -m uvicorn app:app --reload --port 8000)\"",
+    "dev:reports": "cmd /c \"pushd ..\\..\\..\\services\\Report_export && (py -m uvicorn app.main:app --reload --port 8010 || python -m uvicorn app.main:app --reload --port 8010)\"",
+    "dev:assistant": "cmd /c \"pushd ..\\..\\..\\services\\sentina_operations_html_widget_updated 5 && (py -m uvicorn main:app --reload --port 8002 || python -m uvicorn main:app --reload --port 8002)\""
   },
   "keywords": [],
   "author": "",
