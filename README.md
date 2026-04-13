@@ -80,7 +80,7 @@ IoT Edge Devices → MQTT Broker (EMQX) → Navigation/AI Services → Main Dash
 
 | Tool | Version |
 |------|---------|
-| Node.js | 18 or later |
+| Node.js | 20.19 or later (22 LTS recommended) |
 | npm | 9 or later |
 | Python | 3.11 or later |
 | pip | latest |

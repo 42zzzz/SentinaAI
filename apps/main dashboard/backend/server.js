@@ -120,6 +120,7 @@ app.use("/exhibitors", require("./routes/exhibitors.routes.js"));
 app.use("/booths", require("./routes/booths.routes.js"));
 app.use("/dashboard", require("./routes/dashboard.routes.js"));
 app.use("/nav", require("./routes/nav.routes.js"));
+app.use("/api", require("./routes/nav.routes.js"));
 app.use("/ai", require("./routes/ai.routes.js"));
 app.use("/alerts", require("./routes/alerts.routes.js"));
 app.use("/environment", environmentRoutes);
