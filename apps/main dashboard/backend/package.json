@@ -4,7 +4,8 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "dev": "concurrently \"npm:dev:api\" \"npm:dev:nav\" \"npm:dev:ai\" \"npm:dev:reports\" \"npm:dev:assistant\"",
+    "dev": "concurrently \"npm:dev:api\" \"npm:dev:nav\" \"npm:dev:ai\" \"npm:dev:reports\" \"npm:dev:assistant\" \"npm:dev:exhibitor\"",
+    "dev:exhibitor": "cmd /c \"pushd ..\\..\\..\\services\\exhibitor-ai-pipeline && py -m uvicorn app:app --reload --port 8001\"",
     "dev:api": "nodemon server.js",
     "dev:nav": "cmd /c \"pushd ..\\..\\navigation_web\\backend && py app.py\"",
     "dev:ai": "cmd /c \"pushd ..\\..\\..\\services\\ai-detection && py -m uvicorn app:app --reload --port 8000\"",
