@@ -452,18 +452,38 @@ async function upsertAlert(inputPayload) {
     return insertAlert(rule, payload);
   }
 
-  const existingActiveAlert = await findActiveAlertByEntity(payload);
-  if (existingActiveAlert) {
-    if (existingActiveAlert.status === "NEW") {
-      return updateAlert(existingActiveAlert, payload);
+  const existingResult = await coreDb.query(
+    `
+  SELECT alert_id, status, severity, metadata
+  FROM alerts
+  WHERE rule_key = $1
+    AND domain = $2
+    AND zone_id = $3
+    AND hall_id = $4
+    AND status IN ('NEW', 'ACKNOWLEDGED')
+  LIMIT 1
+  `,
+    [
+      payload.rule_key,
+      payload.domain,
+      payload.zone_id,
+      payload.hall_id,
+    ]
+  );
+
+  const existing = existingResult.rows[0];
+
+  if (existing) {
+    if (existing.status === "NEW") {
+      return updateAlert(existing, payload);
     }
 
-    if (existingActiveAlert.status === "ACKNOWLEDGED") {
+    if (existing.status === "ACKNOWLEDGED") {
       return {
         action: "skipped_acknowledged_active",
-        alert_id: existingActiveAlert.alert_id,
-        status: existingActiveAlert.status,
-        severity: existingActiveAlert.severity,
+        alert_id: existing.alert_id,
+        status: existing.status,
+        severity: existing.severity,
         entity_key: buildEntityKey(payload),
       };
     }
