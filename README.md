@@ -124,6 +124,14 @@ Open **http://localhost:5173** in your browser.
 > pip install -r "../../services/sentina_operations_html_widget_updated 5/requirements.txt"
 > ```
 
+> **If AI features return 500 errors** (AI Simulator, anomaly detection), the AI Detection service may not have started. Run it manually in a separate terminal:
+> ```bash
+> cd services/ai-detection
+> pip install -r requirements.txt
+> uvicorn app:app --host 0.0.0.0 --port 8000
+> ```
+> Then retry. This can happen if `py`/`python` wasn't on PATH when `npm run dev` started the background process.
+
 ---
 
 ## Running Each Service
