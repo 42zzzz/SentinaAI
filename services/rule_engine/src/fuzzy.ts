@@ -1,3 +1,8 @@
+/**
+ * Fuzzy risk utility functions for occupancy, CO2, congestion, thermal comfort,
+ * and HVAC efficiency scoring used by the rules engine.
+ */
+
 export function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v));
 }
@@ -18,19 +23,12 @@ export function trap(x: number, a: number, b: number, c: number, d: number): num
   return (d - x) / (d - c);
 }
 
-/**
- * Generic fuzzy “risk from a scalar” pattern: low/med/high membership > weighted score.
- * Returns 0..1
- */
 function weightedRisk(low: number, med: number, high: number, wLow = 0.10, wMed = 0.55, wHigh = 0.95): number {
   const denom = low + med + high;
   const score = low * wLow + med * wMed + high * wHigh;
   return clamp01(denom > 0 ? score / denom : 0);
 }
 
-/**
- * occupancyRatio (0..1) > risk 0..1 (overcrowding)
- */
 export function overcrowdingRiskFromOccupancyRatio(occRatio01: number): number {
   const x = clamp01(occRatio01);
   const low = trap(x, -0.2, 0.0, 0.40, 0.65);
@@ -39,9 +37,6 @@ export function overcrowdingRiskFromOccupancyRatio(occRatio01: number): number {
   return weightedRisk(low, med, high);
 }
 
-/**
- * CO2 ppm > risk 0..1
- */
 export function co2RiskFromPpm(co2ppm: number): number {
   const low = trap(co2ppm, 300, 400, 750, 950);
   const med = tri(co2ppm, 850, 1100, 1350);
@@ -49,9 +44,6 @@ export function co2RiskFromPpm(co2ppm: number): number {
   return weightedRisk(low, med, high);
 }
 
-/**
- * Net inflow (inflow - outflow) > congestion risk 0..1
- */
 export function congestionRiskFromNetInflow(net: number): number {
   const low = trap(net, -50, -5, 3, 10);
   const med = tri(net, 6, 16, 28);
@@ -59,12 +51,7 @@ export function congestionRiskFromNetInflow(net: number): number {
   return weightedRisk(low, med, high, 0.12, 0.55, 0.92);
 }
 
-/**
- * Occupancy growth rate (delta ratio over window) > risk 0..1
- * Example: 0.15 means occupancy ratio increased by 15% within the window.
- */
 export function occupancySurgeRisk(growthRate: number): number {
-  // Negative growth should not be risky
   const x = Math.max(0, growthRate);
 
   const low = trap(x, -0.05, 0.0, 0.05, 0.10);
@@ -73,9 +60,6 @@ export function occupancySurgeRisk(growthRate: number): number {
   return weightedRisk(low, med, high);
 }
 
-/**
- * Thermal discomfort from temperatureC + humidityPct > risk 0..1
- */
 export function thermalDiscomfortRisk(temperatureC: number, humidityPct: number): number {
   if (!Number.isFinite(temperatureC) || !Number.isFinite(humidityPct)) return 0;
 
@@ -98,10 +82,6 @@ export function thermalDiscomfortRisk(temperatureC: number, humidityPct: number)
   return weightedRisk(low, med, high);
 }
 
-/**
- * HVAC waste/sustainability risk proxy 0..1.
- * Uses: hvacPowerKW, hvacEnergyKWh, occupancyRatio, hvacInefficient flag.
- */
 export function hvacWasteRisk(params: {
   hvacPowerKW?: number;
   hvacEnergyKWh?: number;
@@ -138,12 +118,7 @@ export function hvacWasteRisk(params: {
   return clamp01(Math.max(flagRisk, powerRisk, energyRisk));
 }
 
-/**
- * Convert waste risk to an “efficiencyScore” (0..100) where higher is better.
- * matches SUS_LOW_EFFICIENCY rule which uses a threshold like 65.
- */
 export function efficiencyScoreFromWasteRisk(wasteRisk01: number): number {
   const r = clamp01(wasteRisk01);
   return Math.max(0, Math.min(100, 100 - r * 100));
 }
-
