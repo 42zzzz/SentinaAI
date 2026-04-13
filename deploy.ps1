@@ -192,7 +192,7 @@ Build-Image "dashboard-backend" $BACKEND_PATH $backendImage
 
 $backendEnv = @(
     "--set-env-vars",
-    "NAVMESH_BASE_URL=$navUrl,AI_SERVICE_URL=$aiUrl,EXHIBITOR_AI_SERVICE_URL=$exhibitorUrl,JWT_SECRET=$jwtSecret"
+    "NAVMESH_BASE_URL=$navUrl,AI_SERVICE_URL=$aiUrl,EXHIBITOR_AI_SERVICE_URL=$exhibitorUrl,REPORT_EXPORT_SERVICE_URL=$reportUrl,JWT_SECRET=$jwtSecret"
 )
 
 $backendUrl = Deploy-Service "dashboard-backend" $backendImage $backendEnv
