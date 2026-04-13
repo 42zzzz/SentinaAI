@@ -13,9 +13,9 @@ import math
 import re
 from typing import Any, Dict, Tuple
 
-# ---------------------------------------------------------------------------
+
 # NFR-24: Banned key sets (matched case-insensitively after normalization)
-# ---------------------------------------------------------------------------
+
 
 # Media / image keys
 _IMAGE_KEYS: frozenset[str] = frozenset({
@@ -105,9 +105,9 @@ def _scan_for_banned_keys(obj: Any, path: str = "") -> Tuple[bool, str]:
     return True, ""
 
 
-# ---------------------------------------------------------------------------
+
 # NFR-25: Data minimization — whitelist per reading type (telemetry records)
-# ---------------------------------------------------------------------------
+
 
 # Allowed top-level keys for each JSONL reading type
 _ALLOWED_READING_FIELDS: Dict[str, frozenset[str]] = {
@@ -156,9 +156,9 @@ def sanitize_sensor_data(sensor_data: Dict) -> Dict[str, float]:
     return result
 
 
-# ---------------------------------------------------------------------------
+
 # Main entry point for POST /api/iot/update
-# ---------------------------------------------------------------------------
+
 
 def validate_iot_payload(
     payload: Any,
@@ -179,12 +179,12 @@ def validate_iot_payload(
     if not isinstance(payload, dict):
         return False, "Payload must be a JSON object", {}
 
-    # Step 1 — NFR-24: scan entire payload for banned content
+    # Step 1 NFR-24: scan entire payload for banned content
     ok, reason = _scan_for_banned_keys(payload)
     if not ok:
         return False, reason, {}
 
-    # Step 2 — NFR-25: extract sensor_data (envelope or direct)
+    # Step 2 NFR-25: extract sensor_data (envelope or direct)
     if "sensor_data" in payload:
         sensor_data = payload["sensor_data"]
     else:
@@ -197,7 +197,7 @@ def validate_iot_payload(
             {},
         )
 
-    # Step 3 — NFR-25: keep only valid numeric rates
+    # Step 3 NFR-25: keep only valid numeric rates
     sanitized = sanitize_sensor_data(sensor_data)
 
     return True, "", sanitized

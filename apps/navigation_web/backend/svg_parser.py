@@ -1,25 +1,6 @@
-"""backend.svg_parser
-
-SVG Parser Module
-
-Extracts ONLY the 26 destination halls + corridor polygons from an SVG.
-
-Room/Hall detection (STRICT):
-- Element label/id contains "hall" (case-insensitive)
-- AND fill is one of the allowed hall colors (HALL_FILLS with tolerance)
-- Supports halls as <rect>, <path>, and <polygon>
-
-Corridor detection:
-- Fill matches CORRIDOR_FILL (#ff0000 bright red)
-- Looks for elements with id containing "corridor"
-- Supports <rect>, <path>, and <polygon>
-
-Return structure (matches backend expectations):
-{
-  "dimensions": {"width": ..., "height": ...},
-  "rooms": [...],
-  "corridors": [...]
-}
+"""
+Parses SVG venue geometry and extracts hall and corridor polygons for
+navigation mesh generation.
 """
 
 from __future__ import annotations
@@ -32,26 +13,19 @@ from typing import Dict, List, Optional, Tuple
 
 SVG_NS = "http://www.w3.org/2000/svg"
 
-# Hall colors (from the actual SVG)
 HALL_FILLS = {
-    "#1f3a5f",  # Dark blue (EastHall)
-    "#2f8f9d",  # Teal (Hall)
-    "#9e2a2b",  # Dark red (NorthHall)
-    "#e09f3e",  # Gold/orange (SouthHall)
+    "#1f3a5f",
+    "#2f8f9d",
+    "#9e2a2b",
+    "#e09f3e",
 }
 
-# Corridor fill (bright red in the actual SVG)
 CORRIDOR_FILL = "#ff0000"
 
-# Color tolerance for matching (per RGB channel)
 COLOR_TOLERANCE = 20
 
 TARGET_HALL_COUNT = 26
 
-
-# -------------------------
-# SVG transform utilities
-# -------------------------
 
 Matrix = Tuple[Tuple[float, float, float], Tuple[float, float, float], Tuple[float, float, float]]
 
@@ -138,12 +112,7 @@ def _mat_skew_y(deg: float) -> Matrix:
 
 
 def _parse_transform(transform_str: str) -> Matrix:
-    """Parse SVG transform="..." into a single 3x3 matrix.
-
-    SVG applies transform lists left-to-right, e.g. "translate(...) scale(...)"
-    means translate first, then scale (translation gets scaled).
-    To preserve this, we pre-multiply: M = T @ M, in list order.
-    """
+    """Parse SVG transform="..." into a single 3x3 matrix."""
     if not transform_str:
         return _mat_identity()
 
@@ -192,10 +161,8 @@ def _parse_transform(transform_str: str) -> Matrix:
             tmat = _mat_skew_y(ang)
 
         else:
-            # Unknown/unsupported transform
             continue
 
-        # Pre-multiply to respect SVG left-to-right application order
         m_total = _mat_mul(tmat, m_total)
 
     return m_total
@@ -216,51 +183,40 @@ def _get_style_attr(el: ET.Element, key: str) -> Optional[str]:
 
 
 def _hex_to_rgb(hex_color: str) -> Optional[Tuple[int, int, int]]:
-    """Convert hex color to RGB tuple"""
+    """Convert hex color to RGB tuple."""
     if not hex_color or hex_color == "none":
         return None
     hex_color = hex_color.strip().lower()
-    
-    # Remove alpha if present
+
     if re.fullmatch(r"#([0-9a-f]{8})", hex_color):
         hex_color = hex_color[:7]
-    
-    # Parse #rrggbb
+
     if re.fullmatch(r"#([0-9a-f]{6})", hex_color):
         r = int(hex_color[1:3], 16)
         g = int(hex_color[3:5], 16)
         b = int(hex_color[5:7], 16)
         return (r, g, b)
-    
+
     return None
 
 
 def _colors_match(color1: str, color2: str, tolerance: int = COLOR_TOLERANCE) -> bool:
-    """Check if two hex colors match within tolerance"""
+    """Check if two hex colors match within tolerance."""
     rgb1 = _hex_to_rgb(color1)
     rgb2 = _hex_to_rgb(color2)
-    
+
     if rgb1 is None or rgb2 is None:
         return False
-    
-    # Check each channel is within tolerance
+
     for c1, c2 in zip(rgb1, rgb2):
         if abs(c1 - c2) > tolerance:
             return False
-    
+
     return True
 
 
 def _normalize_hex_color(s: str) -> Optional[str]:
-    """
-    Normalizes:
-      - #rrggbbaa -> #rrggbb
-      - keeps #rrggbb
-    Rejects:
-      - rgb()/rgba()
-      - url(...)
-      - named colors
-    """
+    """Normalize supported hex colors to #rrggbb form."""
     if not s:
         return None
     s = s.strip().lower()
@@ -281,34 +237,31 @@ def get_normalized_fill(el: ET.Element) -> Optional[str]:
 
 
 def is_hall_color(fill: str) -> bool:
-    """Check if fill color matches any hall color with tolerance"""
+    """Check if fill color matches any hall color with tolerance."""
     if not fill:
         return False
-    
+
     for hall_color in HALL_FILLS:
         if _colors_match(fill, hall_color):
             return True
-    
+
     return False
 
 
 def is_corridor_color(fill: str) -> bool:
-    """Check if fill color is corridor red (#ff0000)"""
+    """Check if fill color is corridor red (#ff0000)."""
     if not fill:
         return False
-    
+
     return _colors_match(fill, CORRIDOR_FILL, tolerance=COLOR_TOLERANCE)
 
 
 def get_label_text(el: ET.Element) -> str:
-    """
-    Best-effort label/id detection (Inkscape commonly stores labels in inkscape:label).
-    """
+    """Best-effort label and id detection."""
     parts: List[str] = []
     if el.get("id"):
         parts.append(el.get("id"))  # type: ignore[arg-type]
 
-    # inkscape:label and other *:label attributes
     for k, v in el.attrib.items():
         if k.lower().endswith("label") and v:
             parts.append(v)
@@ -320,22 +273,14 @@ def get_label_text(el: ET.Element) -> str:
 
 
 def prettify_hall_name(raw: str) -> str:
-    """Convert SVG ids like 'NorthHall6' or 'Hall10' into human-readable names.
-
-    Examples:
-      NorthHall6 -> North Hall 6
-      EastHall3  -> East Hall 3
-      Hall10     -> Hall 10
-    """
+    """Convert compact SVG hall ids into human-readable names."""
     if not raw:
         return raw
     s = str(raw).strip()
-    # Add spaces between lower->upper and between letters<->digits
     s = re.sub(r"([a-z])([A-Z])", r"\1 \2", s)
     s = re.sub(r"([A-Za-z])([0-9])", r"\1 \2", s)
     s = re.sub(r"([0-9])([A-Za-z])", r"\1 \2", s)
     s = re.sub(r"\s+", " ", s).strip()
-    # Title-case words except keep ALLCAPS acronyms as-is
     parts = []
     for w in s.split(" "):
         if w.isupper() and len(w) <= 4:
@@ -350,7 +295,7 @@ def _rect_to_poly(x: float, y: float, w: float, h: float) -> List[List[float]]:
 
 
 def _poly_area(poly: List[List[float]]) -> float:
-    """Shoelace area (absolute)."""
+    """Shoelace area."""
     if len(poly) < 3:
         return 0.0
     a = 0.0
@@ -374,9 +319,7 @@ def _poly_bbox(poly: List[List[float]]) -> Dict[str, float]:
 
 
 def _poly_centroid(poly: List[List[float]]) -> Dict[str, float]:
-    """
-    Centroid of polygon; falls back to average of points if degenerate.
-    """
+    """Compute a polygon centroid with a point-average fallback."""
     n = len(poly)
     if n == 0:
         return {"x": 0.0, "y": 0.0}
@@ -411,13 +354,11 @@ class SVGParser:
         self.tree = ET.parse(svg_path)
         self.root = self.tree.getroot()
 
-        # Build parent map so we can accumulate <g transform="..."> ancestors
         self._parent_map: Dict[ET.Element, ET.Element] = {}
         for parent in self.root.iter():
             for child in list(parent):
                 self._parent_map[child] = parent
 
-        # viewBox is the most reliable canvas size
         viewbox = self.root.get("viewBox", "0 0 5600 3200")
         try:
             _, _, self.width, self.height = map(float, viewbox.split())
@@ -425,7 +366,7 @@ class SVGParser:
             self.width, self.height = 5600.0, 3200.0
 
     def _cumulative_transform(self, el: ET.Element) -> Matrix:
-        """Return transform matrix for element including all ancestor <g> transforms."""
+        """Return the element transform including ancestor group transforms."""
         m: Matrix = _mat_identity()
         cur: Optional[ET.Element] = el
         while cur is not None:
@@ -444,19 +385,7 @@ class SVGParser:
             out.append([nx, ny])
         return out
 
-    # -------------------------
-    # Halls (destinations)
-    # -------------------------
-
     def extract_rooms(self) -> List[Dict]:
-        """
-        Extract ONLY the 26 halls as destination "rooms".
-
-        Strict criteria:
-        - tag in (rect, path, polygon)
-        - label/id contains "hall"
-        - fill matches one of HALL_FILLS (with tolerance)
-        """
         candidates: List[Dict] = []
 
         for el in self.root.iter():
@@ -492,7 +421,6 @@ class SVGParser:
             if not poly or len(poly) < 3:
                 continue
 
-            # Apply element + ancestor transforms (common with Inkscape "move" operations)
             poly = self._apply_transform(poly, self._cumulative_transform(el))
 
             area = _poly_area(poly)
@@ -510,7 +438,6 @@ class SVGParser:
                 }
             )
 
-        # Enforce exactly 26 halls
         if len(candidates) > TARGET_HALL_COUNT:
             candidates.sort(key=lambda r: r["_area"], reverse=True)
             candidates = candidates[:TARGET_HALL_COUNT]
@@ -521,18 +448,7 @@ class SVGParser:
         print(f"Halls extracted: {len(candidates)}")
         return candidates
 
-    # -------------------------
-    # Corridors (walkable)
-    # -------------------------
-
     def extract_corridors(self) -> List[Dict]:
-        """
-        Extract corridor polygons (bright red #ff0000). Supports:
-        - rect corridors
-        - path corridors (M/L/l/H/V/Z/C/c)
-        - polygon corridors
-        Fill must be #ff0000 (with tolerance).
-        """
         corridors: List[Dict] = []
 
         for el in self.root.iter():
@@ -544,10 +460,9 @@ class SVGParser:
             if not is_corridor_color(fill):
                 continue
 
-            # Also check if ID contains "corridor" for extra validation
             label = get_label_text(el)
             corridor_id = el.get("id", "")
-            
+
             if tag == "rect":
                 x = float(el.get("x", 0))
                 y = float(el.get("y", 0))
@@ -575,7 +490,7 @@ class SVGParser:
         if len(corridors) == 0:
             print("WARNING: No corridors detected - routing will fail!")
             print("Check SVG for elements with fill=#ff0000")
-        
+
         return corridors
 
     def _poly_to_corridor(self, pts: List[List[float]], corridor_id: str = "") -> Dict:
@@ -599,12 +514,7 @@ class SVGParser:
         return pts if len(pts) >= 3 else None
 
     def _parse_path_to_points(self, d: str) -> Optional[List[List[float]]]:
-        """Convert an SVG path `d` string into a polyline.
-
-        Supported commands:
-        - M/m, L/l, H/h, V/v, Z/z
-        - C/c cubic Beziers (approximated by sampling)
-        """
+        """Convert supported SVG path commands into a polyline."""
         if not d:
             return None
 
@@ -749,10 +659,6 @@ class SVGParser:
                 cleaned.append(p)
 
         return cleaned if len(cleaned) >= 3 else None
-
-    # -------------------------
-    # API helpers
-    # -------------------------
 
     def get_dimensions(self) -> Tuple[float, float]:
         return self.width, self.height

@@ -80,13 +80,15 @@ IoT Edge Devices → MQTT Broker (EMQX) → Navigation/AI Services → Main Dash
 
 | Tool | Version |
 |------|---------|
-| Node.js | 18 or later |
+| Node.js | 20.19 or later (22 LTS recommended) |
 | npm | 9 or later |
 | Python | 3.11 or later |
 | pip | latest |
 | Docker & Docker Compose | latest (MQTT broker only) |
 
 > **Windows note:** Node.js must be installed via the **official installer** from [nodejs.org](https://nodejs.org) so that `npm` is added to the system PATH. Installing via NVM for Windows or other user-scoped methods may cause the `postinstall` script to fail with `'npm' is not recognized` because child processes don't inherit the user PATH. If you hit this error, either reinstall Node.js from nodejs.org, or run each install step manually (see below).
+
+> **Python launcher note:** The dev scripts try `py` first (Windows Python Launcher), then fall back to `python` automatically. No manual config needed. If both fail, ensure Python 3.11+ is installed and on your PATH (`python --version` should work in a new terminal).
 
 ---
 

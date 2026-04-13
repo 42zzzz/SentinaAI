@@ -1,13 +1,17 @@
+"""
+Rescales an existing navmesh JSON into the coordinate space of the current
+SVG geometry and updates edge weights from the transformed node positions.
+"""
+
 from __future__ import annotations
 
 import argparse
 import json
 import math
-import os
 from pathlib import Path
 from typing import Any, Dict, Tuple, List
 
-from svg_parser import SVGParser  # uses your project parser
+from svg_parser import SVGParser
 
 
 def _looks_like_geometry_dict(obj: Any) -> bool:
@@ -22,7 +26,7 @@ def _looks_like_geometry_dict(obj: Any) -> bool:
 
 
 def _extract_geometry_from_parser(parser: Any) -> Dict:
-    """Robustly find a parser method that returns the expected geometry dict."""
+    """Find a parser method that returns the expected geometry dict."""
     common_names = [
         "extract_all", "parse", "extract", "run", "process",
         "get_geometry", "extract_geometry", "extract_geometry_data",
@@ -39,7 +43,6 @@ def _extract_geometry_from_parser(parser: Any) -> Dict:
             except Exception:
                 continue
 
-    # fallback: try any public zero-arg method
     for name in dir(parser):
         if name.startswith("_"):
             continue
@@ -57,7 +60,7 @@ def _extract_geometry_from_parser(parser: Any) -> Dict:
 
 
 def _bbox_from_geometry(geometry: Dict) -> Tuple[float, float, float, float]:
-    """Return (minX, minY, maxX, maxY) from rooms + corridors polygons."""
+    """Return (minX, minY, maxX, maxY) from rooms and corridors polygons."""
     xs: List[float] = []
     ys: List[float] = []
 
@@ -72,7 +75,6 @@ def _bbox_from_geometry(geometry: Dict) -> Tuple[float, float, float, float]:
             ys.append(float(pt[1]))
 
     if not xs or not ys:
-        # fallback to reported svg dimensions
         w = float(geometry["dimensions"]["width"])
         h = float(geometry["dimensions"]["height"])
         return (0.0, 0.0, w, h)
@@ -84,7 +86,6 @@ def _collect_nav_points(nav: Dict) -> List[Tuple[float, float]]:
     pts: List[Tuple[float, float]] = []
 
     for n in nav.get("nodes", []) or []:
-        # node center
         if isinstance(n.get("position"), dict):
             x = n["position"].get("x")
             y = n["position"].get("y")
@@ -96,7 +97,6 @@ def _collect_nav_points(nav: Dict) -> List[Tuple[float, float]]:
         except Exception:
             pass
 
-        # node polygon
         poly = n.get("polygon")
         if isinstance(poly, list):
             for p in poly:
@@ -135,7 +135,12 @@ def _bbox_from_nav(nav: Dict) -> Tuple[float, float, float, float]:
     return (min(xs), min(ys), max(xs), max(ys))
 
 
-def _affine_map(x: float, y: float, src: Tuple[float, float, float, float], dst: Tuple[float, float, float, float]) -> Tuple[float, float]:
+def _affine_map(
+    x: float,
+    y: float,
+    src: Tuple[float, float, float, float],
+    dst: Tuple[float, float, float, float],
+) -> Tuple[float, float]:
     sx0, sy0, sx1, sy1 = src
     dx0, dy0, dx1, dy1 = dst
 
@@ -144,7 +149,6 @@ def _affine_map(x: float, y: float, src: Tuple[float, float, float, float], dst:
     dw = dx1 - dx0
     dh = dy1 - dy0
 
-    # direct bbox-to-bbox mapping (no guessing, no “node-only” scaling)
     nx = (x - sx0) / sw
     ny = (y - sy0) / sh
 
@@ -152,11 +156,9 @@ def _affine_map(x: float, y: float, src: Tuple[float, float, float, float], dst:
 
 
 def _rescale_navmesh(nav: Dict, src_bbox, dst_bbox) -> Dict:
-    out = json.loads(json.dumps(nav))  # deep copy
+    out = json.loads(json.dumps(nav))
 
-    # rescale nodes
     for n in out.get("nodes", []) or []:
-        # center
         if "x" in n and "y" in n:
             nx, ny = _affine_map(float(n["x"]), float(n["y"]), src_bbox, dst_bbox)
             n["x"] = round(nx, 6)
@@ -168,7 +170,6 @@ def _rescale_navmesh(nav: Dict, src_bbox, dst_bbox) -> Dict:
             n["position"]["x"] = round(nx, 6)
             n["position"]["y"] = round(ny, 6)
 
-        # polygon
         poly = n.get("polygon")
         if isinstance(poly, list):
             new_poly = []
@@ -178,7 +179,6 @@ def _rescale_navmesh(nav: Dict, src_bbox, dst_bbox) -> Dict:
                     new_poly.append([round(nx, 6), round(ny, 6)])
             n["polygon"] = new_poly
 
-    # rescale rooms_metadata if present
     rms = out.get("rooms_metadata")
     if isinstance(rms, list):
         for r in rms:
@@ -195,7 +195,6 @@ def _rescale_navmesh(nav: Dict, src_bbox, dst_bbox) -> Dict:
                         new_poly.append([round(nx, 6), round(ny, 6)])
                 r["polygon"] = new_poly
 
-    # recompute edge weights from updated node centers
     pos = {}
     for n in out.get("nodes", []) or []:
         if "x" in n and "y" in n:

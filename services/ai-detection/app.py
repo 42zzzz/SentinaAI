@@ -1,4 +1,7 @@
-# services/ai-detection/app.py
+"""
+SentinaAI FastAPI backend for venue status, occupancy forecasting, simulation,
+operations inference, and sustainability inference endpoints.
+"""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,7 +24,6 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-# Initialize the API
 app = FastAPI(title="SentinaAI Backend API")
 
 app.add_middleware(
@@ -31,14 +33,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -----------------------------
-# Helpers (robust column mapping)
-# -----------------------------
+
 def pick_col(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
     for c in candidates:
         if c in df.columns:
             return c
     return None
+
 
 def ensure_numeric(series, default=0.0):
     try:
@@ -46,6 +47,7 @@ def ensure_numeric(series, default=0.0):
         return s.fillna(default)
     except Exception:
         return pd.Series([default] * len(ops_df))
+
 
 def day_to_code(day: str) -> int:
     dm = {
@@ -59,16 +61,14 @@ def day_to_code(day: str) -> int:
     }
     return dm.get(day, 0)
 
-# --- 1. GLOBALLY LOAD & TRAIN MODELS ---
+
 print("Loading data and training SentinaAI models...")
 
 ops_df = pd.read_csv("Operations and Sustainability Dataset v1.csv")
 venue_df = ops_df[["hallName", "venueRole", "hallCapacity"]].drop_duplicates().reset_index(drop=True)
 
-# Generate CO2 proxy for training
 ops_df["co2"] = 400 + (ops_df["occupancyRatio"] * 600) + np.random.randint(-50, 50, size=len(ops_df))
 
-# Encoders
 le_venue = LabelEncoder()
 ops_df["venueRole_encoded"] = le_venue.fit_transform(ops_df["venueRole"].astype(str))
 
@@ -78,10 +78,6 @@ ops_df["action_encoded"] = le_action.fit_transform(ops_df["recommendedAction"].a
 day_map = {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6}
 ops_df["day_code"] = ops_df["dayOfWeek"].map(day_map).fillna(0).astype(int)
 
-# -----------------------------
-# Sustainability model (NEW)
-# -----------------------------
-# Try to find sustainability target column in dataset.
 sust_target_col = pick_col(
     ops_df,
     [
@@ -93,7 +89,6 @@ sust_target_col = pick_col(
     ],
 )
 
-# Feature column candidates (your dataset may use different casing; we handle both)
 sust_feat_cols = {
     "hvacEnergyKWh": pick_col(ops_df, ["hvacEnergyKWh", "hvac_energy_kwh", "hvac_energy", "hvac_kwh"]),
     "carbonKgCO2": pick_col(ops_df, ["carbonKgCO2", "carbon_kg_co2", "carbon_kg", "carbon"]),
@@ -104,14 +99,11 @@ sust_feat_cols = {
     "humidityPct": pick_col(ops_df, ["humidityPct", "humidity_pct", "humidity"]),
 }
 
-# If target column is missing, synthesize a basic one so the pipeline still works.
 if sust_target_col is None:
-    # Create basic synthesized sustainabilityStatus using heuristic thresholds
     hvac_s = ensure_numeric(ops_df[sust_feat_cols["hvacEnergyKWh"]], 0.0) if sust_feat_cols["hvacEnergyKWh"] else pd.Series([0.0] * len(ops_df))
     carbon_s = ensure_numeric(ops_df[sust_feat_cols["carbonKgCO2"]], 0.0) if sust_feat_cols["carbonKgCO2"] else pd.Series([0.0] * len(ops_df))
     eff_s = ensure_numeric(ops_df[sust_feat_cols["energyEfficiencyScore"]], 70.0) if sust_feat_cols["energyEfficiencyScore"] else pd.Series([70.0] * len(ops_df))
 
-    # simple bands (tweak anytime)
     status = []
     for hv, co, ef in zip(hvac_s.tolist(), carbon_s.tolist(), eff_s.tolist()):
         if ef < 55 or co > 60 or hv > 60:
@@ -127,28 +119,23 @@ if sust_target_col is None:
 le_sust = LabelEncoder()
 ops_df["sust_encoded"] = le_sust.fit_transform(ops_df[sust_target_col].astype(str))
 
-# Models
 forecaster = RandomForestRegressor(n_estimators=50, random_state=42)
 safety = RandomForestClassifier(n_estimators=50, random_state=42)
-
-# NEW: sustainability classifier
 sust_clf = RandomForestClassifier(n_estimators=80, random_state=42)
 SUST_MODEL_READY = False
 
-# -----------------------------
-# Requests
-# -----------------------------
+
 class OccupancyForecastRequest(BaseModel):
     hall_id: str
     venueRole: str
     hourOfDay: int
-    dayOfWeek: str  # e.g. "Monday"
+    dayOfWeek: str
+
 
 @app.post("/api/occupancy-forecast")
 def occupancy_forecast(req: OccupancyForecastRequest):
     """
-    Predict occupancy for the next 60 minutes (4 x 15-min points) using the trained forecaster.
-    Inputs aligned with training: [hourOfDay, day_code, venueRole_encoded]
+    Predict occupancy for the next 60 minutes using the trained forecaster.
     """
     try:
         dcode = day_to_code(req.dayOfWeek)
@@ -166,6 +153,7 @@ def occupancy_forecast(req: OccupancyForecastRequest):
         points.append({"offsetMinutes": i * 15, "predictedOccupancy": int(round(y))})
 
     return {"status": "success", "hall_id": req.hall_id, "points": points}
+
 
 def build_sust_training_matrix(df: pd.DataFrame) -> pd.DataFrame:
     def get_feat(key: str, default: float):
@@ -191,25 +179,22 @@ def build_sust_training_matrix(df: pd.DataFrame) -> pd.DataFrame:
     )
     return X.fillna(0)
 
+
 def train_models():
     global SUST_MODEL_READY
 
-    # --- occupancy forecaster ---
     X_f = ops_df[["hourOfDay", "day_code", "venueRole_encoded"]]
     y_f = ops_df["currentOccupancy"]
     forecaster.fit(X_f, y_f)
 
-    # --- ops action model ---
     X_s = ops_df[["occupancyRatio", "co2", "flowCongestionIndex"]]
     y_s = ops_df["action_encoded"]
     safety.fit(X_s, y_s)
 
-    # --- sustainability model ---
     try:
         X_sust = build_sust_training_matrix(ops_df)
         y_sust = ops_df["sust_encoded"]
 
-        # Must have >=2 classes to train classifier
         if int(pd.Series(y_sust).nunique()) >= 2:
             sust_clf.fit(X_sust, y_sust)
             SUST_MODEL_READY = True
@@ -218,10 +203,11 @@ def train_models():
     except Exception:
         SUST_MODEL_READY = False
 
+
 train_models()
 print("Models trained successfully! API is ready.")
 
-# --- 2. AUTOMATIC RETRIGGERING LOGIC ---
+
 def auto_retrain_pipeline():
     print("\n AUTO-RETRIGGER: Anomaly detected by Edge Node!")
     print(" Step 7: Syncing new surge data to Cloud...")
@@ -232,8 +218,9 @@ def auto_retrain_pipeline():
     except Exception as e:
         print(f" Retraining Error: {e}")
 
-# --- 3. SHARED IN-MEMORY HALL STATE (so simulate affects venue-status) ---
-HALL_STATE = {}  # hall_id -> dict
+
+HALL_STATE = {}
+
 
 def init_hall_state_from_baseline(halls_data):
     global HALL_STATE
@@ -253,13 +240,11 @@ def init_hall_state_from_baseline(halls_data):
             "isAnomaly": bool(h.get("isAnomaly", False)),
         }
 
-# --- 4. LIVE VENUE STATUS ENDPOINT ---
+
 @app.get("/api/venue-status")
 def get_venue_status():
     """
-    Returns live status.
-    - On first call, initializes HALL_STATE from baseline values.
-    - On subsequent calls, returns HALL_STATE (simulations persist).
+    Return live hall status and initialize baseline state on first access.
     """
     if HALL_STATE:
         return {"status": "success", "data": list(HALL_STATE.values())}
@@ -278,7 +263,6 @@ def get_venue_status():
         action_code = safety.predict(safety_input)[0]
         rec_action = le_action.inverse_transform([action_code])[0]
 
-        # IMPORTANT: id formatting MUST match adjacency keys if you use them
         hall_id = str(hall["hallName"]).replace(" ", "").lower()
 
         halls_data.append(
@@ -298,11 +282,12 @@ def get_venue_status():
     init_hall_state_from_baseline(halls_data)
     return {"status": "success", "data": list(HALL_STATE.values())}
 
-# --- 5. THE "ACTUAL SIMULATION" ENGINE ---
+
 class SimulationRequest(BaseModel):
     hall_id: str
     occupancy: int
     co2: int
+
 
 ADJACENCY_MAP = {
     "HZC01": ["HZC02", "HZD04", "HZA01", "HZB01"],
@@ -333,18 +318,18 @@ ADJACENCY_MAP = {
     "HZB08": ["HZB07"],
 }
 
-# --- 6. TELEMETRY-DRIVEN OPS INFERENCE ENDPOINT ---
+
 class InferActionRequest(BaseModel):
     hall_id: str
     occupancyRatio: float
     co2: float
     flowCongestionIndex: float
 
+
 @app.post("/api/infer-action")
 def infer_action(req: InferActionRequest):
     """
-    Ops inference aligned to training features:
-    [occupancyRatio, co2, flowCongestionIndex]
+    Run operations inference using occupancy, CO2, and congestion features.
     """
     try:
         safety_input = [[float(req.occupancyRatio), float(req.co2), float(req.flowCongestionIndex)]]
@@ -364,6 +349,7 @@ def infer_action(req: InferActionRequest):
         "aiAction": rec_action,
         "isAnomaly": bool(is_anomaly),
     }
+
 
 def run_ai_pipeline(occ_percent, co2_level):
     occ_ratio = occ_percent / 100.0
@@ -407,10 +393,12 @@ def run_ai_pipeline(occ_percent, co2_level):
     is_anomaly = str(rec_action).lower() != "none"
     return occ_ratio, rec_action, is_anomaly
 
+
 def _ensure_state_initialized():
     if HALL_STATE:
         return
     _ = get_venue_status()
+
 
 def _apply_update_to_state(hall_id, occ_ratio, co2, ai_action, is_anomaly):
     existing = HALL_STATE.get(hall_id, {})
@@ -437,11 +425,11 @@ def _apply_update_to_state(hall_id, occ_ratio, co2, ai_action, is_anomaly):
         "isAnomaly": bool(is_anomaly),
     }
 
+
 @app.post("/api/simulate-prediction")
 def simulate_prediction(data: SimulationRequest):
     """
-    Injects a crowd surge into a hall and updates neighbour halls (spillover).
-    Writes results into HALL_STATE so /api/venue-status reflects it immediately.
+    Inject a crowd surge into one hall and propagate spillover updates to neighbours.
     """
     _ensure_state_initialized()
 
@@ -482,9 +470,7 @@ def simulate_prediction(data: SimulationRequest):
 
     return {"status": "success", "updates": updates}
 
-# -----------------------------
-# 7) Sustainability inference endpoints (NEW)
-# -----------------------------
+
 class InferSustRequest(BaseModel):
     hall_id: str
     hvacEnergyKWh: float = 0
@@ -499,16 +485,18 @@ class InferSustRequest(BaseModel):
     dayOfWeek: str = "Monday"
     venueRole: str = "default"
 
+
 class InferSustBatchRequest(BaseModel):
     halls: List[InferSustRequest]
 
+
 def sust_rule_status(hvac_kwh: float, carbon: float, eff: float) -> str:
-    # Keep aligned with the synthesized labels logic
     if eff < 55 or carbon > 60 or hvac_kwh > 60:
         return "red"
     if eff < 70 or carbon > 35 or hvac_kwh > 35:
         return "amber"
     return "green"
+
 
 def sust_action_from_status(status: str, eff: float, carbon: float, hvac_kwh: float) -> str:
     s = str(status or "").lower()
@@ -524,12 +512,11 @@ def sust_action_from_status(status: str, eff: float, carbon: float, hvac_kwh: fl
         return "monitor"
     return "none"
 
+
 @app.post("/api/infer-sustainability")
 def infer_sustainability(req: InferSustRequest):
     """
-    Sustainability inference aligned to training matrix columns:
-    [hvacEnergyKWh, carbonKgCO2, energyEfficiencyScore, comfortIndex,
-     occupancyRatio, indoorTempC, outdoorTempC, humidityPct, hourOfDay, day_code, venueRole_encoded]
+    Run sustainability inference for a single hall.
     """
     try:
         dcode = day_to_code(req.dayOfWeek)
@@ -538,7 +525,6 @@ def infer_sustainability(req: InferSustRequest):
         except Exception:
             role_code = 0
 
-        # Prefer model if trained and ready
         if SUST_MODEL_READY:
             X = [[
                 float(req.hvacEnergyKWh),
@@ -584,6 +570,7 @@ def infer_sustainability(req: InferSustRequest):
             "aiAction": "ai_error",
             "isAnomaly": False,
         }
+
 
 @app.post("/api/infer-sustainability-batch")
 def infer_sustainability_batch(req: InferSustBatchRequest):

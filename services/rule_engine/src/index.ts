@@ -1,3 +1,8 @@
+/**
+ * Runs the database-backed rule engine loop, refreshes rules and capacities,
+ * ingests telemetry and security events, and writes triggered alerts.
+ */
+
 import { RuleEngine } from "./ruleEngine";
 import { DbEventReader } from "./dbEventReader";
 import {

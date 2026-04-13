@@ -1,11 +1,3 @@
-# app.py
-# Sentina Exhibitor AI API
-# - Uses artifacts in ./artifacts_st
-# - ExhibitorId-based endpoints
-# - Interval aggregation (15/30/60/120)
-# - Catchment-only + Competitive density
-# - Download as XLSX with 2 sheets
-
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -29,9 +21,11 @@ from openpyxl.worksheet.worksheet import Worksheet
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
-# =============================================================================
-# GLOBALS (initialized in startup)
-# =============================================================================
+"""
+Exhibitor analytics API for loading model artifacts, resolving exhibitor booth context,
+running catchment and competitive-density inference, and exporting XLSX reports.
+"""
+
 CONFIG = None
 SCALER = None
 MODEL = None
@@ -45,11 +39,10 @@ ROOMS_DF = None
 CORE_ENGINE: Optional[Engine] = None
 ANALYTICS_ENGINE: Optional[Engine] = None
 
-# =============================================================================
-# ENV / DB
-# =============================================================================
+
 def _bool_env(name: str, default: str = "false") -> bool:
     return os.getenv(name, default).strip().lower() in ("1", "true", "yes", "y")
+
 
 CORE_DATABASE_URL = os.getenv("CORE_DATABASE_URL", "")
 ANALYTICS_DATABASE_URL = os.getenv("ANALYTICS_DATABASE_URL", "")
@@ -57,24 +50,21 @@ ANALYTICS_DATABASE_URL = os.getenv("ANALYTICS_DATABASE_URL", "")
 CORE_PGSSL = _bool_env("CORE_PGSSL", "false")
 ANALYTICS_PGSSL = _bool_env("ANALYTICS_PGSSL", "false")
 
+
 def _mk_engine(url: str, use_ssl: bool) -> Engine:
     if not url:
         raise RuntimeError("Missing DB URL env var.")
     connect_args = {"sslmode": "require"} if use_ssl else {}
     return create_engine(url, pool_pre_ping=True, connect_args=connect_args)
 
-# =============================================================================
-# Optional scaler (joblib)
-# =============================================================================
+
 try:
     import joblib
     _HAS_JOBLIB = True
 except Exception:
     _HAS_JOBLIB = False
 
-# =============================================================================
-# Helper getters + loaded checks
-# =============================================================================
+
 def require_loaded():
     global CONFIG, MODEL, DF_RAW, HALLNAME_TO_ROOM, ROOM_TO_HALL, A_NORM_T, A_NORM
     if (
@@ -84,37 +74,42 @@ def require_loaded():
     ):
         raise HTTPException(status_code=500, detail="Server not initialized (artifacts not loaded).")
 
+
 def _cfg() -> dict:
     require_loaded()
     return cast(dict, CONFIG)
+
 
 def _model() -> nn.Module:
     require_loaded()
     return cast(nn.Module, MODEL)
 
+
 def _df() -> pd.DataFrame:
     require_loaded()
     return cast(pd.DataFrame, DF_RAW)
+
 
 def _hall_to_room() -> Dict[str, str]:
     require_loaded()
     return cast(Dict[str, str], HALLNAME_TO_ROOM)
 
+
 def _room_to_hall() -> Dict[str, str]:
     require_loaded()
     return cast(Dict[str, str], ROOM_TO_HALL)
+
 
 def _a_norm() -> np.ndarray:
     require_loaded()
     return cast(np.ndarray, A_NORM)
 
+
 def _a_norm_t() -> torch.Tensor:
     require_loaded()
     return cast(torch.Tensor, A_NORM_T)
 
-# =============================================================================
-# PATHS
-# =============================================================================
+
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 ART_DIR = os.path.join(ROOT_DIR, "artifacts_st")
@@ -125,23 +120,18 @@ MODEL_PATH = os.path.join(ART_DIR, "model.pt")
 CFG_PATH = os.path.join(ART_DIR, "config.json")
 SCALER_PATH = os.path.join(ART_DIR, "scaler.pkl")
 
-DATA_CSV = os.path.join(DATA_DIR, "syn_zone_metrics_15mins.csv")  # fallback
+DATA_CSV = os.path.join(DATA_DIR, "syn_zone_metrics_15mins.csv")
 NAV_JSON = os.path.join(GRAPH_DIR, "edgeweights.json")
 
 BASE_BUCKET_MINUTES = 15
 ALLOWED_INTERVALS = [15, 30, 60, 120]
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-# =============================================================================
-# DEMO fallback mapping (only used if CORE_ENGINE is None)
-# =============================================================================
 EXHIBITOR_PROFILE: Dict[str, Dict[str, str]] = {
     "EXH_1": {"name": "Exhibitor 1", "boothId": "B001", "hallName": "SouthHall1"},
 }
 
-# =============================================================================
-# MODEL DEFINITION
-# =============================================================================
+
 class GCNLayer(nn.Module):
     def __init__(self, in_dim, out_dim):
         super().__init__()
@@ -150,6 +140,7 @@ class GCNLayer(nn.Module):
     def forward(self, X, A_norm):
         AX = torch.matmul(A_norm, X)
         return torch.relu(self.lin(AX))
+
 
 class STGCN_LSTM(nn.Module):
     def __init__(self, in_feat, gcn_hidden=32, lstm_hidden=32, gcn_layers=2, dropout=0.1):
@@ -170,51 +161,50 @@ class STGCN_LSTM(nn.Module):
         self.out = nn.Linear(lstm_hidden, 1)
 
     def forward(self, X_seq, A_norm):
-        # X_seq: (B,K,N,F)
         B, K, N, F = X_seq.shape
 
         gcn_outs = []
         for t in range(K):
-            Xt = X_seq[:, t, :, :]  # (B,N,F)
+            Xt = X_seq[:, t, :, :]
             H = Xt
             for layer in self.gcn_layers:
                 H = layer(H, A_norm)
                 H = self.dropout(H)
             gcn_outs.append(H)
 
-        H_seq = torch.stack(gcn_outs, dim=1)            # (B,K,N,Hg)
-        H_seq = H_seq.permute(0, 2, 1, 3).contiguous()  # (B,N,K,Hg)
-        H_seq = H_seq.view(B * N, K, -1)                # (B*N,K,Hg)
+        H_seq = torch.stack(gcn_outs, dim=1)
+        H_seq = H_seq.permute(0, 2, 1, 3).contiguous()
+        H_seq = H_seq.view(B * N, K, -1)
 
         lstm_out, _ = self.lstm(H_seq)
         last = lstm_out[:, -1, :]
         y_hat = self.out(last).view(B, N)
         return torch.sigmoid(y_hat)
 
-# =============================================================================
-# FASTAPI APP
-# =============================================================================
+
 app = FastAPI(title="Exhibitor AI (Dynamic Inference)", version="1.0")
 
-# =============================================================================
-# LOADERS
-# =============================================================================
+
 def _require_file(path: str, label: str):
     if not os.path.exists(path):
         raise RuntimeError(f"Missing {label}: {path}")
+
 
 def load_config():
     _require_file(CFG_PATH, "config.json")
     with open(CFG_PATH, "r") as f:
         return json.load(f)
 
+
 def load_scaler():
     if os.path.exists(SCALER_PATH) and _HAS_JOBLIB:
         return joblib.load(SCALER_PATH)
     return None
 
+
 def norm_hall(s: str) -> str:
     return str(s).strip()
+
 
 def _compute_is_weekend(df: pd.DataFrame) -> pd.DataFrame:
     if "day_of_week" not in df.columns:
@@ -225,7 +215,6 @@ def _compute_is_weekend(df: pd.DataFrame) -> pd.DataFrame:
     dow_num = pd.to_numeric(dow, errors="coerce")
 
     if dow_num.notna().any():
-        # detect whether it is 0-6 or 1-7 style
         if float(dow_num.min()) == 0.0:
             df["is_weekend"] = dow_num.isin([5, 6]).astype(int)
         else:
@@ -236,6 +225,7 @@ def _compute_is_weekend(df: pd.DataFrame) -> pd.DataFrame:
         ).astype(int)
 
     return df
+
 
 def load_raw_data() -> pd.DataFrame:
     """
@@ -276,6 +266,7 @@ def load_raw_data() -> pd.DataFrame:
 
     df = df.sort_values(["eventId", "hallName", "bucket_ts"])
     return df
+
 
 def load_navmesh_and_build_mappings():
     _require_file(NAV_JSON, "edgeweights.json")
@@ -337,6 +328,7 @@ def load_navmesh_and_build_mappings():
 
     return rooms_df, hallname_to_room, room_to_hall, A_norm, room_ids
 
+
 def build_model_from_artifact(config: dict) -> nn.Module:
     _require_file(MODEL_PATH, "model.pt")
     ckpt = torch.load(MODEL_PATH, map_location="cpu")
@@ -351,9 +343,7 @@ def build_model_from_artifact(config: dict) -> nn.Module:
     model.eval()
     return model
 
-# =============================================================================
-# DB RESOLVERS
-# =============================================================================
+
 def resolve_exhibitor(exhibitor_id: str, event_id: Optional[str] = None) -> Dict[str, str]:
     """
     Returns: {name, boothId, hallName, eventId}
@@ -420,9 +410,7 @@ def resolve_exhibitor(exhibitor_id: str, event_id: Optional[str] = None) -> Dict
         "eventId": str(row["event_id"]),
     }
 
-# =============================================================================
-# INFERENCE HELPERS
-# =============================================================================
+
 def parse_time(s: Optional[str]) -> Optional[pd.Timestamp]:
     if s is None:
         return None
@@ -433,6 +421,7 @@ def parse_time(s: Optional[str]) -> Optional[pd.Timestamp]:
         return pd.to_datetime(s, utc=True)
     except Exception:
         raise HTTPException(status_code=400, detail=f"Invalid datetime: {s}")
+
 
 def add_engagement_lag1(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
@@ -446,6 +435,7 @@ def add_engagement_lag1(df: pd.DataFrame) -> pd.DataFrame:
         out["engagement_lag1"] = 0.0
     return out
 
+
 def build_room_15m_table(df: pd.DataFrame, feature_cols: List[str]) -> pd.DataFrame:
     require_loaded()
     work = df.copy()
@@ -453,7 +443,6 @@ def build_room_15m_table(df: pd.DataFrame, feature_cols: List[str]) -> pd.DataFr
 
     work["hallName"] = work["hallName"].astype(str).map(norm_hall)
 
-    # map to room_id
     work["room_id"] = work["hallName"].map(HALLNAME_TO_ROOM)
     work = work.dropna(subset=["room_id"])
 
@@ -480,6 +469,7 @@ def build_room_15m_table(df: pd.DataFrame, feature_cols: List[str]) -> pd.DataFr
     )
     return room_15m
 
+
 def build_event_matrices(event_df: pd.DataFrame, room_ids_order: List[str], feature_cols: List[str]) -> Tuple[List[pd.Timestamp], Dict[pd.Timestamp, np.ndarray]]:
     event_df = event_df.sort_values(["bucket_ts", "room_id"])
     times = sorted(event_df["bucket_ts"].unique().tolist())
@@ -504,6 +494,7 @@ def build_event_matrices(event_df: pd.DataFrame, room_ids_order: List[str], feat
 
     return times, X_by_time
 
+
 def make_sequences(times: List[pd.Timestamp], X_by_time: Dict[pd.Timestamp, np.ndarray], K: int) -> Tuple[np.ndarray, List[pd.Timestamp]]:
     require_loaded()
     if len(times) <= K:
@@ -512,19 +503,21 @@ def make_sequences(times: List[pd.Timestamp], X_by_time: Dict[pd.Timestamp, np.n
     seqs = []
     targets = []
     for i in range(K, len(times)):
-        past = times[i - K : i]
+        past = times[i - K: i]
         target_t = times[i]
-        X_seq = np.stack([X_by_time[t] for t in past], axis=0)  # (K,N,F)
+        X_seq = np.stack([X_by_time[t] for t in past], axis=0)
         seqs.append(X_seq)
         targets.append(target_t)
 
-    X_seqs = np.stack(seqs, axis=0).astype(np.float32)  # (T,K,N,F)
+    X_seqs = np.stack(seqs, axis=0).astype(np.float32)
     return X_seqs, targets
+
 
 def enable_dropout_only(m: nn.Module):
     for module in m.modules():
         if isinstance(module, nn.Dropout):
             module.train()
+
 
 @torch.no_grad()
 def predict_with_mc_dropout(X: torch.Tensor, mc_passes: int = 15) -> Tuple[np.ndarray, np.ndarray]:
@@ -537,10 +530,11 @@ def predict_with_mc_dropout(X: torch.Tensor, mc_passes: int = 15) -> Tuple[np.nd
         y = MODEL(X, A_NORM_T)
         preds.append(y.detach().cpu().numpy())
 
-    stack = np.stack(preds, axis=0)  # (P,B,N)
+    stack = np.stack(preds, axis=0)
     mean = stack.mean(axis=0)
     std = stack.std(axis=0)
     return mean, std
+
 
 def aggregate_interval_matrix(y_times: List[pd.Timestamp], mat: np.ndarray, interval_minutes: int, agg: str = "mean") -> Tuple[List[str], np.ndarray]:
     require_loaded()
@@ -568,6 +562,7 @@ def aggregate_interval_matrix(y_times: List[pd.Timestamp], mat: np.ndarray, inte
     out = g.values.astype(np.float32)
     return y_labels, out
 
+
 def get_catchment_room_ids(center_room_id: str, k: int = 6) -> List[str]:
     require_loaded()
     room_ids = CONFIG["room_ids"]
@@ -581,31 +576,24 @@ def get_catchment_room_ids(center_room_id: str, k: int = 6) -> List[str]:
     neighbors = [room_ids[i] for i in order if i != c][: max(0, k - 1)]
     return [center_room_id] + neighbors
 
-# =============================================================================
-# STARTUP
-# =============================================================================
+
 def startup():
     global CONFIG, SCALER, MODEL, A_NORM, A_NORM_T, ROOMS_DF, HALLNAME_TO_ROOM, ROOM_TO_HALL, DF_RAW
     global CORE_ENGINE, ANALYTICS_ENGINE
 
-    # DB engines
     if CORE_DATABASE_URL:
         CORE_ENGINE = _mk_engine(CORE_DATABASE_URL, CORE_PGSSL)
     if ANALYTICS_DATABASE_URL:
         ANALYTICS_ENGINE = _mk_engine(ANALYTICS_DATABASE_URL, ANALYTICS_PGSSL)
 
-    # config
     CONFIG = load_config()
 
-    # data (DB) + graph
     DF_RAW = load_raw_data()
     rooms_df, hall_to_room, room_to_hall, a_norm, nav_room_ids = load_navmesh_and_build_mappings()
 
-    # normalize mappings safely
     hall_to_room = {norm_hall(k): v for k, v in hall_to_room.items()}
     room_to_hall = {v: norm_hall(k) for v, k in room_to_hall.items()}
 
-    # assign globals
     ROOMS_DF = rooms_df
     HALLNAME_TO_ROOM = hall_to_room
     ROOM_TO_HALL = room_to_hall
@@ -615,27 +603,23 @@ def startup():
     if set(cfg_room_ids) != set(nav_room_ids):
         raise RuntimeError("Mismatch between config room_ids and navmesh room ids. They must match.")
 
-    # align adjacency to config room order
     nav_idx = {rid: i for i, rid in enumerate(nav_room_ids)}
     cfg_idx = [nav_idx[rid] for rid in cfg_room_ids]
     A_NORM = A_NORM[np.ix_(cfg_idx, cfg_idx)].astype(np.float32)
     A_NORM_T = torch.tensor(A_NORM, dtype=torch.float32, device=DEVICE)
 
-    # scaler
     SCALER = load_scaler()
 
-    # model
     MODEL = build_model_from_artifact(CONFIG)
 
     print(f"[startup] Loaded. DEVICE={DEVICE}, rooms={len(cfg_room_ids)}, features={len(CONFIG['feature_cols'])}, K={CONFIG['K']}")
+
 
 @app.on_event("startup")
 def _on_startup():
     startup()
 
-# =============================================================================
-# ENDPOINTS
-# =============================================================================
+
 @app.get("/health")
 def health():
     require_loaded()
@@ -647,6 +631,7 @@ def health():
         "K": CONFIG["K"],
         "allowedIntervals": ALLOWED_INTERVALS,
     }
+
 
 @app.get("/api/exhibitor/{exhibitorId}/catchment/heatmap")
 def catchment_heatmap(
@@ -667,10 +652,8 @@ def catchment_heatmap(
     from_ts = parse_time(from_)
     to_ts = parse_time(to)
 
-    # Slice raw data by event and time
     df_ev = DF_RAW[DF_RAW["eventId"].astype(str) == str(event_id)].copy()
 
-    # add K-history buffer
     if from_ts is not None:
         df_ev = df_ev[df_ev["bucket_ts"] >= (from_ts - pd.Timedelta(minutes=CONFIG["K"] * BASE_BUCKET_MINUTES))]
     if to_ts is not None:
@@ -691,7 +674,6 @@ def catchment_heatmap(
     if len(target_times) == 0:
         raise HTTPException(status_code=404, detail="Not enough history to produce predictions (increase time range).")
 
-    # scale
     if SCALER is not None:
         T, Kk, N, F = X_seqs_np.shape
         flat = X_seqs_np.reshape(-1, F)
@@ -700,9 +682,8 @@ def catchment_heatmap(
 
     X_t = torch.tensor(X_seqs_np, dtype=torch.float32, device=DEVICE)
 
-    mean, std = predict_with_mc_dropout(X_t, mc_passes=mcPasses)  # (T,N)
+    mean, std = predict_with_mc_dropout(X_t, mc_passes=mcPasses)
 
-    # Filter predictions to requested window
     pred_times = pd.to_datetime(target_times, utc=True)
     keep = np.ones(len(pred_times), dtype=bool)
     if from_ts is not None:
@@ -717,7 +698,6 @@ def catchment_heatmap(
     if len(pred_times) == 0:
         raise HTTPException(status_code=404, detail="No prediction timestamps inside requested from/to.")
 
-    # Catchment selection based on hall -> room_id
     if hall_name not in HALLNAME_TO_ROOM:
         raise HTTPException(status_code=404, detail=f"hallName '{hall_name}' not found in navmesh mapping.")
 
@@ -759,6 +739,7 @@ def catchment_heatmap(
         "yLabels": yLabels,
         "matrix": heat_agg.astype(float).tolist()
     }
+
 
 @app.get("/api/exhibitor/{exhibitorId}/competition/density")
 def competitive_density(
@@ -816,6 +797,7 @@ def competitive_density(
         },
         "series": series
     }
+
 
 @app.get("/api/exhibitor/{exhibitorId}/report/download")
 def download_report_xlsx(

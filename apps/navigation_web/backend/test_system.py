@@ -1,16 +1,3 @@
-"""backend.test_system
-
-Optional local test script.
-
-This script is not required for running the Flask backend, but can be used to sanity-check:
-- SVG parsing
-- Navmesh generation
-- Dijkstra pathfinding
-
-Run from backend folder:
-  python test_system.py
-"""
-
 import json
 
 from svg_parser import SVGParser
@@ -26,7 +13,6 @@ def _print_header(title: str) -> None:
 
 
 def test_svg_parsing(svg_path: str):
-    _print_header("1. SVG parsing")
     parser = SVGParser(svg_path)
     data = parser.extract_all()
 

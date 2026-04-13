@@ -1,25 +1,3 @@
-"""test_iot_validator.py
-
-Unit tests for:
-  NFR-24 — Anonymize people counting: reject payloads with images/face IDs/PII
-  NFR-25 — Data minimization: whitelist numeric rates only, drop extras
-
-Run from the backend folder:
-    # with pytest (recommended):
-    cd apps/navigation_web/backend
-    python -m pytest test_iot_validator.py -v
-
-    # or plain unittest:
-    python -m unittest test_iot_validator -v
-
-Expected "all pass" output:
-    test_base64_key_rejected ... ok
-    test_clean_nested_accepted ... ok
-    ...
-    Ran 30 tests in 0.XXXs
-    OK
-"""
-
 import math
 import unittest
 
@@ -30,14 +8,9 @@ from iot_validator import (
 )
 
 
-# ---------------------------------------------------------------------------
-# NFR-24: _scan_for_banned_keys
-# ---------------------------------------------------------------------------
-
 class TestBannedKeyScanner(unittest.TestCase):
     """Direct tests on the recursive scanner."""
 
-    # --- Image keys ---
     def test_image_key_rejected(self):
         ok, reason = _scan_for_banned_keys({"image": "data"})
         self.assertFalse(ok)
@@ -55,7 +28,6 @@ class TestBannedKeyScanner(unittest.TestCase):
         ok, reason = _scan_for_banned_keys({"snapshot": "abc"})
         self.assertFalse(ok)
 
-    # --- Data-URI value detection ---
     def test_data_uri_value_rejected(self):
         ok, reason = _scan_for_banned_keys({"photo_url": "data:image/png;base64,abc"})
         self.assertFalse(ok)
@@ -65,7 +37,6 @@ class TestBannedKeyScanner(unittest.TestCase):
         ok, reason = _scan_for_banned_keys({"src": "data:image/jpeg;base64,/9j/"})
         self.assertFalse(ok)
 
-    # --- Face / identity keys ---
     def test_face_id_camel_rejected(self):
         ok, reason = _scan_for_banned_keys({"faceId": "abc-123"})
         self.assertFalse(ok)
@@ -83,7 +54,6 @@ class TestBannedKeyScanner(unittest.TestCase):
         ok, reason = _scan_for_banned_keys({"person_id": "p42"})
         self.assertFalse(ok)
 
-    # --- PII keys ---
     def test_email_rejected(self):
         ok, reason = _scan_for_banned_keys({"email": "user@example.com"})
         self.assertFalse(ok)
@@ -109,7 +79,6 @@ class TestBannedKeyScanner(unittest.TestCase):
         ok, reason = _scan_for_banned_keys({"ip": "192.168.1.1"})
         self.assertFalse(ok)
 
-    # --- Nested detection ---
     def test_nested_pii_in_metadata_rejected(self):
         payload = {"sensor_data": {"room_0": 0.4}, "metadata": {"email": "x@y.com"}}
         ok, reason = _scan_for_banned_keys(payload)
@@ -125,7 +94,6 @@ class TestBannedKeyScanner(unittest.TestCase):
         ok, reason = _scan_for_banned_keys(payload)
         self.assertFalse(ok)
 
-    # --- Large string detection ---
     def test_large_string_rejected(self):
         big = "A" * 1025
         ok, reason = _scan_for_banned_keys({"data": big})
@@ -133,11 +101,9 @@ class TestBannedKeyScanner(unittest.TestCase):
         self.assertIn("large string", reason)
 
     def test_exactly_max_string_accepted(self):
-        # Exactly 1024 chars — boundary: should pass
         ok, reason = _scan_for_banned_keys({"note": "B" * 1024})
         self.assertTrue(ok)
 
-    # --- Clean payloads ---
     def test_clean_numeric_payload_accepted(self):
         ok, reason = _scan_for_banned_keys({"occupancyCount": 150, "occupancyRate": 0.33})
         self.assertTrue(ok)
@@ -150,10 +116,6 @@ class TestBannedKeyScanner(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(reason, "")
 
-
-# ---------------------------------------------------------------------------
-# NFR-25: sanitize_sensor_data
-# ---------------------------------------------------------------------------
 
 class TestSanitizeSensorData(unittest.TestCase):
     """Tests for numeric-only extraction and clamping."""
@@ -209,14 +171,9 @@ class TestSanitizeSensorData(unittest.TestCase):
         self.assertAlmostEqual(result["room_0"], 0.0)
 
 
-# ---------------------------------------------------------------------------
-# NFR-24/25 combined: validate_iot_payload (end-to-end)
-# ---------------------------------------------------------------------------
-
 class TestValidateIotPayload(unittest.TestCase):
     """Integration tests for the main validation entry point."""
 
-    # --- Valid payloads ---
     def test_valid_sensor_data_envelope(self):
         """Backward compat: {"sensor_data": {...}}"""
         ok, error, data = validate_iot_payload({"sensor_data": {"room_0": 0.4, "room_1": 0.6}})
@@ -230,7 +187,6 @@ class TestValidateIotPayload(unittest.TestCase):
         self.assertTrue(ok)
         self.assertAlmostEqual(data["room_0"], 0.3)
 
-    # --- Rejection cases ---
     def test_image_key_rejected(self):
         ok, error, data = validate_iot_payload({"sensor_data": {"room_0": 0.4}, "image": "abc"})
         self.assertFalse(ok)
@@ -273,7 +229,6 @@ class TestValidateIotPayload(unittest.TestCase):
         ok, error, data = validate_iot_payload("room_0=0.5")
         self.assertFalse(ok)
 
-    # --- Data minimization ---
     def test_non_numeric_sensor_values_stripped(self):
         ok, error, data = validate_iot_payload(
             {"sensor_data": {"room_0": "high", "room_1": 0.5}}

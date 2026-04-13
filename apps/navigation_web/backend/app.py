@@ -1,27 +1,9 @@
-"""backend.app
+"""
+Flask backend for the convention center navigation system.
 
-Flask backend for the Convention Center Navigation system with IoT Integration.
-
-NEW FEATURES:
-- Automatic IoT telemetry loading from JSONL file
-- Real-time crowd density routing (avoids crowded halls)
-- Hall occupancy API endpoints
-- Telemetry data streaming
-
-This backend:
-- Parses an SVG floor plan into hall (room) polygons and corridor polygons.
-- Generates a navigation graph (navmesh).
-- Computes shortest paths using Dijkstra's algorithm with crowd-aware weights.
-- Loads real-time IoT sensor data from telemetry stream.
-- Updates edge weights dynamically based on hall occupancy.
-
-Environment variables:
-- CONVENTION_SVG_PATH: Optional absolute/relative path to the SVG floor plan.
-- TELEMETRY_PATH: Optional path to telemetry JSONL file.
-
-Run:
-  cd convention_navmesh/backend
-  py app.py
+This service loads the floor plan, builds or loads the navmesh,
+applies telemetry-aware routing, and exposes navigation, event,
+device, and health endpoints for the frontend.
 """
 
 from __future__ import annotations
@@ -58,7 +40,6 @@ def _no_cache_static(resp):
     return resp
 
 
-# Global state
 navmesh_data: Optional[Dict] = None
 transformer: Optional[CoordinateTransformer] = None
 pathfinder: Optional[DijkstraPathfinder] = None
@@ -68,18 +49,19 @@ event_store: Optional[EventStore] = None
 
 
 def _normalize_room_name(name: str) -> str:
-    """'North Hall 1' → 'northhall1', 'NorthHall1' → 'northhall1'"""
+    """'North Hall 1' -> 'northhall1', 'NorthHall1' -> 'northhall1'"""
     return (name or "").lower().replace(" ", "")
 
 
 def _ensure_rooms_metadata(nm: Dict) -> list[Dict]:
     """
-    Guarantee nm['rooms_metadata'] exists.
-    Manual navmesh files may only contain nodes/edges (rooms exist as nodes of type='room').
+    Ensures nm['rooms_metadata'] exists.
+
+    Manual navmesh files may only include nodes and edges,
+    so room metadata is rebuilt from nodes when needed.
     """
     rooms_md = nm.get("rooms_metadata")
     if isinstance(rooms_md, list) and rooms_md:
-        # Also normalize position format just in case
         for r in rooms_md:
             if "position" in r and isinstance(r["position"], dict):
                 r["position"]["x"] = float(r["position"].get("x", 0))
@@ -91,7 +73,6 @@ def _ensure_rooms_metadata(nm: Dict) -> list[Dict]:
         if node.get("type") != "room":
             continue
 
-        # Support both formats: backend (position.x/y) and legacy manual (x/y)
         if isinstance(node.get("position"), dict):
             pos = node["position"]
             x = float(pos.get("x", 0))
@@ -131,10 +112,10 @@ def _polyline_length_px(coords: list[dict]) -> float:
 
 
 def _smooth_path_coords(coords: list[dict], generator: Any, samples: int = 21) -> list[dict]:
-    """Shortcut a grid-like path into a more human-looking polyline.
+    """
+    Shortcuts a grid-like path into a more natural polyline.
 
-    Uses corridor-only line-of-sight checks to remove unnecessary intermediate nodes
-    without cutting through halls.
+    Uses corridor-only line-of-sight checks so the path does not cut through halls.
     """
     if not coords or len(coords) <= 2:
         return coords
@@ -151,11 +132,9 @@ def _smooth_path_coords(coords: list[dict], generator: Any, samples: int = 21) -
     i = 0
     n = len(coords)
     while i < n - 1:
-        # Pick the farthest reachable point.
         j = n - 1
         while j > i + 1:
-            # Calculate adaptive sample count based on segment length
-            # Use at least 1 sample per 20 pixels to ensure we catch hall boundaries
+            # Scale sample count with segment length to catch hall boundaries reliably.
             dist = math.hypot(coords[j]["x"] - coords[i]["x"], coords[j]["y"] - coords[i]["y"])
             adaptive_samples = max(samples, int(dist / 20) + 1)
 
@@ -168,12 +147,11 @@ def _smooth_path_coords(coords: list[dict], generator: Any, samples: int = 21) -
 
 
 def _simplify_path_coords(coords: list[dict], generator: Any) -> list[dict]:
-    """Remove redundant near-collinear nodes to reduce squiggly paths.
+    """
+    Removes redundant near-collinear nodes while keeping the path walkable.
 
-    Uses angle-based filtering with strict line-of-sight validation.
-    Only removes a node if:
-    1. It's nearly collinear with neighbors (angle > 165 degrees)
-    2. Direct connection doesn't cut through halls
+    A node is only removed when it is almost collinear with its neighbors
+    and the direct connection still passes corridor validation.
     """
     if not coords or len(coords) <= 2:
         return coords
@@ -185,9 +163,7 @@ def _simplify_path_coords(coords: list[dict], generator: Any) -> list[dict]:
     if not callable(los_fn):
         return coords
 
-    # Angle threshold in degrees - only remove very collinear points
     angle_threshold = 165.0
-
     simplified = [coords[0]]
 
     i = 1
@@ -196,18 +172,15 @@ def _simplify_path_coords(coords: list[dict], generator: Any) -> list[dict]:
         curr = coords[i]
         next_pt = coords[i + 1]
 
-        # Calculate angle at current point
         v1_x = curr["x"] - prev["x"]
         v1_y = curr["y"] - prev["y"]
         v2_x = next_pt["x"] - curr["x"]
         v2_y = next_pt["y"] - curr["y"]
 
-        # Normalize vectors
         len1 = math.hypot(v1_x, v1_y)
         len2 = math.hypot(v2_x, v2_y)
 
         if len1 < 1e-6 or len2 < 1e-6:
-            # Skip near-duplicate points
             i += 1
             continue
 
@@ -216,30 +189,21 @@ def _simplify_path_coords(coords: list[dict], generator: Any) -> list[dict]:
         v2_x /= len2
         v2_y /= len2
 
-        # Dot product gives cos(angle)
         dot = v1_x * v2_x + v1_y * v2_y
-        dot = max(-1.0, min(1.0, dot))  # Clamp to [-1, 1]
+        dot = max(-1.0, min(1.0, dot))
         angle_deg = math.degrees(math.acos(dot))
 
-        # Check if nearly collinear and direct path is valid
         if angle_deg > angle_threshold:
-            # Calculate adaptive samples based on distance
-            dist = math.hypot(next_pt["x"] - prev["x"], next_pt["y"] - prev["y"])
-            samples = max(25, int(dist / 15) + 1)
+            samples = max(25, int(math.hypot(next_pt["x"] - prev["x"], next_pt["y"] - prev["y"]) / 15) + 1)
 
-            # Only skip this node if direct path is walkable
             if los_fn(prev, next_pt, samples=samples):
-                # Skip current node (don't add it to simplified)
                 i += 1
                 continue
 
-        # Keep this node
         simplified.append(curr)
         i += 1
 
-    # Always keep the last node
     simplified.append(coords[-1])
-
     return simplified
 
 
@@ -263,7 +227,7 @@ def _resolve_svg_path() -> Path:
 
 
 def _resolve_telemetry_path() -> Optional[Path]:
-    """Find telemetry JSONL file."""
+    """Finds the telemetry JSONL file."""
     env_path = os.environ.get("TELEMETRY_PATH")
     if env_path:
         p = Path(env_path).expanduser().resolve()
@@ -272,7 +236,6 @@ def _resolve_telemetry_path() -> Optional[Path]:
 
     backend_dir = Path(__file__).resolve().parent
 
-    # Try multiple common locations
     candidates = [
         backend_dir.parent / "telemetry_stream_hall_v3__1_.jsonl",
         backend_dir.parent / "telemetry_stream_hall_v3.jsonl",
@@ -303,7 +266,7 @@ def _resolve_events_dir() -> Path:
 
 
 def _resolve_data_file(filename: str) -> Optional[Path]:
-    """Find a file in the data directory."""
+    """Finds a file in the data directory."""
     env_var = f"DATA_{filename.upper().replace('.', '_')}"
     env_path = os.environ.get(env_var)
     if env_path:
@@ -313,7 +276,6 @@ def _resolve_data_file(filename: str) -> Optional[Path]:
 
     backend_dir = Path(__file__).resolve().parent
 
-    # Try multiple common locations
     candidates = [
         backend_dir.parent / "data" / filename,
         backend_dir.parent / filename,
@@ -408,7 +370,7 @@ def _extract_geometry_from_parser(parser: Any) -> Dict:
 
 
 def _get_actual_coordinate_bounds(geometry_data: Dict) -> tuple[float, float]:
-    """Extract the actual min/max coordinates used in the geometry."""
+    """Extracts the actual coordinate span used by the parsed geometry."""
     all_x = []
     all_y = []
 
@@ -443,7 +405,6 @@ def initialize_system() -> None:
     if not svg_path.exists():
         raise FileNotFoundError(f"SVG file not found at {svg_path}. Set CONVENTION_SVG_PATH to override.")
 
-    # 1) Parse SVG
     parser = SVGParser(str(svg_path))
     geometry_data = _extract_geometry_from_parser(parser)
 
@@ -451,7 +412,6 @@ def initialize_system() -> None:
     if not corridors:
         print("WARNING: No corridors detected")
 
-    # 2) Get actual coordinate space
     actual_width, actual_height = _get_actual_coordinate_bounds(geometry_data)
     reported_width = geometry_data["dimensions"]["width"]
     reported_height = geometry_data["dimensions"]["height"]
@@ -462,7 +422,6 @@ def initialize_system() -> None:
 
     svg_dims_for_scaling = (actual_width, actual_height)
 
-    # 3) Setup coordinate transformer
     geojson_str = (
         '{"type":"FeatureCollection","features":[{"type":"Feature","properties":{},'
         '"geometry":{"coordinates":[[[55.28514167811778,25.221544615013386],'
@@ -488,7 +447,6 @@ def initialize_system() -> None:
     print(f"  meters_per_pixel: {transformer.meters_per_pixel:.4f}")
     print(f"  Example: 1000px path = {1000 * transformer.meters_per_pixel:.1f} meters")
 
-    # 4) Load or Generate navmesh
     navmesh_json_path = _resolve_data_file("navmesh_output.json")
 
     if navmesh_json_path and navmesh_json_path.exists():
@@ -499,16 +457,13 @@ def initialize_system() -> None:
         with open(navmesh_json_path, "r") as f:
             navmesh_data = json.load(f)
 
-        # Normalize node format - convert manual format (x/y) to backend format (position.x/y)
+        # Convert manual x/y node format into the backend position format.
         for node in navmesh_data.get("nodes", []):
             if "position" not in node or not isinstance(node.get("position"), dict):
-                # Manual format - convert to backend format
                 node["position"] = {"x": float(node.get("x", 0)), "y": float(node.get("y", 0))}
-                # Remove old keys to avoid confusion
                 node.pop("x", None)
                 node.pop("y", None)
 
-        # Create a minimal generator for compatibility
         generator = NavMeshGenerator(
             rooms=geometry_data.get("rooms", []),
             corridors=corridors,
@@ -524,7 +479,6 @@ def initialize_system() -> None:
             if r.get("polygon")
         }
 
-        # IMPORTANT: manual navmesh may not have rooms_metadata; build it if possible
         _ensure_rooms_metadata(navmesh_data)
 
         print(f"\nManual Navmesh Loaded:")
@@ -555,10 +509,8 @@ def initialize_system() -> None:
         print(f"  Edges: {len(navmesh_data['edges'])}")
         print(f"  Rooms: {len(navmesh_data['rooms_metadata'])}")
 
-    # 5) Initialize pathfinder
     pathfinder = DijkstraPathfinder(navmesh_data["nodes"], navmesh_data["edges"])
 
-    # 6) Load IoT telemetry (optional)
     telemetry_path = _resolve_telemetry_path()
     if telemetry_path:
         print(f"\n{'='*60}")
@@ -570,14 +522,12 @@ def initialize_system() -> None:
             telemetry = TelemetryProcessor()
             telemetry.load_jsonl_stream(telemetry_path)
 
-            # Map hall IDs - handle missing rooms_metadata
             rooms_for_mapping = _ensure_rooms_metadata(navmesh_data)
             if rooms_for_mapping:
                 telemetry.map_hall_ids_to_rooms(rooms_for_mapping)
             else:
                 print("Warning: No rooms found for telemetry mapping")
 
-            # Apply initial telemetry data to navmesh
             sensor_data = telemetry.get_sensor_data_for_navmesh()
             if sensor_data:
                 iot_sensor_data.update(sensor_data)
@@ -606,7 +556,6 @@ def initialize_system() -> None:
     print("System Ready")
     print(f"{'='*60}\n")
 
-    # 7) Initialize events
     events_dir = _resolve_events_dir()
     if events_dir.exists():
         event_store = EventStore.load(events_dir)
@@ -644,7 +593,7 @@ def get_rooms():
 
 @app.route("/api/pathfind", methods=["POST", "OPTIONS"])
 def calculate_path():
-    # Handle CORS preflight
+    # Handles the browser preflight request for cross-origin POSTs.
     if request.method == "OPTIONS":
         response = jsonify({"status": "ok"})
         response.headers.add("Access-Control-Allow-Origin", "*")
@@ -658,23 +607,21 @@ def calculate_path():
     data = request.json or {}
     start_id = data.get("start")
     end_id = data.get("end")
-    avoid_crowds = data.get("avoid_crowds", True)  # NEW: optional flag
+    avoid_crowds = data.get("avoid_crowds", True)
 
     if not start_id or not end_id:
         return jsonify({"error": "start and end required"}), 400
 
     try:
-        # If avoid_crowds is False, temporarily reset weights to base
+        # Temporarily fall back to base weights when crowd avoidance is disabled.
         if not avoid_crowds and telemetry:
             original_edges = [e.copy() for e in navmesh_data["edges"]]
-            # Reset to base weights
             for e in navmesh_data["edges"]:
                 e["effective_weight"] = e.get("weight", e.get("base_weight", 1.0))
             pathfinder.update_weights(navmesh_data["edges"])
 
             path = pathfinder.find_path(start_id, end_id)
 
-            # Restore crowd-aware weights
             navmesh_data["edges"] = original_edges
             pathfinder.update_weights(navmesh_data["edges"])
         else:
@@ -683,7 +630,6 @@ def calculate_path():
         if not path:
             return jsonify({"error": "No path found", "success": False}), 404
 
-        # Safely extract positions
         path_coords = []
         for node_id in path:
             node = pathfinder.nodes.get(node_id)
@@ -695,19 +641,16 @@ def calculate_path():
         if not path_coords:
             return jsonify({"error": "Path found but no coordinates available", "success": False}), 500
 
-        # Use raw navmesh path - no simplification
-        # The frontend rounded corners (app.js) will provide visual smoothing
-        # This guarantees the path never cuts through halls
+        # Keep the raw navmesh path here. The frontend handles visual corner smoothing.
         path_coords_smooth = path_coords
 
-        # Distance shown to the user should be geometric distance, not Dijkstra cost.
+        # Distance shown to the user is geometric distance, not Dijkstra cost.
         total_distance_pixels = _polyline_length_px(path_coords_smooth)
         total_distance_meters = total_distance_pixels * transformer.meters_per_pixel
 
-        # Keep the Dijkstra cost separately (this can include crowd multipliers).
+        # Cost is kept separately because it may include crowd-based weighting.
         total_cost = pathfinder.get_path_distance(path)
 
-        # Include crowding info for each hall in path
         path_crowding = []
         if telemetry:
             for node_id in path:
@@ -748,17 +691,17 @@ def calculate_path():
 
 @app.route("/api/iot/update", methods=["POST"])
 def update_iot_sensors():
-    """Manually update sensor data (for testing or real-time streams).
+    """
+    Manually updates sensor data for testing or real-time streams.
 
-    NFR-24: Rejects payloads containing images, face IDs, or PII keys.
-    NFR-25: Accepts only whitelisted numeric crowd-density values; drops extras.
+    NFR-24 rejects payloads containing images, face IDs, or PII keys.
+    NFR-25 accepts only whitelisted numeric crowd-density values.
     """
     if not navmesh_data or not pathfinder:
         return jsonify({"error": "System not initialized"}), 500
 
     payload = request.json or {}
 
-    # NFR-24 / NFR-25: validate and sanitize before touching any state
     ok, error, sensor_data = validate_iot_payload(payload)
     if not ok:
         return jsonify({"error": error, "rejected": True}), 400
@@ -781,13 +724,13 @@ def update_iot_sensors():
 
 @app.route("/api/iot/data", methods=["GET"])
 def get_iot_data():
-    """Get current IoT sensor data."""
+    """Returns the current IoT sensor data."""
     return jsonify(iot_sensor_data)
 
 
 @app.route("/api/iot/summary", methods=["GET"])
 def get_iot_summary():
-    """Get telemetry summary statistics."""
+    """Returns telemetry summary statistics."""
     if not telemetry:
         return jsonify({"telemetry_enabled": False, "message": "No telemetry data loaded"})
 
@@ -798,7 +741,7 @@ def get_iot_summary():
 
 @app.route("/api/iot/reload", methods=["POST"])
 def reload_telemetry():
-    """Reload telemetry from file (for testing)."""
+    """Reloads telemetry from file."""
     global telemetry
 
     if not navmesh_data:
@@ -867,16 +810,17 @@ def api_events_reload():
 
 @app.route("/api/devices", methods=["GET"])
 def get_devices():
-    """Return the full IoT device registry."""
+    """Returns the full IoT device registry."""
     return jsonify({"status": "success", "devices": DEVICES_REGISTRY})
 
 
 @app.route("/api/devices/status", methods=["GET"])
 def get_device_status():
-    """Return live device telemetry.
-    Initially returns the static status from the registry.
-    When MQTT integration is active, _device_telemetry_store is populated
-    by a paho-mqtt subscriber and takes precedence.
+    """
+    Returns live device telemetry.
+
+    Falls back to the static registry status when the live telemetry store
+    does not yet contain data for a device.
     """
     status_map = {}
     for device in DEVICES_REGISTRY:

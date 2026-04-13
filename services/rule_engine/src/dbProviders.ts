@@ -1,3 +1,8 @@
+/**
+ * Database providers and alert sink implementations for loading rules,
+ * capacities, and persisting deduplicated rule-engine alerts.
+ */
+
 import { Pool } from "pg";
 import type { AlertsSink, CapacityProvider, RulesProvider } from "./integration";
 import type { AlertInsert, RuleRow } from "./types";

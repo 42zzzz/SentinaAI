@@ -1,3 +1,8 @@
+/**
+ * Reads telemetry and security events from the database, normalizes them into
+ * a shared TelemetryEvent shape, and tracks per-source cursors for batching.
+ */
+
 import type { DbClient } from "./dbProviders";
 import type { TelemetryEvent } from "./types";
 

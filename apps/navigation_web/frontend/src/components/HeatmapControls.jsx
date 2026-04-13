@@ -1,4 +1,3 @@
-// frontend/src/components/HeatmapControls.jsx
 import React from 'react';
 
 export default function HeatmapControls({

@@ -3,9 +3,6 @@ import { RuleEngine } from "./ruleEngine";
 import { streamTelemetryJsonl } from "./telemetryReaderJsonl";
 import { AlertInsert } from "./types";
 
-/**
- * Wire-up function. swap providers/sink with DB implementations.
- */
 export async function runRuleEngine(params: {
   telemetryJsonlPath: string;
   rulesProvider: RulesProvider;

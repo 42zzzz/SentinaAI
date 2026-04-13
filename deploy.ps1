@@ -174,6 +174,10 @@ $reportImage = "$REPO/report-export"
 Build-Image "report-export" $REPORT_PATH $reportImage
 $reportUrl = Deploy-Service "report-export" $reportImage
 
+$twinImage = "$REPO/digital-twin"
+Build-Image "digital-twin" $TWIN_PATH $twinImage
+$twinUrl = Deploy-Service "digital-twin" $twinImage
+
 # =========================
 # WAVE 2
 # =========================
@@ -203,12 +207,14 @@ $backendUrl = Deploy-Service "dashboard-backend" $backendImage $backendEnv
 Write-Section "=== Wave 3: Frontends ==="
 
 $frontendImage = "$REPO/dashboard-frontend"
+# Write VITE env vars so they are baked into the production build
+@(
+    "VITE_API_BASE_URL=$backendUrl",
+    "VITE_DIGITAL_TWIN_URL=$twinUrl",
+    "VITE_ASSISTANT_BASE_URL=https://assistant-service-larswr6g3q-ww.a.run.app"
+) | Set-Content -Path "$FRONTEND_PATH/.env.production"
 Build-Image "dashboard-frontend" $FRONTEND_PATH $frontendImage
 $frontendUrl = Deploy-Service "dashboard-frontend" $frontendImage
-
-$twinImage = "$REPO/digital-twin"
-Build-Image "digital-twin" $TWIN_PATH $twinImage
-$twinUrl = Deploy-Service "digital-twin" $twinImage
 
 # =========================
 # SUMMARY

@@ -1,7 +1,7 @@
-// HeatmapLayer for SentinaAI navigation_web (no bundler).
-// - No ESM imports/exports.
-// - Uses window.PIXI and window.HeatmapUtils.
-// - Exposes window.HeatmapLayer.
+/**
+ * Renders and updates the navigation heatmap overlay using window-based Pixi and heatmap utilities.
+ * Supports global and booth-scoped views, point filtering, masking, and texture size protection.
+ */
 
 (function () {
   if (!window.PIXI) {
@@ -36,8 +36,11 @@
   function polyToPixiPoints(poly) {
     const pts = [];
     for (const p of poly || []) {
-      if (Array.isArray(p)) { pts.push(p[0], p[1]); }
-      else { pts.push(p.x, p.y); }
+      if (Array.isArray(p)) {
+        pts.push(p[0], p[1]);
+      } else {
+        pts.push(p.x, p.y);
+      }
     }
     return pts;
   }
@@ -60,22 +63,20 @@
       this.maskGfx.zIndex = 2;
       this.container.addChild(this.maskGfx);
 
-      // Settings
       this.enabled = true;
-      this.mode = 'global'; // global | booth
+      this.mode = 'global';
       this.radiusPx = 55;
       this.cellSizePx = 12;
       this.alphaScale = 1.0;
       this.selectedBoothId = null;
-      this._booths = []; // [{id, polygon:[{x,y}], bounds}]
+      this._booths = [];
 
-      // Rendering
       this._canvas = document.createElement('canvas');
       this._ctx = this._canvas.getContext('2d');
       this._lastKey = '';
 
-      // Safety caps to avoid WebGL context loss on huge textures
-      this._maxTex = 2048; // conservative
+      // Keep texture sizes conservative so very large heatmaps do not blow up the renderer.
+      this._maxTex = 2048;
     }
 
     destroy() {
@@ -130,7 +131,6 @@
         ? this._booths.find(b => String(b.id) === String(this.selectedBoothId))
         : null;
 
-      // Filter for booth mode
       let scopedPoints = points;
       if (this.mode === 'booth') {
         if (!booth) {
@@ -139,6 +139,8 @@
           this.sprite.mask = null;
           return;
         }
+
+        // Prefer boothId when it is already present. Fall back to polygon checks otherwise.
         scopedPoints = points.filter(p => {
           if (p.boothId != null) return String(p.boothId) === String(booth.id);
           return HU.pointInPolygon(p.x, p.y, booth.polygon);
@@ -152,10 +154,9 @@
         return;
       }
 
-      // Bounds
       const bounds = booth ? booth.bounds : getPointsBounds(scopedPoints);
 
-      // Avoid insane texture sizes: increase cell size until within cap
+      // Gradually increase cell size until the generated texture stays within safe limits.
       let cell = this.cellSizePx;
       let cols = Math.max(1, Math.ceil((bounds.maxX - bounds.minX) / cell) + 1);
       let rows = Math.max(1, Math.ceil((bounds.maxY - bounds.minY) / cell) + 1);
@@ -165,6 +166,7 @@
         rows = Math.max(1, Math.ceil((bounds.maxY - bounds.minY) / cell) + 1);
       }
 
+      // Cache the last visible state so we can skip rebuilding identical textures.
       const key = `${this.mode}|${this.selectedBoothId}|r${this.radiusPx}|c${cell}|a${this.alphaScale}|n${scopedPoints.length}|b${bounds.minX.toFixed(1)},${bounds.minY.toFixed(1)},${bounds.maxX.toFixed(1)},${bounds.maxY.toFixed(1)}`;
       if (key === this._lastKey) {
         this.sprite.visible = true;
@@ -173,7 +175,6 @@
       }
       this._lastKey = key;
 
-      // Aggregate + render
       const boothPoly = booth ? booth.polygon : null;
       const gridData = HU.aggregateHeatmapGrid(scopedPoints, cell, this.radiusPx, bounds, boothPoly);
       if (!gridData || !gridData.grid || gridData.width === 0 || gridData.height === 0) {
@@ -183,20 +184,19 @@
         return;
       }
 
-      // HU will normalize based on maxValue internally.
       const imgData = HU.generateHeatmapImageData(gridData, 'hot', this.alphaScale);
 
-      // Use returned width/height (may differ slightly due to +1)
       const w = gridData.width;
       const h = gridData.height;
       this._canvas.width = w;
       this._canvas.height = h;
       this._ctx.putImageData(imgData, 0, 0);
 
-      // Create texture from canvas
       const tex = PIXI.Texture.from(this._canvas);
       if (this.sprite.texture) {
-        try { this.sprite.texture.destroy(true); } catch (_) {}
+        try {
+          this.sprite.texture.destroy(true);
+        } catch (_) {}
       }
       this.sprite.texture = tex;
       this.sprite.visible = true;
@@ -215,6 +215,7 @@
         this.sprite.mask = null;
         return;
       }
+
       this.maskGfx.clear();
       this.maskGfx.beginFill(0xffffff, 1);
       this.maskGfx.drawPolygon(polyToPixiPoints(booth.polygon));

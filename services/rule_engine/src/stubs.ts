@@ -18,7 +18,7 @@ export class InMemoryCapacityProvider implements CapacityProvider {
 
 /**
  * A sink that writes alerts into a JSONL file.
- * will swap this with a DB insert sink.
+ * just for testing before database integration
  */
 export class JsonlFileAlertsSink implements AlertsSink {
   constructor(private outPath: string) {}
