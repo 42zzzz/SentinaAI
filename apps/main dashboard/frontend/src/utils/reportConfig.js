@@ -71,7 +71,7 @@ export function getDomainFromPath(pathname = "") {
 
 export function formatReportStatus(status) {
   const normalized = String(status || "").toUpperCase();
-  if (normalized === "GENERATED") return "Generated";
-  if (normalized === "DRAFT") return "Draft";
+  if (normalized === "GENERATED") return "generated";
+  if (normalized === "DRAFT") return "draft";
   return normalized || "Unknown";
 }

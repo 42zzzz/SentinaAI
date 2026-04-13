@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import MultiSelectPill from "../components/MultiSelectPill";
 import { deleteReport, downloadReportFile, fetchReports, finalizeDraftReport, openReportFile } from "../api/reports";
-import { formatReportStatus, getDomainFromPath } from "../utils/reportConfig";
+import { getDomainFromPath } from "../utils/reportConfig";
 import "./ReportsPage.css";
 
 function IconSearch() {
@@ -134,6 +134,12 @@ function formatDateTime(value) {
   });
 }
 
+function formatReportStatus(status) {
+  const normalized = String(status || "").trim();
+  if (!normalized) return "unknown";
+  return normalized.toLowerCase();
+}
+
 function statusPill(status) {
   const s = String(status || "").toUpperCase();
 
@@ -186,6 +192,8 @@ export default function ReportsPage() {
   const [page, setPage] = useState(1);
   const [busyKey, setBusyKey] = useState("");
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [successToast, setSuccessToast] = useState("");
+
 
   useEffect(() => {
     let ignore = false;
@@ -206,6 +214,20 @@ export default function ReportsPage() {
       ignore = true;
     };
   }, [domain]);
+
+  useEffect(() => {
+    const toastMessage = location.state?.reportGeneratedToast;
+    if (!toastMessage) return undefined;
+
+    setSuccessToast(toastMessage);
+    navigate(location.pathname, { replace: true, state: {} });
+
+    const timer = window.setTimeout(() => {
+      setSuccessToast("");
+    }, 5400);
+
+    return () => window.clearTimeout(timer);
+  }, [location.pathname, location.state, navigate]);
 
   const statusOptions = useMemo(() => [...new Set(rows.map((row) => formatReportStatus(row.status)).filter(Boolean))], [rows]);
 
@@ -260,6 +282,11 @@ export default function ReportsPage() {
       setError("");
       await finalizeDraftReport(reportId);
       await refreshRows();
+      setSuccessToast("Report has been successfully generated.");
+
+      window.setTimeout(() => {
+        setSuccessToast("");
+      }, 5400);
     } catch (err) {
       setError(err?.response?.data?.error || err.message || "Failed to generate draft.");
     } finally {
@@ -268,7 +295,7 @@ export default function ReportsPage() {
   }
 
   async function handleDelete(reportId, reportTitle) {
-    const confirmed = window.confirm(`Delete report \"${reportTitle || reportId}\"?`);
+    const confirmed = window.confirm(`Delete report "${reportTitle || reportId}"?`);
     if (!confirmed) return;
 
     const key = `delete:${reportId}`;
@@ -294,218 +321,269 @@ export default function ReportsPage() {
           .reportsPage.socTheme .actionIconBtn.isPrimary { background: #123150; }
         `}</style>
       ) : null}
+
+      <style>{`
+        .reportsSuccessToast {
+          position: fixed;
+          right: 24px;
+          bottom: 24px;
+          z-index: 1200;
+          max-width: min(360px, calc(100vw - 32px));
+          padding: 12px 14px;
+          border-radius: 14px;
+          border: 1px solid #bbf7d0;
+          background: #f0fdf4;
+          color: #166534;
+          box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+          font-size: 13px;
+          font-weight: 700;
+          pointer-events: none;
+          opacity: 0;
+          transform: translateY(10px);
+          animation: reportsToastInOut 5.3s ease forwards;
+        }
+
+        @keyframes reportsToastInOut {
+          0% {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          8% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+          82% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+          100% {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+        }
+      `}</style>
+
       <div className={`reportsPage ${themeClass}`}>
-      <div className="pageInner">
-        <div className="reportsHeaderRow">
-          <div />
-          <div className="reportsCountTop">{filteredRows.length} reports</div>
-        </div>
-
-        {error ? <div className="reportsErrorBanner">{error}</div> : null}
-
-        <div className="reportsControlsCard">
-          <div className="reportsControlsTopRow">
-            <div className="filterPill pillSearch" role="search">
-              <span className="pillLeftIcon" aria-hidden>
-                <IconSearch />
-              </span>
-              <input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Search here" className="pillInput" />
-            </div>
-
-            <div className="filterPill pillSelectWrap pillDate">
-              <span className="pillLeftIcon" aria-hidden>
-                <IconDate />
-              </span>
-              <select value={dateFilter} className="pillSelect" onChange={(event) => setDateFilter(event.target.value)}>
-                <option value="">Date</option>
-                <option value="last_7_days">Last 7 Days</option>
-                <option value="last_30_days">Last 30 Days</option>
-                <option value="this_year">This Year</option>
-              </select>
-              <span className="pillRightCaret" aria-hidden />
-            </div>
-
-            <div className="filterPill pillSelectWrap pillFormat">
-              <span className="pillLeftIcon" aria-hidden>
-                <IconFormat />
-              </span>
-              <select value={format} className="pillSelect" onChange={(event) => setFormat(event.target.value)}>
-                <option value="">Format</option>
-                <option value="PDF">PDF</option>
-                <option value="XLSX">XLSX</option>
-              </select>
-              <span className="pillRightCaret" aria-hidden />
-            </div>
-
-            <MultiSelectPill className="pillStatus" label="Status" icon={<IconStatus />} options={statusOptions} value={statuses} onChange={setStatuses} />
-
-            <div className="reportsTopActions">
-              <button
-                type="button"
-                className={`moreOptionsBtn ${showMoreFilters ? "isOpen" : ""}`}
-                onClick={() => setShowMoreFilters((prev) => !prev)}
-              >
-                {moreFiltersLabel}
-              </button>
-
-              <button type="button" className="newReportBtn" onClick={() => navigate(`${location.pathname}/new`)}>
-                + New Report
-              </button>
-            </div>
+        <div className="pageInner">
+          <div className="reportsHeaderRow">
+            <div />
+            <div className="reportsCountTop">{filteredRows.length} reports</div>
           </div>
 
-          {showMoreFilters ? (
-            <div className="reportsFiltersSecondary">
+          {error ? <div className="reportsErrorBanner">{error}</div> : null}
+          {successToast ? (
+            <div className="reportsSuccessToast">
+              {successToast}
+            </div>
+          ) : null}
 
-              <div className="filterPill pillSelectWrap pillSort">
+          <div className="reportsControlsCard">
+            <div className="reportsControlsTopRow">
+              <div className="filterPill pillSearch" role="search">
                 <span className="pillLeftIcon" aria-hidden>
-                  <IconSort />
+                  <IconSearch />
                 </span>
-                <select value={sort} className="pillSelect" onChange={(event) => setSort(event.target.value)}>
-                  <option value="timestamp_desc">Newest</option>
-                  <option value="timestamp_asc">Oldest</option>
-                  <option value="title_asc">Title A-Z</option>
-                  <option value="title_desc">Title Z-A</option>
+                <input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Search here" className="pillInput" />
+              </div>
+
+              <div className="filterPill pillSelectWrap pillDate">
+                <span className="pillLeftIcon" aria-hidden>
+                  <IconDate />
+                </span>
+                <select value={dateFilter} className="pillSelect" onChange={(event) => setDateFilter(event.target.value)}>
+                  <option value="">Date</option>
+                  <option value="last_7_days">Last 7 Days</option>
+                  <option value="last_30_days">Last 30 Days</option>
+                  <option value="this_year">This Year</option>
                 </select>
                 <span className="pillRightCaret" aria-hidden />
               </div>
+
+              <div className="filterPill pillSelectWrap pillFormat">
+                <span className="pillLeftIcon" aria-hidden>
+                  <IconFormat />
+                </span>
+                <select value={format} className="pillSelect" onChange={(event) => setFormat(event.target.value)}>
+                  <option value="">Format</option>
+                  <option value="PDF">PDF</option>
+                  <option value="XLSX">XLSX</option>
+                </select>
+                <span className="pillRightCaret" aria-hidden />
+              </div>
+
+              <MultiSelectPill className="pillStatus" label="Status" icon={<IconStatus />} options={statusOptions} value={statuses} onChange={setStatuses} />
+
+              <div className="reportsTopActions">
+                <button
+                  type="button"
+                  className={`moreOptionsBtn ${showMoreFilters ? "isOpen" : ""}`}
+                  onClick={() => setShowMoreFilters((prev) => !prev)}
+                >
+                  {moreFiltersLabel}
+                </button>
+
+                <button type="button" className="newReportBtn" onClick={() => navigate(`${location.pathname}/new`)}>
+                  + New Report
+                </button>
+              </div>
             </div>
-          ) : null}
-        </div>
 
-        <div className="reportsTableCard">
-          <div className="reportsTableScroll">
-            <table className="reportsTable">
-              <thead>
-                <tr>
-                  <th>Report ID</th>
-                  <th>Report Title</th>
-                  <th>Description</th>
-                  <th>Timestamp</th>
-                  
-                  <th>Format</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={8} className="reportsTableEmpty">Loading reports…</td>
-                  </tr>
-                ) : pageRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="reportsTableEmpty">No reports found.</td>
-                  </tr>
-                ) : (
-                  pageRows.map((row) => {
-                    const statusStyle = statusPill(row.status);
-                    const normalizedStatus = String(row.status || "").toUpperCase();
-                    const normalizedFormat = String(row.format || "").toUpperCase();
-                    const isDraft = normalizedStatus === "DRAFT";
-                    const isPdf = normalizedFormat === "PDF";
-                    const deleteBusy = busyKey === `delete:${row.report_id}`;
-                    const generateBusy = busyKey === `generate:${row.report_id}`;
+            {showMoreFilters ? (
+              <div className="reportsFiltersSecondary">
+                <div className="filterPill pillSelectWrap pillSort">
+                  <span className="pillLeftIcon" aria-hidden>
+                    <IconSort />
+                  </span>
+                  <select value={sort} className="pillSelect" onChange={(event) => setSort(event.target.value)}>
+                    <option value="timestamp_desc">Newest</option>
+                    <option value="timestamp_asc">Oldest</option>
+                    <option value="title_asc">Title A-Z</option>
+                    <option value="title_desc">Title Z-A</option>
+                  </select>
+                  <span className="pillRightCaret" aria-hidden />
+                </div>
+              </div>
+            ) : null}
+          </div>
 
-                    return (
-                      <tr key={row.report_id}>
-                        <td className="tdStrong">{row.report_code}</td>
-                        <td>{row.report_title}</td>
-                        <td className="reportsDesc">{row.description}</td>
-                        <td>{formatDateTime(row.timestamp)}</td>
-                        <td>{row.report_type}</td>
-                        <td>{row.format}</td>
-                        <td>
-                          <span className="statusTag" style={statusStyle}>{formatReportStatus(row.status)}</span>
-                        </td>
-                        <td>
-                          <div className="reportsActionBtns">
-                            {isDraft ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="actionIconBtn"
-                                  title="Generate draft"
-                                  onClick={() => handleGenerateDraft(row.report_id)}
-                                  disabled={generateBusy || deleteBusy}
-                                >
-                                  <IconDraft />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="actionIconBtn isPrimary"
-                                  title="Edit draft"
-                                  onClick={() => navigate(`${location.pathname}/${row.report_id}/edit`)}
-                                  disabled={generateBusy || deleteBusy}
-                                >
-                                  <IconEdit />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="actionIconBtn isDanger"
-                                  title="Delete draft"
-                                  onClick={() => handleDelete(row.report_id, row.report_title)}
-                                  disabled={generateBusy || deleteBusy}
-                                >
-                                  <IconDelete />
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  className="actionIconBtn isPrimary"
-                                  title="Download"
-                                  onClick={() => downloadReportFile(row.report_id)}
-                                  disabled={deleteBusy}
-                                >
-                                  <IconDownload />
-                                </button>
-                                {isPdf ? (
+          <div className="reportsTableCard">
+            <div className="reportsTableScroll">
+              <table className="reportsTable">
+                <thead>
+                  <tr>
+                    <th>Report ID</th>
+                    <th>Report Title</th>
+                    <th>Description</th>
+                    <th>Timestamp</th>
+                    <th>Format</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={8} className="reportsTableEmpty">Loading reports…</td>
+                    </tr>
+                  ) : pageRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="reportsTableEmpty">No reports found.</td>
+                    </tr>
+                  ) : (
+                    pageRows.map((row) => {
+                      const statusStyle = statusPill(row.status);
+                      const normalizedStatus = String(row.status || "").toUpperCase();
+                      const normalizedFormat = String(row.format || "").toUpperCase();
+                      const isDraft = normalizedStatus === "DRAFT";
+                      const isPdf = normalizedFormat === "PDF";
+                      const deleteBusy = busyKey === `delete:${row.report_id}`;
+                      const generateBusy = busyKey === `generate:${row.report_id}`;
+                      const canPreview = isPdf;
+                      const previewTitle = canPreview ? "Preview" : "Cannot preview xlsx file";
+                      
+                      
+
+                      return (
+                        <tr key={row.report_id}>
+                          <td className="tdStrong">{row.report_code}</td>
+                          <td>{row.report_title}</td>
+                          <td className="reportsDesc">{row.description}</td>
+                          <td>{formatDateTime(row.timestamp)}</td>
+                          <td>{row.format}</td>
+                          <td>
+                            <span className="statusTag" style={statusStyle}>{formatReportStatus(row.status)}</span>
+                          </td>
+                          <td>
+                            <div className="reportsActionBtns">
+                              {isDraft ? (
+                                <>
                                   <button
                                     type="button"
                                     className="actionIconBtn"
-                                    title="Preview"
-                                    onClick={() => openReportFile(row.report_id)}
+                                    title="Generate draft"
+                                    onClick={() => handleGenerateDraft(row.report_id)}
+                                    disabled={generateBusy || deleteBusy}
+                                  >
+                                    <IconDraft />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="actionIconBtn isPrimary"
+                                    title="Edit draft"
+                                    onClick={() => navigate(`${location.pathname}/${row.report_id}/edit`)}
+                                    disabled={generateBusy || deleteBusy}
+                                  >
+                                    <IconEdit />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="actionIconBtn isDanger"
+                                    title="Delete draft"
+                                    onClick={() => handleDelete(row.report_id, row.report_title)}
+                                    disabled={generateBusy || deleteBusy}
+                                  >
+                                    <IconDelete />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="actionIconBtn isPrimary"
+                                    title="Download"
+                                    onClick={() => downloadReportFile(row.report_id)}
                                     disabled={deleteBusy}
                                   >
-                                    <IconPreview />
+                                    <IconDownload />
                                   </button>
-                                ) : null}
-                                <button
-                                  type="button"
-                                  className="actionIconBtn isDanger"
-                                  title="Delete"
-                                  onClick={() => handleDelete(row.report_id, row.report_title)}
-                                  disabled={deleteBusy}
-                                >
-                                  <IconDelete />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="reportsPager">
-            <div className="reportsPagerNums">
-              <button type="button" className="reportsPageBtn" disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
-                Prev
-              </button>
-              <span className="reportsPagerLabel">Page {currentPage} of {totalPages}</span>
+                                  <button
+                                      type="button"
+                                      className={`actionIconBtn ${canPreview ? "" : "isDisabledPreview"}`}
+                                      title={previewTitle}
+                                      aria-disabled={!canPreview}
+                                      onClick={() => {
+                                        if (!canPreview || deleteBusy) return;
+                                        openReportFile(row.report_id);
+                                      }}
+                                      disabled={canPreview ? deleteBusy : false}
+                                    >
+                                      <IconPreview />
+                                    </button>
+                                  
+                                  <button
+                                    type="button"
+                                    className="actionIconBtn isDanger"
+                                    title="Delete"
+                                    onClick={() => handleDelete(row.report_id, row.report_title)}
+                                    disabled={deleteBusy}
+                                  >
+                                    <IconDelete />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
-            <button type="button" className="reportsNextBtn" disabled={currentPage >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
-              Next
-            </button>
+
+            <div className="reportsPager">
+              <div className="reportsPagerNums">
+                <button type="button" className="reportsPageBtn" disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+                  Prev
+                </button>
+                <span className="reportsPagerLabel">Page {currentPage} of {totalPages}</span>
+              </div>
+              <button type="button" className="reportsNextBtn" disabled={currentPage >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
+                Next
+              </button>
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </>
   );

@@ -70,7 +70,7 @@ function enqueueUnique(existingQueue, incomingAlerts) {
     merged.push(alert);
   }
 
-  return merged.sort((a, b) => Number(a.alert_id) - Number(b.alert_id));
+  return merged.sort((a, b) => Number(b.alert_id) - Number(a.alert_id));
 }
 
 function getSeverityHeading(severity) {
@@ -156,10 +156,7 @@ export default function LiveAlertOverlay({ section, pollMs = 2500 }) {
       return;
     }
 
-    if (lastSeenIdRef.current > 0) {
-      setBootstrapped(true);
-      return;
-    }
+    setBootstrapped(true);
 
     try {
       const res = await axios.get(`${API_BASE}/alerts`, {
@@ -311,7 +308,12 @@ export default function LiveAlertOverlay({ section, pollMs = 2500 }) {
         <div className="liveAlertMetaRow">
           <div>
             <span>Device ID</span>
-            <strong>{activeAlert.device_id || "—"}</strong>
+            <strong>
+              {activeAlert.device_id ||
+                metadata.camera_device_id ||
+                metadata.env_device_id ||
+                "—"}
+            </strong>
           </div>
           <div>
             <span>Zone</span>

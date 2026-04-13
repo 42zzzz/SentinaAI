@@ -14,7 +14,7 @@ export default function TopHallsBar({
   eventId,
   limit = 8,
 
-  // ✅ NEW
+
   embedded = false,
 }) {
   const [rows, setRows] = useState([]);

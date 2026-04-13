@@ -498,3 +498,16 @@
     justify-content: flex-end;
   }
 }
+
+.actionIconBtn.isDisabledPreview {
+  color: #94a3b8;
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+
+.actionIconBtn.isDisabledPreview:hover {
+  color: #94a3b8;
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}

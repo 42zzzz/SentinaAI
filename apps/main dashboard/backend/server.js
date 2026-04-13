@@ -167,14 +167,20 @@ try {
   if (aiEnabled) {
     const { runOnce: runAiAlerts } = require("./utils/aiAlertWorker");
 
-    runAiAlerts().catch((e) =>
-      console.warn("[aiAlertWorker] first run failed:", e.message)
-    );
+    (async () => {
+      try {
+        await runAiAlerts();
+      } catch (e) {
+        console.warn("[aiAlertWorker] first run failed:", e.message);
+      }
+    })();
 
-    setInterval(() => {
-      runAiAlerts().catch((e) =>
-        console.warn("[aiAlertWorker] run failed:", e.message)
-      );
+    setInterval(async () => {
+      try {
+        await runAiAlerts();
+      } catch (e) {
+        console.warn("[aiAlertWorker] run failed:", e.message);
+      }
     }, 15000);
   }
 } catch (e) {

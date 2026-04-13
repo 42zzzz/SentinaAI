@@ -465,3 +465,74 @@
   transform: translateY(-50%);
 }
 
+/* ---- FINAL environmental filter layout fix ---- */
+.sustTheme.envPage .envInner{
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sustTheme.envPage .envControls{
+  display: grid !important;
+  grid-template-columns: minmax(260px, 1.35fr) repeat(3, minmax(210px, 1fr)) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 14px;
+  overflow: visible;
+}
+
+.sustTheme.envPage .envPill{
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.sustTheme.envPage .envSearch{
+  width: 100%;
+  min-width: 0;
+}
+
+.sustTheme.envPage .envSelectWrap{
+  width: 100%;
+  min-width: 0;
+}
+
+.sustTheme.envPage .envDownloadBtn{
+  justify-self: end;
+  white-space: nowrap;
+}
+
+@media (max-width: 1240px){
+  .sustTheme.envPage .envControls{
+    grid-template-columns: minmax(220px, 1.2fr) repeat(3, minmax(180px, 1fr)) auto;
+  }
+}
+
+@media (max-width: 980px){
+  .sustTheme.envPage .envControls{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sustTheme.envPage .envSearch{
+    grid-column: 1 / -1;
+  }
+
+  .sustTheme.envPage .envDownloadBtn{
+    justify-self: end;
+  }
+}
+
+@media (max-width: 640px){
+  .sustTheme.envPage .envControls{
+    grid-template-columns: 1fr;
+  }
+
+  .sustTheme.envPage .envSearch{
+    grid-column: auto;
+  }
+
+  .sustTheme.envPage .envDownloadBtn{
+    justify-self: start;
+  }
+}

@@ -1,4 +1,5 @@
 const analyticsDb = require("../dbs/analytics.db");
+const coreDb = require("../dbs/core.db");
 const {
   getAiBaseUrl,
   getAiPrimaryState,
@@ -11,6 +12,7 @@ const {
 
 const fetchFn = typeof fetch === "function" ? fetch : require("node-fetch");
 const AI_BASE = getAiBaseUrl();
+let isRunning = false;
 
 function nowIso() {
   return new Date().toISOString();
@@ -117,13 +119,14 @@ async function processOperations(ts) {
   const result = await analyticsDb.query(
     `
   SELECT
-    zone_id,
-    hall_id,
-    hall_name,
-    hall_capacity,
-    current_occupancy,
-    occupancy_ratio,
-    flow_congestion_index
+  zone_id,
+  hall_id,
+  hall_name,
+  hall_capacity,
+  current_occupancy,
+  occupancy_ratio,
+  flow_congestion_index,
+  camera_device_id
   FROM interval_metrics
   WHERE ts = (
       SELECT MAX(ts)
@@ -143,6 +146,7 @@ async function processOperations(ts) {
     current_occupancy: toNumber(row.current_occupancy, 0),
     occupancyRatio: toNumber(row.occupancy_ratio, 0),
     flowCongestionIndex: toNumber(row.flow_congestion_index, 0),
+    cameraDeviceId: row.camera_device_id || null,
     co2: deriveCo2Proxy(row.occupancy_ratio),
   }));
 
@@ -222,6 +226,7 @@ async function processOperations(ts) {
       rule_key: ruleInfo.rule_key,
       domain: "OPERATIONS",
       severity,
+      device_id: hall.cameraDeviceId || null,
       zone_id: hall.zone_id || null,
       hall_id: hall.hall_id || null,
       event_timestamp: ts,
@@ -233,6 +238,7 @@ async function processOperations(ts) {
         source: "AI_ENGINE",
         worker: "OPS_AI_PRIMARY",
         ai_action: mergedHall.aiAction,
+        camera_device_id: hall.cameraDeviceId || null,
         occupancy_ratio: mergedHall.occupancyRatio,
         co2_proxy_ppm: mergedHall.co2,
         flow_congestion_index: mergedHall.flowCongestionIndex,
@@ -322,21 +328,22 @@ async function processSustainability(ts) {
   const result = await analyticsDb.query(
     `
   SELECT
-    zone_id,
-    hall_id,
-    hall_name,
-    day_of_week,
-    hour_of_day,
-    venue_role,
-    occupancy_ratio,
-    comfort_index,
-    indoor_temp_c,
-    outdoor_temp_c,
-    humidity_pct,
-    hvac_energy_kwh,
-    carbon_kg_co2,
-    energy_efficiency_score,
-    sustainability_status
+  zone_id,
+  hall_id,
+  hall_name,
+  day_of_week,
+  hour_of_day,
+  venue_role,
+  occupancy_ratio,
+  comfort_index,
+  indoor_temp_c,
+  outdoor_temp_c,
+  humidity_pct,
+  hvac_energy_kwh,
+  carbon_kg_co2,
+  energy_efficiency_score,
+  sustainability_status,
+  env_device_id
   FROM interval_metrics
   WHERE ts = (
       SELECT MAX(ts)
@@ -364,6 +371,7 @@ async function processSustainability(ts) {
     carbonKgCO2: toNumber(row.carbon_kg_co2, 0),
     energyEfficiencyScore: toNumber(row.energy_efficiency_score, 0),
     sustainabilityStatusRaw: row.sustainability_status || null,
+    envDeviceId: row.env_device_id || null,
   }));
 
   if (!halls.length) {
@@ -451,6 +459,7 @@ async function processSustainability(ts) {
         rule_key: ruleInfo.rule_key,
         domain: "SUSTAINABILITY",
         severity,
+        device_id: hall.envDeviceId || null,
         zone_id: hall.zone_id || null,
         hall_id: hall.hall_id || null,
         event_timestamp: ts,
@@ -468,6 +477,7 @@ async function processSustainability(ts) {
           energy_efficiency_score: hall.energyEfficiencyScore,
           comfort_index: hall.comfortIndex,
           occupancy_ratio: hall.occupancyRatio,
+          env_device_id: hall.envDeviceId || null,
         },
       };
 
@@ -505,58 +515,84 @@ async function processSustainability(ts) {
 }
 
 async function runOnce() {
-  const startedAt = nowIso();
-  const aiState = await getAiPrimaryState();
+  const lockId = 321654987;
 
-  if (!aiState.runAiPrimary) {
+  const lockResult = await coreDb.query(
+    `SELECT pg_try_advisory_lock($1) AS locked`,
+    [lockId]
+  );
+
+  const locked = Boolean(lockResult.rows[0]?.locked);
+
+  if (!locked) {
     return {
-      startedAt,
+      startedAt: nowIso(),
       finishedAt: nowIso(),
-      mode: aiState.mode,
-      aiHealthy: aiState.healthy,
+      skipped: true,
+      note: "AI alert worker skipped because another run already holds the DB lock.",
       inserted: 0,
       updated: 0,
       resolved: 0,
-      note: aiState.reason,
       operations: { halls: 0, inserted: 0, updated: 0, resolved: 0, alerts: [] },
       sustainability: { halls: 0, inserted: 0, updated: 0, resolved: 0, alerts: [] },
     };
   }
 
-  const ts = await getLatestTs();
-  if (!ts) {
+  try {
+    const startedAt = nowIso();
+    const aiState = await getAiPrimaryState();
+
+    if (!aiState.runAiPrimary) {
+      return {
+        startedAt,
+        finishedAt: nowIso(),
+        mode: aiState.mode,
+        aiHealthy: aiState.healthy,
+        inserted: 0,
+        updated: 0,
+        resolved: 0,
+        note: aiState.reason,
+        operations: { halls: 0, inserted: 0, updated: 0, resolved: 0, alerts: [] },
+        sustainability: { halls: 0, inserted: 0, updated: 0, resolved: 0, alerts: [] },
+      };
+    }
+
+    const ts = await getLatestTs();
+    if (!ts) {
+      return {
+        startedAt,
+        finishedAt: nowIso(),
+        mode: aiState.mode,
+        aiHealthy: aiState.healthy,
+        inserted: 0,
+        updated: 0,
+        resolved: 0,
+        note: "No interval_metrics rows available yet.",
+        operations: { halls: 0, inserted: 0, updated: 0, resolved: 0, alerts: [] },
+        sustainability: { halls: 0, inserted: 0, updated: 0, resolved: 0, alerts: [] },
+      };
+    }
+
+    const [operations, sustainability] = await Promise.all([
+      processOperations(ts),
+      processSustainability(ts),
+    ]);
+
     return {
       startedAt,
       finishedAt: nowIso(),
+      ts,
       mode: aiState.mode,
       aiHealthy: aiState.healthy,
-      inserted: 0,
-      updated: 0,
-      resolved: 0,
-      note: "No interval_metrics rows available yet.",
-      operations: { halls: 0, inserted: 0, updated: 0, resolved: 0, alerts: [] },
-      sustainability: { halls: 0, inserted: 0, updated: 0, resolved: 0, alerts: [] },
+      inserted: operations.inserted + sustainability.inserted,
+      updated: operations.updated + sustainability.updated,
+      resolved: operations.resolved + sustainability.resolved,
+      operations,
+      sustainability,
     };
+  } finally {
+    await coreDb.query(`SELECT pg_advisory_unlock($1)`, [lockId]);
   }
-
-  const [operations, sustainability] = await Promise.all([
-    processOperations(ts),
-    processSustainability(ts),
-  ]);
-
-
-  return {
-    startedAt,
-    finishedAt: nowIso(),
-    ts,
-    mode: aiState.mode,
-    aiHealthy: aiState.healthy,
-    inserted: operations.inserted + sustainability.inserted,
-    updated: operations.updated + sustainability.updated,
-    resolved: operations.resolved + sustainability.resolved,
-    operations,
-    sustainability,
-  };
 }
 
 module.exports = {

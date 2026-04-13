@@ -168,3 +168,54 @@
     border-radius: 16px;
   }
 }
+
+.floatingAssistantPanel {
+  position: absolute;
+  right: 0;
+  bottom: 72px;
+  width: min(500px, calc(100vw - 40px));
+  height: min(560px, calc(100vh - 120px));
+  border-radius: 20px;
+  overflow: hidden;
+  transition: width 0.2s ease, height 0.2s ease;
+}
+
+.floatingAssistantPanel.isExpanded {
+  width: min(1120px, calc(100vw - 40px));
+  height: min(680px, calc(100vh - 96px));
+}
+
+@media (max-width: 900px) {
+  .floatingAssistantRoot {
+    right: 16px;
+    bottom: 16px;
+  }
+
+  .floatingAssistantPanel {
+    right: 0;
+    bottom: 70px;
+    width: min(440px, calc(100vw - 24px));
+    height: min(500px, calc(100vh - 108px));
+    border-radius: 18px;
+  }
+
+  .floatingAssistantPanel.isExpanded {
+    width: min(980px, calc(100vw - 24px));
+    height: min(620px, calc(100vh - 84px));
+  }
+}
+
+@media (max-width: 640px) {
+  .floatingAssistantRoot {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .floatingAssistantPanel {
+    right: 0;
+    bottom: 68px;
+    width: calc(100vw - 24px);
+    height: min(440px, calc(100vh - 88px));
+    border-radius: 16px;
+  }
+}
