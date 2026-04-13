@@ -21,17 +21,16 @@ The platform is deployed on GCP Cloud Run and accessible directly in a browser:
 
 No installation or account setup needed. Login credentials and any additional instructions are provided in the final submission document.
 
-### Option 2: Clone the Private Repository
+### Option 2: Clone the Repository
 
 To review the source code or run the project locally:
 
-1. **Request collaborator access** — Contact the project team to be added as a GitHub collaborator on the private repository.
-2. Once access is granted, clone normally:
+1. Clone the repository:
    ```bash
    git clone https://github.com/42zzzz/SentinaAI.git
    cd SentinaAI
    ```
-3. Follow the [Quick Start](#quick-start) guide below.
+2. Follow the [Quick Start](#quick-start) guide below.
 
 ---
 
