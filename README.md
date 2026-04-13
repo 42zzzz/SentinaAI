@@ -93,18 +93,14 @@ IoT Edge Devices → MQTT Broker (EMQX) → Navigation/AI Services → Main Dash
 The fastest way to run the full platform is via the root `npm run dev` script, which starts the backend, frontend, and digital twin concurrently.
 
 ```bash
-# 1. Install all JS dependencies
+# 1. Install all dependencies (JS + Python)
 cd "apps/main dashboard"
 npm install
-npm install --prefix frontend
-npm install --prefix backend
-cd ../digital_twin_web && npm install && cd -
 
 # 2. Configure environment (see Environment Variables section)
 #    Edit apps/main dashboard/backend/.env
 
 # 3. Launch
-cd "apps/main dashboard"
 npm run dev
 ```
 
