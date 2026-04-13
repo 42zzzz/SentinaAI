@@ -1,4 +1,9 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿/**
+ * Displays a simulator panel for triggering manual crowd surge scenarios by hall,
+ * allowing the dashboard to test AI response behavior using custom occupancy and CO₂ values.
+ */
+
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import InfoTooltip from "./InfoTooltip";
 
@@ -47,7 +52,6 @@ export default function AiSimulateSurge({ onSimulated }) {
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const simulate = async () => {

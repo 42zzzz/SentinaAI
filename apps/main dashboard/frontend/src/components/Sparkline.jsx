@@ -1,4 +1,3 @@
-// frontend/src/components/Sparkline.jsx
 import React, { useMemo } from "react";
 
 function fmtCount(n) {
@@ -20,7 +19,6 @@ function fmtX(ts, xMode) {
 }
 
 export default function Sparkline({ points = [], height = 110, xMode = "time", accent }) {
-  // ✅ If accent passed -> use it. Else fallback to CSS var. Else fallback pink.
   const ACCENT = accent || "var(--spark-accent, #E8486F)";
 
   const w = 320;

@@ -1,4 +1,11 @@
-﻿import { useEffect, useState, useMemo } from "react";
+﻿/**
+ * Displays the event details page with event metadata, exhibitor and booth
+ * listings, exhibitor search, and an exhibitor detail modal. This page uses
+ * route params to fetch event, exhibitor, and booth data from the API and
+ * loads full exhibitor details when a table row is selected.
+ */
+
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 
@@ -73,7 +80,6 @@ export default function EventDetails() {
                 </div>
             </div>
 
-            {/* Exhibitors */}
             <div style={card}>
                 <h2>Exhibitors</h2>
 
@@ -110,7 +116,7 @@ export default function EventDetails() {
 
                                             setSelectedExhibitor({
                                                 ...res.data.exhibitor,
-                                                booth_id: ex.booth_id   // 👈 inject booth from row
+                                                booth_id: ex.booth_id
                                             });
 
                                             setShowModal(true);
@@ -130,7 +136,6 @@ export default function EventDetails() {
                 )}
             </div>
 
-            {/* Booths */}
             <div style={card}>
                 <h2>Booths</h2>
                 {booths.length === 0 ? (
@@ -157,7 +162,6 @@ export default function EventDetails() {
                 )}
             </div>
 
-            {/* Modal */}
             {showModal && selectedExhibitor && (
                 <div style={modalOverlay}>
                     <div style={modalBox}>

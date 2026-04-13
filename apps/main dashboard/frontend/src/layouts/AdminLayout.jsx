@@ -1,3 +1,9 @@
+/**
+ * Provides the super admin layout shell for dashboard pages, including the top bar,
+ * user profile display, logout flow, and shared page container. This layout uses
+ * React Router navigation and the LogoutConfirmModal component to handle sign-out.
+ */
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoutConfirmModal from "../components/LogoutConfirmModal";

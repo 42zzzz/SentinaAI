@@ -1,6 +1,3 @@
-/* frontend/src/pages/DevicesPage.css */
-
-/* ===== apply even if opsTheme missing ===== */
 .opsTheme .devicesPage,
 .devicesPage{
   background: #f5f6f8;
@@ -15,7 +12,6 @@
   padding: 22px 26px;
 }
 
-/* ===== Header ===== */
 .opsTheme .devicesHeaderRow,
 .devicesHeaderRow{
   display: flex;
@@ -52,7 +48,6 @@
   color: #6b7280;
 }
 
-/* ===== Controls card ===== */
 .opsTheme .devicesControlsCard,
 .devicesControlsCard{
   margin-top: 14px;
@@ -62,7 +57,6 @@
   padding: 14px;
 }
 
-/* ===== Filters row ===== */
 .opsTheme .devicesFiltersRow,
 .devicesFiltersRow{
   display: flex;
@@ -78,9 +72,7 @@
   }
 }
 
-/* =========================
-   FILTER PILLS (LATEST)
-   ========================= */
+
 
 .opsTheme .devicesFiltersRow .filterPill,
 .devicesFiltersRow .filterPill{
@@ -112,7 +104,6 @@
   border-radius: 10px;
 }
 
-/* left icon slot */
 .opsTheme .devicesFiltersRow .pillLeftIcon,
 .sustTheme .devicesFiltersRow .pillLeftIcon,
 .devicesFiltersRow .pillLeftIcon{
@@ -127,9 +118,8 @@
 
 .opsTheme .devicesFiltersRow .pillLeftIcon{ color: #E8486F; }
 .sustTheme .devicesFiltersRow .pillLeftIcon{ color: #00802B; }
-.devicesFiltersRow .pillLeftIcon{ color: #64748b; } /* fallback */
+.devicesFiltersRow .pillLeftIcon{ color: #64748b; }
 
-/* select reset */
 .opsTheme .devicesFiltersRow .pillSelect,
 .devicesFiltersRow .pillSelect{
   width: 100%;
@@ -148,7 +138,6 @@
   -webkit-text-fill-color: currentColor;
 }
 
-/* input reset */
 .opsTheme .devicesFiltersRow .pillInput,
 .devicesFiltersRow .pillInput{
   width: 100%;
@@ -177,7 +166,6 @@
   opacity: 1;
 }
 
-/* search icon slot on right */
 .opsTheme .devicesFiltersRow .pillSearchIcon,
 .devicesFiltersRow .pillSearchIcon{
   width: 24px;
@@ -213,7 +201,6 @@
     0 0 0 3px rgba(15,23,42,0.08);
 }
 
-/* ===== Bottom row ===== */
 .opsTheme .devicesControlsBottomRow,
 .devicesControlsBottomRow{
   margin-top: 12px;
@@ -254,7 +241,6 @@
   color: #6b7280;
 }
 
-/* ===== Error ===== */
 .opsTheme .devicesError,
 .devicesError{
   margin-top: 12px;
@@ -278,7 +264,6 @@
   color: #7f1d1d;
 }
 
-/* ===== Table ===== */
 .opsTheme .devicesTableCard,
 .devicesTableCard{
   margin-top: 14px;
@@ -335,7 +320,6 @@
   color: #334155;
 }
 
-/* ===== Status pills ===== */
 .opsTheme .statusPill,
 .statusPill{
   display: inline-flex;
@@ -355,7 +339,6 @@
 .opsTheme .statusPill.isNeedsAttention, .statusPill.isNeedsAttention{ background: #fef9c3; color: #854d0e; }
 .opsTheme .statusPill.isNeutral, .statusPill.isNeutral{ background: #e5e7eb; color: #475569; }
 
-/* ===== Pagination ===== */
 .opsTheme .devicesPager,
 .devicesPager{
   margin-top: 12px;
@@ -399,11 +382,6 @@
   cursor: not-allowed;
 }
 
-/* =========================
-   ACCENTS (Ops = pink, Sust = green)
-   ========================= */
-
-/* Clear filters button */
 .opsTheme .devicesControlsCard .clearFiltersBtn{
   background: #E8486F !important;
   border-color: #E8486F !important;
@@ -424,7 +402,6 @@
   border-color: #006b24 !important;
 }
 
-/* devices count top */
 .opsTheme .devicesHeaderRight .devicesCountTop{
   color: #E8486F !important;
   font-weight: 700;
@@ -434,20 +411,15 @@
   font-weight: 700;
 }
 
-/* table header */
 .opsTheme .devicesTable thead th{ color: #E8486F !important; }
 .sustTheme .devicesTable thead th{ color: #00802B !important; }
 
-/* =========================
-   FINAL SELECT + CARET BEHAVIOUR
-   ========================= */
 
 .opsTheme .pillSelectWrap,
 .pillSelectWrap{
   position: relative;
 }
 
-/* select stretches under caret */
 .opsTheme .pillSelectWrap .pillSelect,
 .pillSelectWrap .pillSelect{
   flex: 1 1 auto;
@@ -464,7 +436,6 @@
   line-height: 30px;
 }
 
-/* caret: thin + absolute */
 .opsTheme .pillSelectWrap .pillRightCaret,
 .pillSelectWrap .pillRightCaret{
   position: absolute;
@@ -482,22 +453,16 @@
   transform-origin: center;
 }
 
-/* icons don’t block clicks */
 .opsTheme .pillSelectWrap .pillLeftIcon,
 .pillSelectWrap .pillLeftIcon{
   pointer-events: none;
 }
 
-/* rotate only when wrapper has isOpen (from React state) */
 .opsTheme .pillSelectWrap.isOpen .pillRightCaret,
 .pillSelectWrap.isOpen .pillRightCaret{
   transform: translateY(-35%) rotate(180deg);
 }
 
-/* =========================================================
-   SOC OVERRIDES
-   Keeps teammate work, fixes SOC colors + table fit only
-   ========================================================= */
 
 .socTheme .devicesPage{
   background: #f5f7fb;

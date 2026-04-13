@@ -1,4 +1,11 @@
-// frontend/src/pages/EnergyPage.jsx
+/**
+ * Displays the sustainability energy page with live energy trends, zone-level
+ * consumption analysis, top hall energy usage, KPI summary cards, and anomaly
+ * monitoring. This page fetches energy trends and summary data from dashboard
+ * and energy APIs, uses dashboard refresh settings utilities, and composes
+ * Sparkline, InfoTooltip, TopHallsEnergyBar, and filter icons from FilterIcons.
+ */
+
 import "./EnergyPage.css";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
@@ -15,6 +22,7 @@ import {
   IconSort,
   IconZone,
 } from "../components/FilterIcons";
+
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const SUST_GREEN = "#00802B";
@@ -106,7 +114,6 @@ export default function EnergyPage() {
   const [sources, setSources] = useState([]);
   const [anoms, setAnoms] = useState([]);
 
-  // Live energy usage (24h)
   useEffect(() => {
     let alive = true;
 
@@ -135,7 +142,6 @@ export default function EnergyPage() {
     };
   }, [metric, zoneId, refreshMs]);
 
-  // Widgets (zones / sources / anomalies + 6h spark)
   useEffect(() => {
     let alive = true;
 
@@ -169,7 +175,6 @@ export default function EnergyPage() {
     };
   }, [zoneId, refreshMs]);
 
-  // ✅ FIX: compute KPIs from real data we already have (no /energy/kpis-24h needed)
   const kpis = useMemo(() => {
     const totalKwh24h = (sources || []).reduce((sum, r) => sum + Number(r.total_kwh || 0), 0);
 
@@ -221,7 +226,6 @@ export default function EnergyPage() {
     <div className="sustTheme">
       <div className="energyPage">
         <div className="energyInner">
-          {/* Filters row */}
           <div className="energyFiltersRow">
             <div className="filterPill pillSearch">
               <span className="pillLeftIcon" aria-hidden>
@@ -280,7 +284,6 @@ export default function EnergyPage() {
 
           {err ? <div className="energyError">{err}</div> : null}
 
-          {/* Top 3 cards */}
           <div className="energyGridTop">
             <CardShell title="Live Energy Usage" tooltip={tooltipText.liveEnergyUsage}>
               <div className="liveChart">

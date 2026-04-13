@@ -1,3 +1,8 @@
+/**
+ * Handles user management, role lookup, assistant log retrieval, and super-admin
+ * user administration actions for the main dashboard backend.
+ */
+
 const express = require("express");
 const bcrypt = require("bcrypt");
 const core = require("../dbs/core.db");
@@ -8,9 +13,6 @@ const router = express.Router();
 const ASSISTANT_SERVICE_URL =
   process.env.ASSISTANT_SERVICE_URL || "http://127.0.0.1:8002";
 
-/* ===============================
-   SUPER ADMIN CHECK
-================================= */
 const requireSuperAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== "super_admin") {
     return res.status(403).json({ error: "Forbidden" });
@@ -58,9 +60,6 @@ function normalizeLog(row = {}, index = 0, userNameMap = new Map(), exhibitorNam
   };
 }
 
-/* ===============================
-   GET ALL USERS
-================================= */
 router.get("/", authenticate, requireSuperAdmin, async (req, res) => {
   try {
     const result = await core.query(`
@@ -87,9 +86,6 @@ router.get("/", authenticate, requireSuperAdmin, async (req, res) => {
   }
 });
 
-/* ===============================
-   GET ASSISTANT LOGS
-================================= */
 router.get("/assistant-logs", authenticate, requireSuperAdmin, async (req, res) => {
   try {
     const [assistantRes, usersRes, exhibitorsRes] = await Promise.all([
@@ -138,9 +134,6 @@ router.get("/assistant-logs", authenticate, requireSuperAdmin, async (req, res) 
   }
 });
 
-/* ===============================
-   GET ROLES (EXCEPT SUPER ADMIN)
-================================= */
 router.get("/roles", authenticate, requireSuperAdmin, async (req, res) => {
   try {
     const result = await core.query(`
@@ -157,9 +150,6 @@ router.get("/roles", authenticate, requireSuperAdmin, async (req, res) => {
   }
 });
 
-/* ===============================
-   CREATE USER
-================================= */
 router.post("/", authenticate, requireSuperAdmin, async (req, res) => {
   const { full_name, email, password, role_id } = req.body;
 
@@ -177,7 +167,6 @@ router.post("/", authenticate, requireSuperAdmin, async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    /* CHECK DUPLICATE EMAIL */
     const emailCheck = await client.query(
       `SELECT user_id FROM users WHERE email = $1`,
       [email]
@@ -188,7 +177,6 @@ router.post("/", authenticate, requireSuperAdmin, async (req, res) => {
       return res.status(400).json({ error: "Email already exists" });
     }
 
-    /* GENERATE NEXT EMPLOYEE ID SAFELY */
     const lastEmployee = await client.query(`
       SELECT employee_id
       FROM users
@@ -200,7 +188,7 @@ router.post("/", authenticate, requireSuperAdmin, async (req, res) => {
     let nextNumber = 1;
 
     if (lastEmployee.rows.length > 0) {
-      const lastId = lastEmployee.rows[0].employee_id; // ED-002
+      const lastId = lastEmployee.rows[0].employee_id; 
       const numeric = parseInt(lastId.split("-")[1]);
       nextNumber = numeric + 1;
     }
@@ -237,9 +225,6 @@ router.post("/", authenticate, requireSuperAdmin, async (req, res) => {
   }
 });
 
-/* ===============================
-   UPDATE USER
-================================= */
 router.put("/:id", authenticate, requireSuperAdmin, async (req, res) => {
   const { full_name, email, role_id } = req.body;
 
@@ -270,9 +255,7 @@ router.put("/:id", authenticate, requireSuperAdmin, async (req, res) => {
   }
 });
 
-/* ===============================
-   DELETE USER
-================================= */
+
 router.delete("/:id", authenticate, requireSuperAdmin, async (req, res) => {
   try {
     const check = await core.query(

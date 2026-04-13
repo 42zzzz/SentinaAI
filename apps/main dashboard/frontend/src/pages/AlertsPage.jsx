@@ -1,4 +1,11 @@
-// frontend/src/pages/AlertsPage.jsx
+/**
+ * Displays the alerts page with domain-based filtering, alert listing, pagination,
+ * and alert actions for acknowledge and resolve workflows. This page fetches
+ * alert filters and alert rows from the alerts API, uses MultiSelectPill for
+ * filter controls, applies dashboard refresh settings from dashboardSettings,
+ * and uses React Router navigation for alert detail routing.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./AlertsPage.css";
@@ -35,7 +42,6 @@ function safeJson(v) {
   }
 }
 
-/* ---- Inline SVG Icons (theme-aware: uses currentColor) ---- */
 function IconSearch() {
   return (
     <svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -94,7 +100,6 @@ function IconSort() {
   );
 }
 
-// reuse to keep consistent
 const IconSeverity = IconStatus;
 const IconRule = IconStatus;
 
@@ -156,7 +161,6 @@ export default function AlertsPage() {
     return () => clearTimeout(t);
   }, [q]);
 
-  // ✅ filters are fetched per-domain
   useEffect(() => {
     axios
       .get(`${API_BASE}/alerts/filters`, { params: { domain } })
@@ -164,7 +168,6 @@ export default function AlertsPage() {
       .catch((e) => setError(e?.response?.data?.error || e.message || "Failed to load alert filters"));
   }, [domain]);
 
-  // ✅ alerts list includes domain
   useEffect(() => {
     let alive = true;
 
@@ -304,14 +307,13 @@ export default function AlertsPage() {
       <div className="alertsPage">
         <div className="pageInner">
           <div className="alertsHeaderRow">
-            <div className="alertsTitleWrap">{/* keep empty for consistency */}</div>
+            <div className="alertsTitleWrap"></div>
 
             <div className="alertsHeaderRight">
               <div className="alertsCountTop">{loading ? "Loading…" : `${total} alerts`}</div>
             </div>
           </div>
 
-          {/* Controls */}
           <div className="alertsControlsCard">
             <div className="alertsControlsTopRow">
               <div className="filterPill pillSearch" role="search">
@@ -443,7 +445,6 @@ export default function AlertsPage() {
             ) : null}
           </div>
 
-          {/* Error */}
           {error ? (
             <div className="alertsError">
               <div className="alertsErrorTitle">Error</div>
@@ -451,7 +452,6 @@ export default function AlertsPage() {
             </div>
           ) : null}
 
-          {/* Table */}
           <div className="alertsTableCard">
             <div className="alertsTableScroll">
               <table className="alertsTable">
@@ -599,7 +599,6 @@ export default function AlertsPage() {
             </div>
           </div>
 
-          {/* Pagination */}
           <div className="alertsPager">
             <div className="alertsPagerLeft">
               Page {page} of {totalPages}
@@ -629,7 +628,6 @@ export default function AlertsPage() {
   );
 }
 
-/* keep your existing severity/status pill colors exactly */
 function pillSeverity(severity) {
   const s = String(severity || "").toLowerCase();
 

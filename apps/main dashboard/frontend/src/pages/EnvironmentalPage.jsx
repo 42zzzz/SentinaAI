@@ -1,3 +1,11 @@
+/**
+ * Displays the environmental monitoring page with live environmental trends,
+ * zone-based metric comparisons, anomaly summaries, KPI cards, and CSV export.
+ * This page fetches overview, anomaly, by-zone, and trend data from the
+ * environment API, uses dashboard refresh settings utilities, and composes
+ * Sparkline, InfoTooltip, and filter icons from FilterIcons.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Sparkline from "../components/Sparkline";

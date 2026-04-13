@@ -1,3 +1,8 @@
+/**
+ * Handles retrieval of the latest hall metrics and enriches the result with
+ * sustainability status, AI action, and anomaly data for the main dashboard hall view.
+ */
+
 const analyticsDb = require("../dbs/analytics.db");
 
 const AI_BASE = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";

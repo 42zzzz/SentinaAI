@@ -1,3 +1,11 @@
+/**
+ * Provides the main application layout for role-based dashboard pages, including
+ * sidebar navigation, page header, logout flow, help access, settings modal,
+ * live alerts, and assistant access. This layout renders routed page content
+ * with Outlet, and integrates SettingsPage, FloatingAssistant, LiveAlertOverlay,
+ * HelpSupportModal, and LogoutConfirmModal.
+ */
+
 // frontend/src/layout/AppLayout.jsx
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";

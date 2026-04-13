@@ -1,3 +1,9 @@
+/**
+ * Displays the Digital Twin page by embedding the external digital twin
+ * application inside an iframe, using the configured VITE_DIGITAL_TWIN_URL
+ * environment value or a local fallback URL.
+ */
+
 import React from "react";
 
 const DIGITAL_TWIN_URL =

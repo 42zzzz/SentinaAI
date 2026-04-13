@@ -1,4 +1,9 @@
-﻿import { useEffect, useState } from "react";
+﻿/**
+ * Displays live AI sustainability status for each hall, including HVAC energy,
+ * carbon output, efficiency, sustainability status, AI action, and anomaly state.
+ */
+
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import InfoTooltip from "./InfoTooltip";

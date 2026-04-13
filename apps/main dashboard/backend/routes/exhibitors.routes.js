@@ -1,4 +1,3 @@
-// backend/routes/exhibitors.routes.js
 const express = require("express");
 const exhibitors = require("../controllers/exhibitors.controller");
 const authenticate = require("../middleware/auth.middleware");

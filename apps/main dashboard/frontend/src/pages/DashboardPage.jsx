@@ -1,3 +1,13 @@
+/**
+ * Renders the operations dashboard page with live KPI cards, alert trends,
+ * device status, comfort scoring, busiest hall monitoring, AI surge simulation,
+ * occupancy forecasting, and AI operations status. This page uses dashboard
+ * refresh settings utilities, fetches overview and congestion data from the
+ * dashboard API, and composes AiOpsPanel, AiSimulateSurge, PredictedOccupancyChart,
+ * InfoTooltip, TrendPanel, TopHallsEnergyBar, ComfortGauge, TopHallsBar,
+ * DevicesStatusBars, and AlertsTrendPanel.
+ */
+
 import "./DashboardPage.css";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
@@ -23,7 +33,6 @@ import busyHallsIcon from "../assets/icons/busy_halls.svg";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-/** Small helpers for Figma-like icon circles */
 const PinkIcon = ({ children }) => <div className="iconCircle">{children}</div>;
 
 const IcoPeople = () => (

@@ -1,4 +1,7 @@
-// backend/controllers/energy.controller.js
+/**
+ * Handles energy consumption data, latest-day summaries, sustainability KPI snapshots,
+ * anomaly summaries, and 24-hour energy metrics for the main dashboard sustainability views.
+ */
 const sustainabilityDb = require("../dbs/sustainability.db");
 const analyticsDb = require("../dbs/analytics.db");
 const coreDb = require("../dbs/core.db");
@@ -77,9 +80,7 @@ exports.getTopHallsLatestDay = async (req, res) => {
   }
 };
 
-/* =========================
-   ✅ NEW: Zones latest day
-   ========================= */
+
 exports.getZonesLatestDay = async (req, res) => {
   try {
     const source = req.query.source || null;
@@ -115,10 +116,7 @@ exports.getZonesLatestDay = async (req, res) => {
   }
 };
 
-/* =========================
-   ✅ NEW: Device type proxy
-   (uses energy_consumption.source)
-   ========================= */
+
 exports.getSourcesLatestDay = async (req, res) => {
   try {
     const zoneId = req.query.zone_id || null;
@@ -155,9 +153,6 @@ exports.getSourcesLatestDay = async (req, res) => {
   }
 };
 
-/* =========================
-   ✅ NEW: KPI snapshot (from analytics.interval_metrics)
-   ========================= */
 exports.getEnergyKpisLatest = async (req, res) => {
   try {
     const zoneId = req.query.zone_id || null;
@@ -193,7 +188,7 @@ exports.getEnergyKpisLatest = async (req, res) => {
       zone_id: zoneId,
       kpis: {
         energyEfficiencyScore: Number(row.energy_efficiency_score || 0),
-        hvacLoadIndex: Number(row.hvac_energy_kwh || 0), // proxy like Figma
+        hvacLoadIndex: Number(row.hvac_energy_kwh || 0),
         carbonKgCO2: Number(row.carbon_kg_co2 || 0),
       },
     });
@@ -202,9 +197,6 @@ exports.getEnergyKpisLatest = async (req, res) => {
   }
 };
 
-/* =========================
-   ✅ NEW: Anomalies list (alerts domain = SUSTAINABILITY)
-   ========================= */
 exports.getSustAnomaliesSummary = async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit || "6", 10), 20);
@@ -232,7 +224,6 @@ exports.getSustAnomaliesSummary = async (req, res) => {
   }
 };
 
-// controllers/energy.controller.js
 exports.getEnergyKpis24h = async (req, res) => {
   try {
     const zoneId = req.query.zone_id || null;

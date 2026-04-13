@@ -1,4 +1,9 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿/**
+ * Displays an alerts trend panel with a headline total and sparkline chart,
+ * using the selected range and domain for the main dashboard alert views.
+ */
+
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Sparkline from "./Sparkline";
 

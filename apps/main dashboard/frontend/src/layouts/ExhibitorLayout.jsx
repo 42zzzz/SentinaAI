@@ -1,3 +1,12 @@
+/**
+ * Provides the exhibitor portal layout, dashboard data loading, sidebar navigation,
+ * refresh controls, and shared route context for exhibitor pages. This layout
+ * fetches profile, event, heatmap, and density data, and passes shared state and
+ * helpers to child pages through Outlet context. It also integrates SettingsPage,
+ * FloatingAssistant, HelpSupportModal, LogoutConfirmModal, and dashboard settings
+ * utilities for refresh timing.
+ */
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -266,7 +275,6 @@ export default function ExhibitorLayout() {
     try {
       localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? "1" : "0");
     } catch {
-      // ignore storage errors
     }
   }, [sidebarCollapsed]);
 
@@ -398,13 +406,11 @@ export default function ExhibitorLayout() {
     return () => {
       ignore = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!hasBootstrapped.current) return;
     loadAll(exhibitorId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intervalMinutes, catchmentK, mcPasses]);
 
   useEffect(() => {
@@ -415,7 +421,6 @@ export default function ExhibitorLayout() {
     }, refreshMs);
 
     return () => window.clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshMs, exhibitorId, intervalMinutes, catchmentK, mcPasses]);
 
   const densitySeries = safeArray(density?.series);

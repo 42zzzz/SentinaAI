@@ -1,8 +1,12 @@
+/**
+ * Handles dashboard overview, zone summaries, map data, trend data, hall rankings,
+ * device status summaries, alert trends, and SOC overview metrics for the main dashboard.
+ */
+
 const analyticsDb = require("../dbs/analytics.db");
 const coreDb = require("../dbs/core.db");
 const securityDb = require("../dbs/security.db");
 
-// Helper: pick the latest timestamp (interval) for a given event/zone
 async function getLatestTs({ eventId, zoneId }) {
   const r = await analyticsDb.query(
     `
@@ -35,7 +39,6 @@ exports.getOverview = async (req, res) => {
     const ts = await getLatestTs({ eventId, zoneId });
     if (!ts) return res.json({ ok: true, ts: null, rows: [], kpis: {} });
 
-    // KPIs computed from latest interval snapshot
     const kpi = await analyticsDb.query(
       `
       SELECT
@@ -52,9 +55,6 @@ exports.getOverview = async (req, res) => {
       [ts, eventId, zoneId]
     );
 
-    // "Crowd flow efficiency" isn’t a direct column. We can derive a proxy:
-    // Higher congestion_index => lower efficiency.
-    // Clamp to 0-100.
     const row = kpi.rows[0];
     const congestion = Number(row.avg_congestion_index || 0);
     const crowdFlowEfficiency = Math.max(0, Math.min(100, Math.round(100 - congestion * 100)));
@@ -101,7 +101,6 @@ exports.getZonesSummary = async (req, res) => {
       [ts, eventId]
     );
 
-    // Convert into UI-friendly labels like your Figma
     const rows = r.rows.map((z) => {
       const occ = Number(z.occupancy_pct || 0);
       const congestion = Number(z.congestion_index || 0);
@@ -146,7 +145,7 @@ exports.getMapLayer = async (req, res) => {
     const metricExpr =
       metric === "comfort" ? "comfort_index" :
       metric === "congestion" ? "flow_congestion_index" :
-      "occupancy_ratio"; // default occupancy
+      "occupancy_ratio";
 
     const r = await analyticsDb.query(
       `
@@ -171,10 +170,6 @@ exports.getMapLayer = async (req, res) => {
   }
 };
 
-// Generic time-series endpoint for dashboards (single-series)
-// GET /dashboard/trends?metric=occupancy|congestion|comfort|temperature|energy|carbon
-// Optional: event_id, zone_id, hall_id
-// Optional: hours (default 6), limit (overrides hours)
 exports.getTrends = async (req, res) => {
   try {
     const eventId = req.query.event_id || null;
@@ -187,7 +182,6 @@ exports.getTrends = async (req, res) => {
       ? Number(req.query.limit)
       : Math.max(8, Math.min(7 * 24 * 4, Math.round(hours * 4)));
 
-    // whitelist metrics -> SQL expressions
     const metricExpr =
       metric === "congestion" ? "AVG(flow_congestion_index)::float8" :
       metric === "comfort" ? "AVG(comfort_index)::float8" :
@@ -232,8 +226,6 @@ exports.getTrends = async (req, res) => {
   }
 };
 
-// Snapshot leaderboard to replace large tables with a compact bar chart.
-// GET /dashboard/top-halls?metric=occupancy_ratio|congestion|comfort|energy&limit=8
 exports.getTopHalls = async (req, res) => {
   try {
     const eventId = req.query.event_id || null;
@@ -281,8 +273,6 @@ exports.getTopHalls = async (req, res) => {
   }
 };
 
-// ✅ Devices status summary (Active / Inactive / Quarantined)
-// GET /dashboard/device-status?zone_id=&hall_id=
 exports.getDeviceStatusSummary = async (req, res) => {
   try {
     const zoneId = req.query.zone_id || null;

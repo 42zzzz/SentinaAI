@@ -1,4 +1,3 @@
-// backend/routes/booths.routes.js
 const express = require("express");
 const booths = require("../controllers/booths.controller");
 

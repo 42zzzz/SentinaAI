@@ -1,3 +1,10 @@
+/**
+ * Displays the booths page with event-based booth filtering, booth listing,
+ * pagination, and advanced filter controls for zone, hall, size, assignment,
+ * and sorting. This page fetches event data and booth filter options from the
+ * backend, and uses the MultiSelectPill component for multi-select filter inputs.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./BoothsPage.css";

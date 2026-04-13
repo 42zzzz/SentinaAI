@@ -1,3 +1,8 @@
+/**
+ * Handles environment filter data, overview KPIs, zone comparisons, trend data,
+ * and sustainability anomaly summaries for the main dashboard environment views.
+ */
+
 const analyticsDb = require("../dbs/analytics.db");
 const coreDb = require("../dbs/core.db");
 
@@ -61,7 +66,6 @@ function zeroOverview(hours, zoneId, hallId, windowEndTs = null) {
   };
 }
 
-// GET /environment/filters
 exports.getEnvironmentFilters = async (_req, res) => {
   try {
     const [zonesCore, zonesAnalytics] = await Promise.all([
@@ -107,7 +111,6 @@ exports.getEnvironmentFilters = async (_req, res) => {
   }
 };
 
-// GET /environment/overview?hours=24&zone_id=&hall_id=
 exports.getEnvironmentOverview = async (req, res) => {
   try {
     const hours = Math.max(1, Math.min(168, Number(req.query.hours || 24)));
@@ -181,7 +184,6 @@ exports.getEnvironmentOverview = async (req, res) => {
   }
 };
 
-// GET /environment/by-zone?metric=air_quality|temperature|humidity|carbon|efficiency|comfort&hours=24&zone_id=
 exports.getEnvironmentByZone = async (req, res) => {
   try {
     const hours = Math.max(1, Math.min(168, Number(req.query.hours || 24)));
@@ -248,7 +250,6 @@ exports.getEnvironmentByZone = async (req, res) => {
   }
 };
 
-// GET /environment/trends?metric=air_quality|temperature|humidity|carbon|efficiency|comfort&hours=24&zone_id=&hall_id=
 exports.getEnvironmentTrends = async (req, res) => {
   try {
     const hours = Math.max(1, Math.min(168, Number(req.query.hours || 24)));
@@ -337,7 +338,6 @@ exports.getEnvironmentTrends = async (req, res) => {
   }
 };
 
-// GET /environment/anomalies?hours=24&limit=6
 exports.getEnvironmentAnomalies = async (req, res) => {
   try {
     const hours = Math.max(1, Math.min(168, Number(req.query.hours || 24)));

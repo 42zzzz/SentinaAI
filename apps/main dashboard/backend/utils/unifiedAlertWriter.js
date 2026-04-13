@@ -171,6 +171,8 @@ async function findHandledAlertForSameEvent(payload) {
 }
 
 async function findActiveAlertByEntity(payload) {
+  const isSecurity = String(payload.domain || "").toUpperCase() === "SECURITY";
+
   const result = await coreDb.query(
     `
     SELECT
@@ -188,9 +190,9 @@ async function findActiveAlertByEntity(payload) {
     FROM alerts
     WHERE rule_key = $1
       AND domain = $2
-      AND COALESCE(device_id, '') = COALESCE($3, '')
-      AND COALESCE(zone_id, '') = COALESCE($4, '')
-      AND COALESCE(hall_id, '') = COALESCE($5, '')
+      AND ($3::boolean = false OR COALESCE(device_id, '') = COALESCE($4, ''))
+      AND COALESCE(zone_id, '') = COALESCE($5, '')
+      AND COALESCE(hall_id, '') = COALESCE($6, '')
       AND status IN ('NEW', 'ACKNOWLEDGED')
     ORDER BY detected_at DESC, alert_id DESC
     LIMIT 1
@@ -198,6 +200,7 @@ async function findActiveAlertByEntity(payload) {
     [
       payload.rule_key,
       payload.domain,
+      isSecurity,
       payload.device_id || "",
       payload.zone_id || "",
       payload.hall_id || "",

@@ -1,4 +1,7 @@
-// backend/controllers/booths.controller.js
+/**
+ * Handles booth filter options, booth listing, and booth assignment updates
+ * for the main dashboard exhibitor management workflow.
+ */
 const coreDb = require("../dbs/core.db");
 
 function toInt(v, def) {

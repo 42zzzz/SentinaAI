@@ -1,3 +1,7 @@
+/**
+ * Enforces session idle timeout by checking the last activity timestamp and
+ * refreshing it for authenticated requests that still have a valid session token.
+ */
 const IDLE_TIMEOUT_MINUTES = 15;
 const IDLE_TIMEOUT_MS = IDLE_TIMEOUT_MINUTES * 60 * 1000;
 
@@ -16,7 +20,6 @@ function idleTimeout(req, res, next) {
   const now = Date.now();
   const last = Number(req.cookies?.last_activity || 0);
 
-  // If we have a last activity timestamp and it's too old -> logout
   if (last && now - last > IDLE_TIMEOUT_MS) {
     res.clearCookie("access_token");
     res.clearCookie("token");
@@ -25,7 +28,6 @@ function idleTimeout(req, res, next) {
     return res.status(401).json({ error: "SESSION_EXPIRED" });
   }
 
-  // Update activity timestamp cookie
   res.cookie("last_activity", String(now), {
     httpOnly: true,
     sameSite: "lax",

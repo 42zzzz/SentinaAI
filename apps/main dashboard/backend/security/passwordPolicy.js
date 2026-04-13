@@ -1,4 +1,7 @@
-// apps/main dashboard/backend/security/passwordPolicy.js
+/**
+ * Validates passwords against length, character, identity-based, and strength
+ * requirements for the main dashboard authentication system.
+ */
 const zxcvbn = require("zxcvbn");
 
 const SYMBOL_REGEX = /[^A-Za-z0-9]/;
@@ -19,7 +22,6 @@ function validatePassword(password, { email, name } = {}) {
   if (!DIGIT_REGEX.test(password)) errors.push("Password must include at least 1 number.");
   if (!SYMBOL_REGEX.test(password)) errors.push("Password must include at least 1 symbol.");
 
-  // Block including user identifiers
   const lowered = password.toLowerCase();
 
   if (email) {
@@ -43,7 +45,6 @@ function validatePassword(password, { email, name } = {}) {
     }
   }
 
-  // Strength scoring (require >= 3)
   const zx = zxcvbn(password, [email || "", name || ""]);
   if (zx.score < 3) {
     errors.push("Password is too weak. Use a longer passphrase with mixed characters.");

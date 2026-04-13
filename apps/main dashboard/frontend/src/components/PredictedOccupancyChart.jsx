@@ -1,4 +1,9 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿/**
+ * Displays a hall-based occupancy forecast panel with a short-term line chart
+ * and predicted occupancy points for the next 60 minutes.
+ */
+
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import InfoTooltip from "./InfoTooltip";
 
@@ -98,7 +103,6 @@ export default function PredictedOccupancyChart({ refreshSignal }) {
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshSignal]);
 
   useEffect(() => {

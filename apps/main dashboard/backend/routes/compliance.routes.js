@@ -1,5 +1,7 @@
-// apps/main dashboard/backend/routes/compliance.routes.js
-// GDPR compliance endpoints — Art.7 (consent), Art.17 (erasure), Art.20 (portability), Art.5(1)(e) (retention)
+/**
+ * Defines compliance-related API routes for consent recording, user data export,
+ * audit log retention cleanup, and account data erasure for the main dashboard backend.
+ */
 
 const express = require("express");
 const core = require("../dbs/core.db");
@@ -10,7 +12,6 @@ const router = express.Router();
 const AUDIT_RETENTION_DAYS = parseInt(process.env.AUDIT_RETENTION_DAYS || "90", 10);
 const CONSENT_VERSION = process.env.CONSENT_VERSION || "v1.0";
 
-// Self or super_admin guard
 function requireSelfOrAdmin(req, res, next) {
   const targetId = parseInt(req.params.id, 10);
   if (req.user.role === "super_admin" || req.user.user_id === targetId) {
@@ -32,7 +33,6 @@ router.post("/erase/:id", authenticate, requireSelfOrAdmin, async (req, res) => 
   try {
     await client.query("BEGIN");
 
-    // Verify target exists and is not a super_admin (never erase admins)
     const check = await client.query(
       `SELECT u.user_id, r.role_name
        FROM users u
@@ -52,7 +52,6 @@ router.post("/erase/:id", authenticate, requireSelfOrAdmin, async (req, res) => 
       return res.status(400).json({ error: "Cannot erase a super_admin account" });
     }
 
-    // Anonymise PII — replace identifiers with deterministic placeholders
     await client.query(
       `UPDATE users SET
          full_name             = 'ERASED_' || $1,

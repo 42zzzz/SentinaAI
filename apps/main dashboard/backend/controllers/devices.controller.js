@@ -1,4 +1,9 @@
-// backend/controllers/devices.controller.js
+/**
+ * Handles device listing and device filter data for the main dashboard by
+ * querying device records, applying search and filter conditions, and
+ * returning paginated results.
+ */
+
 const coreDb = require("../dbs/core.db");
 
 function toInt(v, def) {

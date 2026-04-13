@@ -1,12 +1,10 @@
-// NavigationMap.jsx
-// Canvas2D floor plan — no PixiJS dependency.
-// Draws rooms, corridors, heatmap overlay and navigation path directly onto
-// an HTML5 <canvas> element using the 2D context API.
+/**
+ * Renders the interactive navigation map using Canvas 2D, including rooms,
+ * corridors, heatmap overlays, tooltips, zoom controls, and navigation paths.
+ */
 
 import { useEffect, useRef } from "react";
 import { aggregateHeatmapGrid, generateHeatmapImageData } from "../utils/heatmapUtils.js";
-
-// ─── helpers ────────────────────────────────────────────────────────────────
 
 function getHallColor(name) {
   const n = (name ?? "").toLowerCase();
@@ -110,7 +108,6 @@ function buildDemoIoTData(real, nodes) {
   return out;
 }
 
-// ─── component ──────────────────────────────────────────────────────────────
 
 export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMode }) {
   const containerRef    = useRef(null);
@@ -125,19 +122,17 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
   const intervalRef     = useRef(null);
   const tooltipRef      = useRef(null);
   const hitTestRef      = useRef([]);
-  const heatCanvasRef   = useRef(null);   // offscreen canvas for heatmap image
+  const heatCanvasRef   = useRef(null);
   const pathPointsRef   = useRef(pathPoints);
   const renderRef       = useRef(null);
   const renderHeatmapRef = useRef(null);
 
-  // Sync showHeatmap → re-render (heatmap layer is toggled inside render())
   useEffect(() => {
     showHeatRef.current = showHeatmap;
-    if (showHeatmap) renderHeatmapRef.current?.(); // rebuild if just switched on
+    if (showHeatmap) renderHeatmapRef.current?.();
     else             renderRef.current?.();
   }, [showHeatmap]);
 
-  // Sync demoMode → rebuild IoT simulation data → re-render heatmap
   useEffect(() => {
     demoModeRef.current = demoMode;
     const nm = navmeshRef.current;
@@ -147,13 +142,11 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
     renderHeatmapRef.current?.();
   }, [demoMode]);
 
-  // Sync pathPoints → re-render (path is drawn in the main render pass)
   useEffect(() => {
     pathPointsRef.current = pathPoints;
     renderRef.current?.();
   }, [pathPoints]);
 
-  // ─── main canvas lifecycle ─────────────────────────────────────────────
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -161,12 +154,9 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
     let alive = true;
     let ro    = null;
 
-    // Defer one macrotask so React 18 StrictMode's immediate cleanup can
-    // cancel this before any canvas/context is created.
     const timeoutId = setTimeout(() => {
       if (!alive) return;
 
-      // ── create canvas ────────────────────────────────────────────────────
       const canvas = document.createElement("canvas");
       canvas.width  = Math.max(container.clientWidth,  1);
       canvas.height = Math.max(container.clientHeight, 1);
@@ -177,18 +167,15 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
       const ctx = canvas.getContext("2d");
       ctxRef.current = ctx;
 
-      // Offscreen canvas for the heatmap image (reused across updates)
       const heatCanvas = document.createElement("canvas");
       heatCanvasRef.current = heatCanvas;
 
       const vp = viewportRef.current;
 
-      // ── coordinate helper ────────────────────────────────────────────────
       function screenToWorld(sx, sy) {
         return { x: sx / vp.zoom - vp.x, y: sy / vp.zoom - vp.y };
       }
 
-      // ── main render pass ─────────────────────────────────────────────────
       function render() {
         const nm = navmeshRef.current;
         const W  = canvas.width, H = canvas.height;
@@ -203,7 +190,6 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
         ctx.translate(vp.x * vp.zoom, vp.y * vp.zoom);
         ctx.scale(vp.zoom, vp.zoom);
 
-        // Helper: trace a polygon path without stroking/filling
         function tracePoly(poly) {
           ctx.beginPath();
           poly.forEach((p, i) => {
@@ -214,7 +200,6 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
           ctx.closePath();
         }
 
-        // 1. Corridors
         for (const corridor of nm.corridor_polygons ?? []) {
           const poly = corridor?.polygon ?? (Array.isArray(corridor) ? corridor : null);
           if (!Array.isArray(poly) || poly.length < 3) continue;
@@ -227,12 +212,10 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
           ctx.stroke();
         }
 
-        // 2. Heatmap overlay — clipped to polygon union
         if (showHeatRef.current && heatCanvas._bounds && heatCanvas.width > 0) {
           const b = heatCanvas._bounds;
           ctx.save();
 
-          // Build a single clip path from every room + corridor polygon
           ctx.beginPath();
           for (const room of nm.rooms ?? []) {
             const poly = room.polygon;
@@ -262,7 +245,6 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
           ctx.restore();
         }
 
-        // 3. Rooms + labels (greyscale when heatmap is active)
         if (showHeatRef.current) ctx.filter = "grayscale(100%)";
         for (const room of nm.rooms ?? []) {
           const poly = room.polygon;
@@ -273,7 +255,6 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
           tracePoly(poly);
           ctx.fillStyle   = `rgba(${r},${g},${b},${alpha})`;
           ctx.fill();
-          // 4px solid black outline — matches nav_web room style
           ctx.strokeStyle = "rgba(0,0,0,1)";
           ctx.lineWidth   = 2 / vp.zoom;
           ctx.lineJoin    = "miter";
@@ -289,7 +270,6 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
         }
         ctx.filter = "none";
 
-        // 4. Navigation path
         const pts = pathPointsRef.current;
         if (pts && pts.length >= 2) {
           ctx.beginPath();
@@ -319,7 +299,6 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
 
       renderRef.current = render;
 
-      // ── heatmap builder ──────────────────────────────────────────────────
       function renderHeatmap() {
         const nm     = navmeshRef.current;
         const iotRaw = iotDataRef.current;
@@ -340,7 +319,6 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
         }
         if (!telPoints.length) { heatCanvas._bounds = null; render(); return; }
 
-        // Derive map bounds from all polygon vertices
         let bMinX = Infinity, bMinY = Infinity, bMaxX = -Infinity, bMaxY = -Infinity;
         const allPolys = [
           ...(nm.nodes ?? []).map(n => n.polygon).filter(p => Array.isArray(p) && p.length >= 3),
@@ -390,7 +368,6 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
 
       renderHeatmapRef.current = renderHeatmap;
 
-      // ── navmesh helpers ──────────────────────────────────────────────────
       function buildHitTest(nm) {
         hitTestRef.current = [];
         for (const node of nm.nodes ?? []) {
@@ -422,7 +399,6 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
       container._zoomIn    = () => { vp.zoom = Math.min(5, vp.zoom * 1.25); render(); };
       container._zoomOut   = () => { vp.zoom = Math.max(0.3, vp.zoom / 1.25); render(); };
 
-      // ── pan / zoom ───────────────────────────────────────────────────────
       let dragging = false, dragStart = { x: 0, y: 0 }, vpStart = { x: 0, y: 0 };
 
       canvas.addEventListener("pointerdown", (e) => {
@@ -443,7 +419,6 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
           return;
         }
 
-        // Hover tooltip
         const tip  = tooltipRef.current;
         const hits = hitTestRef.current;
         if (!tip || !hits.length) return;
@@ -496,14 +471,12 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
         render();
       }, { passive: false });
 
-      // ── resize ───────────────────────────────────────────────────────────
       ro = new ResizeObserver(() => {
         const w = container.clientWidth, h = container.clientHeight;
         if (w > 0 && h > 0) { canvas.width = w; canvas.height = h; render(); }
       });
       ro.observe(container);
 
-      // ── data loading ─────────────────────────────────────────────────────
       async function loadNavmesh() {
         try {
           const res  = await fetch(`${apiBase}/api/navmesh`, { cache: "no-store" });
@@ -532,7 +505,7 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
       loadNavmesh().then(loadIoT);
       intervalRef.current = setInterval(loadIoT, 5000);
 
-    }, 0); // end deferred init
+    }, 0); 
 
     return () => {
       alive = false;
@@ -545,34 +518,27 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
         ctxRef.current    = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiBase]);
 
-  // ─── zoom button handlers ────────────────────────────────────────────────
   const zoomIn    = () => containerRef.current?._zoomIn?.();
   const zoomOut   = () => containerRef.current?._zoomOut?.();
   const resetView = () => containerRef.current?._resetView?.();
 
   return (
     <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100%" }}>
-      {/* Canvas2D inserted by useEffect */}
 
-      {/* Hover tooltip */}
       <div ref={tooltipRef} style={tooltipStyle} />
 
-      {/* Zoom controls */}
       <div style={zoomBar}>
         <button onClick={zoomIn}    style={zoomBtn} title="Zoom in">+</button>
         <button onClick={zoomOut}   style={zoomBtn} title="Zoom out">−</button>
         <button onClick={resetView} style={zoomBtn} title="Reset view">⟳</button>
       </div>
 
-      {/* Heatmap colour scale legend */}
       {showHeatmap && (
         <div style={heatLegend}>
           <span style={heatLegendTitle}>Occupancy</span>
           <div style={{ display: "flex", alignItems: "flex-start" }}>
-            {/* Zone labels + coloured dots — left side */}
             <div style={{ position: "relative", height: 120, width: 82, marginRight: 6 }}>
               {[
                 { label: "Very Crowded", color: "#dc2626", top: 12  },
@@ -591,7 +557,6 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
               ))}
             </div>
 
-            {/* Colour bar with threshold tick lines */}
             <div style={{ position: "relative", flexShrink: 0 }}>
               <div style={heatLegendBar} />
               {[24, 48, 84].map(top => (
@@ -604,7 +569,6 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
               ))}
             </div>
 
-            {/* Percentage ticks — right side */}
             <div style={{ position: "relative", height: 120, width: 30, marginLeft: 5 }}>
               {[
                 { label: "100%", top: 0   },
@@ -628,7 +592,6 @@ export default function NavigationMap({ apiBase, pathPoints, showHeatmap, demoMo
   );
 }
 
-// ─── styles ─────────────────────────────────────────────────────────────────
 
 const tooltipStyle = {
   position:       "absolute",
@@ -693,7 +656,6 @@ const heatLegendBar = {
   width:      18,
   height:     120,
   borderRadius: 6,
-  // rainbow ramp: red (high) → orange → yellow → green → cyan → blue (low)
   background: "linear-gradient(to bottom, " +
     "rgba(255,0,0,1) 0%, " +
     "rgba(255,100,0,1) 15%, " +

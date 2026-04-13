@@ -1,4 +1,10 @@
-// frontend/src/pages/DevicesPage.jsx
+/**
+ * Displays the devices page with searchable, filterable, and paginated device
+ * listings across operations and sustainability views. This page fetches device
+ * rows and filter options from the devices API, uses MultiSelectPill for filter
+ * controls, and applies route-based theme styling from DevicesPage.css.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 
@@ -25,8 +31,6 @@ function statusClass(status) {
   return "isNeutral";
 }
 
-/* ---- Inline SVG Icons (Figma) ---- */
-/* ✅ CHANGED: hardcoded pink -> currentColor so sustTheme can be green */
 function IconSearch() {
   return (
     <svg width="15" height="16" viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -113,14 +117,9 @@ function IconSort() {
   );
 }
 
-/* NOTE: No hall icon was provided in your message, so Hall uses Zone icon for now.
-   Replace <IconZone /> with the hall SVG when you share it. */
-
 export default function DevicesPage() {
-  // Filters data
   const [filters, setFilters] = useState(null);
 
-  // Query state
   const [q, setQ] = useState("");
   const [zoneIds, setZoneIds] = useState([]);
   const [hallIds, setHallIds] = useState([]);
@@ -130,25 +129,22 @@ export default function DevicesPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Data state
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
-  const [openSelect, setOpenSelect] = useState(null); // "sort" | "rows"
+  const [openSelect, setOpenSelect] = useState(null);
 
   const location = useLocation();
   const isSustainability = location.pathname.startsWith("/sustainability");
   const themeClass = isSustainability ? "sustTheme" : "opsTheme";
 
-  // Debounce search a little
   const [qLive, setQLive] = useState("");
   useEffect(() => {
     const t = setTimeout(() => setQLive(q.trim()), 300);
     return () => clearTimeout(t);
   }, [q]);
 
-  // Load dropdown values
   useEffect(() => {
     axios
       .get(`${API_BASE}/devices/filters`)
@@ -156,7 +152,6 @@ export default function DevicesPage() {
       .catch((e) => setError(e?.response?.data?.error || e.message || "Failed to load filters"));
   }, []);
 
-  // Fetch devices whenever query changes
   useEffect(() => {
     const fetchDevices = async () => {
       setLoading(true);
@@ -217,24 +212,21 @@ export default function DevicesPage() {
     setPageSize(10);
   };
 
-  // If user changes a filter, go back to page 1
   useEffect(() => setPage(1), [zoneIds, hallIds, deviceTypes, statuses, sort, pageSize]);
 
   return (
     <div className={`devicesPage ${themeClass}`}>
       <div className="pageInner">
         <div className="devicesHeaderRow">
-          <div className="devicesTitleWrap">{/* (intentionally blank - you had this empty) */}</div>
+          <div className="devicesTitleWrap"></div>
 
           <div className="devicesHeaderRight">
             <div className="devicesCountTop">{loading ? "Loading…" : `${total} devices`}</div>
           </div>
         </div>
 
-        {/* Controls */}
         <div className="devicesControlsCard">
           <div className="devicesFiltersRow">
-            {/* Search */}
             <div className="filterPill pillSearch" role="search">
               <span className="pillLeftIcon" aria-hidden>
                 <IconSearch />
@@ -283,7 +275,6 @@ export default function DevicesPage() {
               onChange={setStatuses}
             />
 
-            {/* Sort */}
             <div className={`filterPill pillSelectWrap pillSort ${openSelect === "sort" ? "isOpen" : ""}`}>
               <span className="pillLeftIcon" aria-hidden>
                 <IconSort />
@@ -344,7 +335,6 @@ export default function DevicesPage() {
           </div>
         </div>
 
-        {/* Error */}
         {error ? (
           <div className="devicesError">
             <div className="devicesErrorTitle">Error</div>
@@ -352,7 +342,6 @@ export default function DevicesPage() {
           </div>
         ) : null}
 
-        {/* Table */}
         <div className="devicesTableCard">
           <div className="devicesTableScroll">
             <table className="devicesTable">
@@ -404,7 +393,6 @@ export default function DevicesPage() {
           </div>
         </div>
 
-        {/* Pagination */}
         <div className="devicesPager">
           <div className="devicesPagerLeft">
             Page {page} of {totalPages}

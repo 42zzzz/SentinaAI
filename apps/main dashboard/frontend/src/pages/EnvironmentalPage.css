@@ -1,5 +1,3 @@
-/* frontend/src/pages/EnvironmentalPage.css */
-
 .sustTheme{
   --green:#00802B;
   --green-soft:#1aa64a;
@@ -413,7 +411,6 @@
   pointer-events:none;
 }
 
-/* ---- Environmental filters: fix icon + text vertical alignment ---- */
 .envControls .envPill {
   display: inline-flex;
   align-items: center;
@@ -465,7 +462,6 @@
   transform: translateY(-50%);
 }
 
-/* ---- FINAL environmental filter layout fix ---- */
 .sustTheme.envPage .envInner{
   max-width: none;
   width: 100%;

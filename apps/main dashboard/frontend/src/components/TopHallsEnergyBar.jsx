@@ -14,7 +14,6 @@ export default function TopHallsEnergyBar({
   eventId,
   limit = 5,
 
-  // ✅ NEW: when true, parent card provides border/header/padding
   embedded = false,
 }) {
   const [rows, setRows] = useState([]);
@@ -136,10 +135,8 @@ export default function TopHallsEnergyBar({
     </>
   );
 
-  // ✅ Embedded mode: only render the inside
   if (embedded) return body;
 
-  // Default (existing outer card preserved)
   return (
     <div style={{ border: "1px solid #e5e7eb", borderRadius: 16, background: "white", padding: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>

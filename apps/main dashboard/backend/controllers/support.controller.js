@@ -1,3 +1,8 @@
+/**
+ * Handles support issue creation, issue listing, and issue status updates
+ * for the main dashboard support and admin issue management workflow.
+ */
+
 const coreDb = require("../dbs/core.db");
 
 function normalizeRole(role = "") {
@@ -101,7 +106,6 @@ exports.createIssue = async (req, res) => {
             issue: rows[0],
         });
     } catch (err) {
-        console.error("createIssue error:", err);
         return res.status(500).json({ error: "Failed to submit issue." });
     }
 };
@@ -135,7 +139,6 @@ exports.getAllIssues = async (req, res) => {
         const { rows } = await coreDb.query(query);
         return res.json({ rows });
     } catch (err) {
-        console.error("getAllIssues error:", err);
         return res.status(500).json({ error: "Failed to fetch issues" });
     }
 };
@@ -156,7 +159,6 @@ exports.resolveIssue = async (req, res) => {
       return res.status(400).json({ error: "Invalid status." });
     }
 
-    // 🔒 Step 1: Check current status
     const existing = await coreDb.query(
       `SELECT status FROM support_issues WHERE issue_id = $1`,
       [id]
@@ -172,7 +174,7 @@ exports.resolveIssue = async (req, res) => {
       });
     }
 
-    // ✅ Step 2: Update issue
+
     const query = `
       UPDATE support_issues
       SET
@@ -203,7 +205,6 @@ exports.resolveIssue = async (req, res) => {
       issue: rows[0],
     });
   } catch (err) {
-    console.error("resolveIssue error:", err);
     return res.status(500).json({ error: "Failed to update issue" });
   }
 };

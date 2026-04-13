@@ -1,3 +1,8 @@
+/**
+ * Configures Axios request and response interceptors to attach session tokens,
+ * clear expired sessions, and redirect users after inactivity logout.
+ */
+
 import axios from "axios";
 
 const SESSION_KEYS = ["token", "role", "full_name", "employee_id", "email", "last_login", "exhibitor_id", "exhibitor_name"];
@@ -6,7 +11,6 @@ function clearSession() {
   SESSION_KEYS.forEach((key) => sessionStorage.removeItem(key));
 }
 
-//Request interceptor: attach token + count API calls as activity
 axios.interceptors.request.use(
   (config) => {
     const token = sessionStorage.getItem("token");
@@ -19,7 +23,6 @@ axios.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: handle session expiry
 axios.interceptors.response.use(
   (res) => res,
   (err) => {

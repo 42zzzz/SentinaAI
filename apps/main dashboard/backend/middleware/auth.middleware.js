@@ -1,3 +1,8 @@
+/**
+ * Validates JWT bearer tokens, attaches authenticated user data to the request,
+ * and records token validation results for request auditing.
+ */
+
 const jwt = require("jsonwebtoken");
 
 module.exports = function authenticate(req, res, next) {

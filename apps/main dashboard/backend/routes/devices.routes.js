@@ -1,4 +1,3 @@
-// backend/routes/devices.routes.js
 const express = require("express");
 const devices = require("../controllers/devices.controller");
 

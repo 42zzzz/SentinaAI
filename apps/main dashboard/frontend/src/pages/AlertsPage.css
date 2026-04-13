@@ -1,8 +1,3 @@
-/* frontend/src/pages/AlertsPage.css */
-
-/* =========================
-   THEME ACCENTS (Ops pink, Sust green)
-   ========================= */
 .opsTheme .alertsPage{
   --alerts-accent:#E8486F;
   --alerts-accent-bg: rgba(232,72,111,0.08);
@@ -15,7 +10,6 @@
   --alerts-accent-hover:#006b24;
 }
 
-/* ===== page base ===== */
 .opsTheme .alertsPage,
 .sustTheme .alertsPage,
 .alertsPage{
@@ -30,7 +24,6 @@
   max-width: 1400px;
 }
 
-/* ===== header row (match Devices) ===== */
 .opsTheme .alertsHeaderRow,
 .sustTheme .alertsHeaderRow,
 .alertsHeaderRow{
@@ -55,7 +48,6 @@
   color: #6b7280;
 }
 
-/* ===== controls card ===== */
 .opsTheme .alertsControlsCard,
 .sustTheme .alertsControlsCard,
 .alertsControlsCard{
@@ -66,7 +58,6 @@
   padding: 14px;
 }
 
-/* filters rows */
 .opsTheme .alertsFiltersRow,
 .sustTheme .alertsFiltersRow,
 .alertsFiltersRow{
@@ -85,9 +76,6 @@
   flex-wrap: wrap;
 }
 
-/* =========================
-   DEVICES-STYLE PILLS (scoped)
-   ========================= */
 .opsTheme .alertsPage .filterPill,
 .sustTheme .alertsPage .filterPill,
 .alertsPage .filterPill{
@@ -115,7 +103,6 @@
   border-radius: 10px;
 }
 
-/* widths similar to Devices */
 .opsTheme .alertsPage .pillSeverity, .sustTheme .alertsPage .pillSeverity, .alertsPage .pillSeverity{ width: 170px; }
 .opsTheme .alertsPage .pillAlertStatus, .sustTheme .alertsPage .pillAlertStatus, .alertsPage .pillAlertStatus{ width: 170px; }
 .opsTheme .alertsPage .pillZone, .sustTheme .alertsPage .pillZone, .alertsPage .pillZone{ width: 150px; }
@@ -123,7 +110,6 @@
 .opsTheme .alertsPage .pillSort, .sustTheme .alertsPage .pillSort, .alertsPage .pillSort{ width: 185px; }
 .opsTheme .alertsPage .pillRows, .sustTheme .alertsPage .pillRows, .alertsPage .pillRows{ width: 60px; }
 
-/* rules pill */
 .opsTheme .alertsPage .pillRule,
 .sustTheme .alertsPage .pillRule,
 .alertsPage .pillRule{
@@ -131,7 +117,6 @@
   min-width: 420px;
 }
 
-/* left icon slot */
 .opsTheme .alertsPage .pillLeftIcon,
 .sustTheme .alertsPage .pillLeftIcon,
 .alertsPage .pillLeftIcon{
@@ -146,7 +131,6 @@
   pointer-events: none;
 }
 
-/* select reset */
 .opsTheme .alertsPage .pillSelect,
 .sustTheme .alertsPage .pillSelect,
 .alertsPage .pillSelect{
@@ -167,7 +151,6 @@
   cursor: pointer;
 }
 
-/* input reset */
 .opsTheme .alertsPage .pillInput,
 .sustTheme .alertsPage .pillInput,
 .alertsPage .pillInput{
@@ -217,7 +200,6 @@
   overflow: hidden;
 }
 
-/* ===== bottom row ===== */
 .opsTheme .alertsControlsBottomRow,
 .sustTheme .alertsControlsBottomRow,
 .alertsControlsBottomRow{
@@ -236,7 +218,6 @@
   gap: 12px;
 }
 
-/* rows control */
 .opsTheme .rowsControl,
 .sustTheme .rowsControl,
 .rowsControl{
@@ -252,7 +233,6 @@
   color: #6b7280;
 }
 
-/* select + caret */
 .opsTheme .alertsPage .pillSelectWrap,
 .sustTheme .alertsPage .pillSelectWrap,
 .alertsPage .pillSelectWrap{
@@ -300,7 +280,6 @@
   transform: translateY(-35%) rotate(180deg);
 }
 
-/* ===== Clear filters button (theme accent) ===== */
 .opsTheme .alertsControlsCard .clearFiltersBtn,
 .sustTheme .alertsControlsCard .clearFiltersBtn,
 .alertsControlsCard .clearFiltersBtn{
@@ -322,7 +301,6 @@
   border-color: var(--alerts-accent-hover);
 }
 
-/* ===== Error ===== */
 .opsTheme .alertsError,
 .sustTheme .alertsError,
 .alertsError{
@@ -349,7 +327,6 @@
   color: #7f1d1d;
 }
 
-/* ===== Table ===== */
 .opsTheme .alertsTableCard,
 .sustTheme .alertsTableCard,
 .alertsTableCard{
@@ -429,7 +406,6 @@
   color: #334155;
 }
 
-/* details row */
 .opsTheme .alertsDetailsRow td,
 .sustTheme .alertsDetailsRow td,
 .alertsDetailsRow td{
@@ -492,7 +468,6 @@
   font-size: 12px;
 }
 
-/* action buttons */
 .opsTheme .alertsActionBtns,
 .sustTheme .alertsActionBtns,
 .alertsActionBtns{
@@ -525,7 +500,6 @@
   cursor: not-allowed;
 }
 
-/* ===== Pagination ===== */
 .opsTheme .alertsPager,
 .sustTheme .alertsPager,
 .alertsPager{
@@ -575,7 +549,6 @@
   cursor: not-allowed;
 }
 
-/* ===== Accent top-right count (theme) ===== */
 .opsTheme .alertsHeaderRight .alertsCountTop,
 .sustTheme .alertsHeaderRight .alertsCountTop,
 .alertsHeaderRight .alertsCountTop{
@@ -583,12 +556,10 @@
   font-weight: 700;
 }
 
-/* Make page header pink across ops dashboard (unchanged) */
 .opsTheme main h1:first-of-type{
   color: #E8486F !important;
 }
 
-/* ===== refined top layout ===== */
 .opsTheme .alertsControlsTopRow,
 .sustTheme .alertsControlsTopRow,
 .alertsControlsTopRow{

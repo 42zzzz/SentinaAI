@@ -1,10 +1,14 @@
+/**
+ * Configures the main backend Express server, shared middleware, route mounting,
+ * service proxy endpoints, and background workers for alerts and AI processing.
+ */
+
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 
 dotenv.config();
 
-// ---- Ensure fetch exists (Node <18) ----
 if (typeof global.fetch !== "function") {
   try {
     global.fetch = require("node-fetch");
@@ -17,20 +21,16 @@ if (typeof global.fetch !== "function") {
 
 const app = express();
 
-// Flexible CORS
 app.use(cors({ origin: true, credentials: true }));
 
-// Cookies (needed for inactivity logout)
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 
 app.use(express.json());
 
-// Inactivity auto-logout middleware
 const idleTimeout = require("./middleware/idleTimeout.middleware");
 app.use(idleTimeout);
 
-// NEW: passive access/auth audit middleware
 const accessAudit = require("./middleware/accessAudit.middleware");
 app.use(accessAudit);
 
@@ -55,7 +55,6 @@ async function enforceExhibitorProxyOwnership(req, rawPath) {
   await assertExhibitorOwnership(req, targetExhibitorId);
 }
 
-// --- Exhibitor AI proxy (FastAPI) ---
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
 const EXHIBITOR_AI_SERVICE_URL =
   process.env.EXHIBITOR_AI_SERVICE_URL || "http://127.0.0.1:8001";
@@ -114,9 +113,6 @@ app.get("/api/exhibitor-ai-download/*path", authenticate, async (req, res) => {
   }
 });
 
-// ----------------------
-// Mount routes
-// ----------------------
 app.use("/energy", require("./routes/energy.routes.js"));
 app.use("/devices", require("./routes/devices.routes.js"));
 app.use("/events", require("./routes/events.routes.js"));
@@ -131,7 +127,6 @@ app.use("/sustainability", require("./routes/sustainability.routes.js"));
 app.use("/reports", require("./routes/reports.routes.js"));
 app.use("/support", supportRoutes);
 
-// AUTH LAYER
 app.use("/auth", require("./routes/auth"));
 app.use("/users", require("./routes/users.routes.js"));
 app.use("/compliance", require("./routes/compliance.routes.js"));

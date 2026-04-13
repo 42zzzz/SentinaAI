@@ -1,10 +1,14 @@
+/**
+ * Handles live operations and sustainability dashboard data by reading analytics
+ * metrics, applying simulation overrides, calling AI endpoints, and returning
+ * formatted results for the main dashboard.
+ */
+
 const analyticsDb = require("../dbs/analytics.db");
 
 const AI_BASE = process.env.AI_SERVICE_URL || "http://127.0.0.1:8000";
-
-// In-memory overlay for simulated surges (hall_id -> override fields)
 const SIM_OVERRIDES = new Map();
-const SIM_TTL_MS = 5 * 60 * 1000; // keep surge visible for 5 minutes
+const SIM_TTL_MS = 5 * 60 * 1000;
 
 async function readJsonSafe(resp) {
   const text = await resp.text();
@@ -28,7 +32,6 @@ async function getLatestTs({ eventId = null, zoneId = null }) {
   return r.rows[0]?.max_ts;
 }
 
-// OPTIONAL: keep your existing proxy endpoints too (if you still use them)
 exports.getVenueStatusProxy = async (req, res) => {
   try {
     const resp = await fetch(`${AI_BASE}/api/venue-status`, { method: "GET" });
@@ -54,7 +57,6 @@ exports.simulatePredictionProxy = async (req, res) => {
       return res.status(resp.status).json({ ok: false, error: data?.detail || "AI error", data });
     }
 
-    // ✅ Save updates as overlays so /ai/ops-live reflects them
     const updates = data?.updates || [];
     const now = Date.now();
 
@@ -76,11 +78,6 @@ exports.simulatePredictionProxy = async (req, res) => {
   }
 };
 
-/**
- * ✅ This is the main endpoint for Option A:
- * Reads telemetry-derived metrics (interval_metrics latest snapshot),
- * derives CO2 proxy, calls AI /infer-action, returns rows for the dashboard.
- */
 exports.getOpsLive = async (req, res) => {
   try {
     const eventId = req.query.event_id || null;
@@ -108,12 +105,9 @@ exports.getOpsLive = async (req, res) => {
       [ts, eventId, zoneId]
     );
 
-    // Build per-hall feature payloads
     const baseRows = r.rows.map((x) => {
       const occRatio = Number(x.occupancy_ratio || 0);
 
-      // CO2 proxy since interval_metrics doesn't store CO2:
-      // 400 + occRatio*600 (+ small noise optional)
       const co2 = 400 + occRatio * 600;
 
       return {
@@ -128,7 +122,6 @@ exports.getOpsLive = async (req, res) => {
       };
     });
 
-    // Call AI service per hall (simple + safe for MVP)
     const inferred = await Promise.all(
       baseRows.map(async (h) => {
         const payload = {
@@ -159,7 +152,6 @@ exports.getOpsLive = async (req, res) => {
         }
       })
     );
-    // ✅ Apply simulation overlays (if any) on top of telemetry-driven rows
 const now = Date.now();
 
 
@@ -167,16 +159,13 @@ const merged = inferred.map((h) => {
   const ov = SIM_OVERRIDES.get(String(h.hall_id));
   if (!ov) return h;
 
-  // expire old overrides
   if (ov.expiresAt && ov.expiresAt < now) {
     SIM_OVERRIDES.delete(String(h.hall_id));
     return h;
   }
 
-  // use simulated occupancy if available
   const occ = Number.isFinite(ov.occupancyRatio) ? ov.occupancyRatio : Number(h.occupancyRatio || 0);
 
-  // ✅ derive congestion from occupancy (demo-friendly)
   const simulatedCongestion =
     occ >= 0.9 ? 0.95 :
     occ >= 0.8 ? 0.85 :
@@ -188,7 +177,7 @@ const merged = inferred.map((h) => {
     ...h,
     occupancyRatio: occ,
     co2: Number.isFinite(ov.co2) ? ov.co2 : h.co2,
-    flowCongestionIndex: simulatedCongestion, // ✅ this is the key
+    flowCongestionIndex: simulatedCongestion,
     aiAction: ov.aiAction ?? h.aiAction,
     isAnomaly: typeof ov.isAnomaly === "boolean" ? ov.isAnomaly : h.isAnomaly,
   };
@@ -205,12 +194,10 @@ exports.getOccupancyForecast = async (req, res) => {
     const hallId = req.query.hall_id;
     if (!hallId) return res.status(400).json({ ok: false, error: "hall_id is required" });
 
-    // Latest snapshot timestamp
     const rTs = await analyticsDb.query(`SELECT MAX(ts) AS max_ts FROM interval_metrics`);
     const ts = rTs.rows[0]?.max_ts;
     if (!ts) return res.json({ ok: true, ts: null, hall_id: hallId, points: [] });
 
-    // Pull hall metadata + baseline occupancy info
     const rHall = await analyticsDb.query(
       `
       SELECT hall_id, hall_name, venue_role, hall_capacity, current_occupancy, occupancy_ratio
@@ -227,13 +214,11 @@ exports.getOccupancyForecast = async (req, res) => {
 
     const row = rHall.rows[0];
 
-    // Day + hour derived from ts
     const dt = new Date(ts);
     const hourOfDay = dt.getHours();
     const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const dayOfWeek = dayNames[dt.getDay()];
 
-    // Call AI forecaster (baseline forecast)
     const payload = {
       hall_id: String(row.hall_id),
       venueRole: String(row.venue_role || "default"),
@@ -257,10 +242,8 @@ exports.getOccupancyForecast = async (req, res) => {
         data = parsed;
       }
     } catch {
-      // AI service unavailable — fall through to synthetic forecast
     }
 
-    // Synthetic fallback: flat forecast at current occupancy for next 60 min
     if (!data) {
       const baseCount = baseCurrent || Math.round(baseOccRatio * capacity);
       const syntheticPoints = [10, 20, 30, 40, 50, 60].map((offsetMinutes) => ({
@@ -279,7 +262,6 @@ exports.getOccupancyForecast = async (req, res) => {
       });
     }
 
-    // ✅ Apply simulation override (if exists) by scaling forecast
     const ov = SIM_OVERRIDES.get(String(row.hall_id));
     let scale = 1;
 
@@ -287,8 +269,6 @@ exports.getOccupancyForecast = async (req, res) => {
       const simOccRatio = Number(ov.occupancyRatio);
       const simCurrent = capacity > 0 ? simOccRatio * capacity : baseCurrent;
 
-      // If baseline is tiny (like 10 ppl), scaling can explode. Guard it.
-      // Use ratio scaling when baseline ratio is non-trivial; else use delta shift.
       if (baseOccRatio >= 0.05) {
         scale = simOccRatio / baseOccRatio;
       } else if (baseCurrent > 0) {
@@ -302,7 +282,6 @@ exports.getOccupancyForecast = async (req, res) => {
       const rawPred = Number(p.predictedOccupancy || 0);
       let adjusted = Math.round(rawPred * scale);
 
-      // Clamp to [0, capacity] if capacity is known
       if (capacity > 0) adjusted = Math.max(0, Math.min(capacity, adjusted));
       return { ...p, predictedOccupancy: adjusted };
     });
@@ -424,7 +403,6 @@ exports.getSustLive = async (req, res) => {
       sustainabilityStatusRaw: x.sustainability_status || null,
     }));
 
-    // ✅ Prefer batch inference (one AI call)
     let aiRowsByHall = new Map();
     try {
       const resp = await fetch(`${AI_BASE}/api/infer-sustainability-batch`, {
@@ -453,13 +431,11 @@ exports.getSustLive = async (req, res) => {
         }
       }
     } catch {
-      // swallow — we fallback below
     }
 
     const rows = base.map((h) => {
       const ai = aiRowsByHall.get(String(h.hall_id));
 
-      // fallback if AI unreachable: use raw DB status
       const sustStatus = ai?.sustainabilityStatus || h.sustainabilityStatusRaw || "unknown";
       const aiAction =
         ai?.aiAction ||

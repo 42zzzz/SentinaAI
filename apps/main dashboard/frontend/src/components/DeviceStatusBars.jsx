@@ -1,4 +1,9 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿/**
+ * Displays a comfort gauge component with a semi-circular progress arc,
+ * numeric comfort value, status label, and optional embedded display mode.
+ */
+
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";

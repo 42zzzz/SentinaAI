@@ -1,3 +1,10 @@
+/**
+ * Displays the alert details page for a selected alert, including alert metadata,
+ * trigger metrics, and available response actions. This page uses React Router
+ * navigation and route params, fetches alert details and actions from the alerts
+ * API, and applies role-based domain handling with AlertDetailsPage.css styling.
+ */
+
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";

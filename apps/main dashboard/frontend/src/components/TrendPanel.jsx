@@ -23,7 +23,6 @@ export default function TrendPanel({
   hallId,
   refreshMs = 15000,
 
-  // ✅ NEW: when true, parent card provides header/border/padding
   embedded = false,
   accent
 }) {
@@ -106,10 +105,8 @@ export default function TrendPanel({
   </div>
 );
 
-  // ✅ Embedded mode: just return content (no outer card/header)
   if (embedded) return content;
 
-  // Default mode (existing behaviour preserved)
   return (
     <div
       style={{

@@ -1,3 +1,8 @@
+/**
+ * Defines AI-related API routes for live operations data, occupancy forecasts,
+ * simulation endpoints, and sustainability dashboard data.
+ */
+
 const router = require("express").Router();
 const ai = require("../controllers/ai.controller");
 

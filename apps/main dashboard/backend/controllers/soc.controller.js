@@ -1,3 +1,8 @@
+/**
+ * Handles SOC overview, SOC audit log retrieval, and security analytics data
+ * by combining alert records and raw security event evidence for the main dashboard.
+ */
+
 const coreDb = require('../dbs/core.db');
 const securityDb = require('../dbs/security.db');
 
@@ -16,7 +21,6 @@ async function safeQuery(db, sql, params = [], fallbackRows = []) {
     const result = await db.query(sql, params);
     return result?.rows || fallbackRows;
   } catch (error) {
-    console.error('[soc.analytics] query failed:', error.message);
     return fallbackRows;
   }
 }

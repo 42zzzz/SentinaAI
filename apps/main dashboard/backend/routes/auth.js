@@ -1,3 +1,8 @@
+/**
+ * Handles authentication, login security, password changes, current user lookup,
+ * and multi-factor authentication setup and management for the main dashboard.
+ */
+
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -10,15 +15,9 @@ const { resolveExhibitorContext } = require("../utils/exhibitorAccess");
 
 const router = express.Router();
 
-/* ===============================
-   LOCKOUT CONFIG
-================================= */
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
-/* ===============================
-   LOGIN
-================================= */
 router.post("/login", async (req, res) => {
   const { email, password, totp_code } = req.body;
 
@@ -64,7 +63,6 @@ router.post("/login", async (req, res) => {
 
     const user = result.rows[0];
 
-    // Check if account is currently locked
     if (user.locked_until && new Date(user.locked_until) > new Date()) {
       req.audit.authResult = "FAILED";
       req.audit.userId = user.user_id;
@@ -128,7 +126,6 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // Successful login: reset lockout fields
     await core.query(
       `
       UPDATE users 
@@ -142,7 +139,6 @@ router.post("/login", async (req, res) => {
       [user.user_id]
     );
 
-    // ── MFA check (after password verified, before JWT is issued) ──
     if (user.mfa_enabled) {
       if (!totp_code) {
         return res.status(200).json({ mfa_required: true });
@@ -161,7 +157,6 @@ router.post("/login", async (req, res) => {
         return res.status(401).json({ error: "Invalid authentication code." });
       }
     }
-    // ── end MFA check ──
 
     const token = jwt.sign(
       {
@@ -192,16 +187,12 @@ router.post("/login", async (req, res) => {
       exhibitor_name: exhibitorContext?.exhibitor_name || null,
     });
   } catch (err) {
-    console.error("Login error:", err);
     req.audit.authResult = "FAILED";
     req.audit.failureReason = "SERVER_ERROR";
     res.status(500).json({ error: "Server error" });
   }
 });
 
-/* ===============================
-   CURRENT USER
-================================= */
 router.get("/me", authenticate, async (req, res) => {
   try {
     const result = await core.query(
@@ -247,14 +238,10 @@ router.get("/me", authenticate, async (req, res) => {
       exhibitor_name: exhibitorContext?.exhibitor_name || null,
     });
   } catch (err) {
-    console.error("Auth me error:", err);
     return res.status(500).json({ error: "Server error" });
   }
 });
 
-/* ===============================
-   CHANGE PASSWORD
-================================= */
 router.post("/change-password", authenticate, async (req, res) => {
   const userId = req.user.user_id;
   const { currentPassword, newPassword, confirmPassword } = req.body;
@@ -337,23 +324,16 @@ router.post("/change-password", authenticate, async (req, res) => {
 
     return res.json({ message: "Password changed successfully" });
   } catch (err) {
-    console.error("Change password error:", err);
     req.audit.authResult = "FAILED";
     req.audit.failureReason = "SERVER_ERROR";
     return res.status(500).json({ error: "Server error" });
   }
 });
 
-/* ===============================
-   TEST ROUTE
-================================= */
 router.get("/test", (req, res) => {
   res.json({ message: "Auth route works" });
 });
 
-/* ===============================
-   MFA — SETUP (generate QR)
-================================= */
 router.get("/mfa/setup", authenticate, async (req, res) => {
   try {
     const secret = speakeasy.generateSecret({ name: "SentinaAI", length: 20 });
@@ -364,14 +344,10 @@ router.get("/mfa/setup", authenticate, async (req, res) => {
     const qr = await QRCode.toDataURL(secret.otpauth_url);
     res.json({ secret: secret.base32, qr });
   } catch (err) {
-    console.error("MFA setup error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-/* ===============================
-   MFA — VERIFY (activate)
-================================= */
 router.post("/mfa/verify", authenticate, async (req, res) => {
   const { totp_code } = req.body;
   if (!totp_code) {
@@ -400,14 +376,10 @@ router.post("/mfa/verify", authenticate, async (req, res) => {
     );
     res.json({ message: "Two-factor authentication enabled successfully." });
   } catch (err) {
-    console.error("MFA verify error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-/* ===============================
-   MFA — DISABLE
-================================= */
 router.delete("/mfa/disable", authenticate, async (req, res) => {
   try {
     await core.query(
@@ -416,7 +388,6 @@ router.delete("/mfa/disable", authenticate, async (req, res) => {
     );
     res.json({ message: "Two-factor authentication disabled." });
   } catch (err) {
-    console.error("MFA disable error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });

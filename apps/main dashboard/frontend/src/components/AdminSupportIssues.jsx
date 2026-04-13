@@ -1,3 +1,7 @@
+/**
+ * Displays, searches, and manages support issues in the admin dashboard,
+ * including issue review, admin notes, and status updates through a modal view.
+ */
 import { useEffect, useMemo, useState } from "react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";

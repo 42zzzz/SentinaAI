@@ -1,4 +1,9 @@
-﻿import { useEffect, useState } from "react";
+﻿/**
+ * Displays live AI operations data for each hall, including occupancy, CO₂,
+ * congestion, AI action, and anomaly status in the operations dashboard.
+ */
+
+import { useEffect, useState } from "react";
 import axios from "axios";
 import InfoTooltip from "./InfoTooltip";
 

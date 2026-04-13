@@ -1,3 +1,11 @@
+/**
+ * Renders the super admin page and manages all major admin workflows, including
+ * user management, support issue review, assistant chat log monitoring, account
+ * security settings, password and MFA flows, and admin modals for creating,
+ * editing, and deleting users. This page is wrapped by AdminLayout and uses the
+ * AdminSupportIssues component for support issue management.
+ */
+
 import { Fragment, useEffect, useMemo, useState } from "react";
 import AdminLayout from "../layouts/AdminLayout";
 import AdminSupportIssues from "../components/AdminSupportIssues";
@@ -664,7 +672,6 @@ export default function Admin() {
 
     const logsTimer = setInterval(fetchAssistantLogs, 15000);
     return () => clearInterval(logsTimer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -2657,13 +2664,6 @@ const styles = {
     letterSpacing: "0.02em",
   },
 
-  settingsInfoLabel: {
-    color: "#6b7280",
-    fontSize: 12,
-    fontWeight: 800,
-    textTransform: "uppercase",
-    letterSpacing: "0.02em",
-  },
 
   settingsReadonlyBox: {
     width: "100%",

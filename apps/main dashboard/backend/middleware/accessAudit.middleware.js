@@ -1,3 +1,8 @@
+/**
+ * Records access and authentication audit events for incoming requests by
+ * capturing request context, response outcome, and failure details.
+ */
+
 const { logAudit } = require("../utils/auditLogger");
 
 function shouldSkip(req) {

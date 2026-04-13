@@ -1,3 +1,7 @@
+/**
+ * Handles event filter data, event listing, event details, exhibitor data,
+ * and booth data for the main dashboard event management views.
+ */
 const coreDb = require("../dbs/core.db");
 
 function toInt(v, def) {

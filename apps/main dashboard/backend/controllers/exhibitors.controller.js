@@ -1,4 +1,8 @@
-// backend/controllers/exhibitors.controller.js
+/**
+ * Handles exhibitor filter data, exhibitor listing, exhibitor details,
+ * and exhibitor event data for the main dashboard exhibitor management views.
+ */
+
 const coreDb = require("../dbs/core.db");
 const { assertExhibitorOwnership, requireOwnedExhibitorContext } = require("../utils/exhibitorAccess");
 

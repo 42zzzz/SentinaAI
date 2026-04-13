@@ -1,4 +1,7 @@
-// backend/controllers/alerts.controller.js
+/**
+ * Handles alert listing, filtering, live updates, status changes, action execution,
+ * and detail retrieval for the main dashboard alert system.
+ */
 
 const coreDb = require("../dbs/core.db");
 const pool = require("../db");
@@ -485,7 +488,6 @@ exports.getAlertDetails = async (req, res) => {
       actions,
     });
   } catch (err) {
-    console.error("getAlertDetails error:", err);
     res.status(500).json({
       ok: false,
       error: "Failed to fetch alert details",

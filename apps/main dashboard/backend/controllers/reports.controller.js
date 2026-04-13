@@ -1,3 +1,9 @@
+/**
+ * Handles report options, report listing, report access control, draft creation,
+ * report generation, file delivery, and exhibitor-scoped report workflows for
+ * the main dashboard reporting system.
+ */
+
 const crypto = require("crypto");
 
 const core = require("../dbs/core.db");
@@ -106,7 +112,6 @@ async function generateReportCode(domain) {
 
     return result.rows?.[0]?.report_code || fallbackReportCode(domain);
   } catch (error) {
-    console.error("Failed to generate report code:", error);
     return fallbackReportCode(domain);
   }
 }
@@ -589,9 +594,9 @@ async function getOptions(req, res) {
           selectedEvent,
           currentExhibitor: ownedContext
             ? {
-                exhibitor_id: ownedContext.exhibitor_id,
-                exhibitor_name: ownedContext.exhibitor_name,
-              }
+              exhibitor_id: ownedContext.exhibitor_id,
+              exhibitor_name: ownedContext.exhibitor_name,
+            }
             : null,
         },
       });
@@ -599,7 +604,6 @@ async function getOptions(req, res) {
 
     return res.status(400).json({ success: false, error: "Unsupported domain" });
   } catch (error) {
-    console.error("[reports.options]", error);
     return res.status(errorStatus(error, 500)).json({ success: false, error: error.message || "Failed to load options" });
   }
 }
@@ -636,7 +640,6 @@ async function listReports(req, res) {
       data: result.rows.map(mapReportRow),
     });
   } catch (error) {
-    console.error("[reports.list]", error);
     return res.status(errorStatus(error, 500)).json({ success: false, error: error.message || "Failed to list reports" });
   }
 }
@@ -660,7 +663,6 @@ async function getReport(req, res) {
 
     return res.json({ success: true, data: mapReportRow(report) });
   } catch (error) {
-    console.error("[reports.get]", error);
     return res.status(errorStatus(error, 500)).json({ success: false, error: error.message || "Failed to fetch report" });
   }
 }
@@ -722,7 +724,6 @@ async function createDraft(req, res) {
 
     return res.status(201).json({ success: true, data: mapReportRow(insert.rows[0]) });
   } catch (error) {
-    console.error("[reports.createDraft]", error);
     return res.status(errorStatus(error, 400)).json({ success: false, error: error.message || "Failed to save draft" });
   }
 }
@@ -768,7 +769,6 @@ async function updateDraft(req, res) {
 
     return res.json({ success: true, data: mapReportRow(update.rows[0]) });
   } catch (error) {
-    console.error("[reports.updateDraft]", error);
     return res.status(errorStatus(error, 400)).json({ success: false, error: error.message || "Failed to update draft" });
   }
 }
@@ -922,7 +922,6 @@ async function generateReport(req, res) {
 
     return res.status(201).json({ success: true, data: mapReportRow(row) });
   } catch (error) {
-    console.error("[reports.generate]", error);
     return res.status(errorStatus(error, 400)).json({ success: false, error: error.message || "Failed to generate report" });
   }
 }
@@ -965,7 +964,6 @@ async function finalizeDraft(req, res) {
 
     return res.json({ success: true, data: mapReportRow(row) });
   } catch (error) {
-    console.error("[reports.finalizeDraft]", error);
     return res.status(errorStatus(error, 400)).json({ success: false, error: error.message || "Failed to generate draft" });
   }
 }
@@ -992,7 +990,6 @@ async function deleteReport(req, res) {
 
     return res.json({ success: true, message: "Report deleted successfully" });
   } catch (error) {
-    console.error("[reports.delete]", error);
     return res.status(errorStatus(error, 500)).json({ success: false, error: error.message || "Failed to delete report" });
   }
 }
@@ -1016,7 +1013,6 @@ async function sendReportFile(req, res, inline) {
     res.setHeader("Content-Disposition", disposition);
     return res.send(report.file_bytes);
   } catch (error) {
-    console.error("[reports.file]", error);
     return res.status(errorStatus(error, 500)).json({ success: false, error: error.message || "Failed to open report file" });
   }
 }
