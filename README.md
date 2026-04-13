@@ -86,6 +86,8 @@ IoT Edge Devices → MQTT Broker (EMQX) → Navigation/AI Services → Main Dash
 | pip | latest |
 | Docker & Docker Compose | latest (MQTT broker only) |
 
+> **Windows note:** Node.js must be installed via the **official installer** from [nodejs.org](https://nodejs.org) so that `npm` is added to the system PATH. Installing via NVM for Windows or other user-scoped methods may cause the `postinstall` script to fail with `'npm' is not recognized` because child processes don't inherit the user PATH. If you hit this error, either reinstall Node.js from nodejs.org, or run each install step manually (see below).
+
 ---
 
 ## Quick Start
@@ -105,6 +107,20 @@ npm run dev
 ```
 
 Open **http://localhost:5173** in your browser.
+
+> **If `npm install` fails on Windows** with `'npm' is not recognized`, run the steps manually instead:
+> ```powershell
+> cd "apps/main dashboard"
+> npm install --ignore-scripts
+> npm install --prefix frontend
+> npm install --prefix backend
+> npm install --prefix ../digital_twin_web
+> pip install -r ../navigation_web/requirements.txt
+> pip install -r ../../services/ai-detection/requirements.txt
+> pip install -r ../../services/exhibitor-ai-pipeline/requirements.txt
+> pip install -r ../../services/Report_export/requirements.txt
+> pip install -r "../../services/sentina_operations_html_widget_updated 5/requirements.txt"
+> ```
 
 ---
 
