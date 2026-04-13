@@ -1,13 +1,6 @@
 """
-IoT Telemetry Processor
-
-Processes telemetry data from convention center IoT sensors and converts it to
-crowd density values for pathfinding weight adjustments.
-
-Supports:
-- CSV streaming (telemetry_stream_hall_v3.csv)
-- JSONL streaming (telemetry_stream_hall_v3.jsonl)
-- Real-time aggregation by hall
+Processes IoT telemetry from venue sensors and converts it into hall-level
+crowd density data for pathfinding adjustments.
 """
 
 import json
@@ -31,7 +24,6 @@ class IoTProcessor:
             'last_update': None
         })
         
-        # Hall capacity mapping (can be configured)
         self.hall_capacities = {
             'HZA01': 450, 'HZA02': 400, 'HZA03': 350, 'HZA04': 350, 'HZA05': 300, 'HZA06': 300,
             'HZB01': 500, 'HZB02': 450, 'HZB03': 400, 'HZB04': 400, 'HZB05': 350, 'HZB06': 350, 'HZB07': 300, 'HZB08': 300,
@@ -51,13 +43,11 @@ class IoTProcessor:
         reading_type = row.get('readingType')
         timestamp = row.get('timestamp')
         
-        # Parse values JSON
         try:
             values = json.loads(row.get('values_json', '{}'))
         except:
             return None
         
-        # Update hall data based on reading type
         if reading_type == 'occupancy':
             self.hall_data[hall_id]['occupancy_count'] = values.get('occupancyCount', 0)
             self.hall_data[hall_id]['occupancy_rate'] = values.get('occupancyRate', 0.0)
@@ -65,7 +55,6 @@ class IoTProcessor:
             
         elif reading_type == 'video_analytics':
             self.hall_data[hall_id]['occupancy_count'] = values.get('estimatedCount', 0)
-            # Calculate rate from capacity
             capacity = self.hall_capacities.get(hall_id, 400)
             self.hall_data[hall_id]['occupancy_rate'] = values.get('estimatedCount', 0) / capacity
             self.hall_data[hall_id]['last_update'] = timestamp
@@ -98,7 +87,6 @@ class IoTProcessor:
         timestamp = data.get('timestamp')
         values = data.get('values', {})
         
-        # Update hall data based on reading type
         if reading_type == 'occupancy':
             self.hall_data[hall_id]['occupancy_count'] = values.get('occupancyCount', 0)
             self.hall_data[hall_id]['occupancy_rate'] = values.get('occupancyRate', 0.0)
@@ -128,11 +116,8 @@ class IoTProcessor:
         weights = {}
         
         for hall_id, data in self.hall_data.items():
-            # Primary metric: occupancy rate
             density = min(1.0, max(0.0, data['occupancy_rate']))
             
-            # Optional: Factor in environmental comfort
-            # High CO2 or noise increases perceived density
             if data['co2'] > 800:
                 density = min(1.0, density * 1.1)
             if data['noise'] > 65:
@@ -151,7 +136,6 @@ class IoTProcessor:
         return dict(self.hall_data)
 
 
-# Flask integration helper
 def load_telemetry_csv(filepath: str, processor: IoTProcessor, limit: int = 1000):
     """Load telemetry data from CSV file"""
     updated_halls = set()
@@ -186,10 +170,8 @@ def load_telemetry_jsonl(filepath: str, processor: IoTProcessor, limit: int = 10
 
 
 if __name__ == '__main__':
-    # Test the processor
     processor = IoTProcessor()
     
-    # Test CSV loading
     weights = load_telemetry_csv('telemetry_stream_hall_v3_2.csv', processor, limit=5000)
     
     print("\n=== Hall Crowd Density Weights ===")

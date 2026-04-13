@@ -1,26 +1,13 @@
 """
-validate_navmesh.py
-
-Comprehensive validation suite for navigation mesh
-
-CHECKS:
-1. Graph connectivity (all nodes reachable)
-2. Edge validity (no edges cutting through walls/halls)
-3. Path sanity (test specific routes)
-4. Geometry consistency
-5. Performance metrics
-
-Usage:
-    python validate_navmesh.py geometry_fixed.json
+Validates a generated navigation mesh by checking connectivity, edge sanity,
+and required pathfinding routes against the extracted venue geometry.
 """
 
 import sys
 import json
-import math
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Tuple
 
-# Import your modules
 try:
     from navmesh_generator_FIXED import NavMeshGenerator
     from pathfinder import DijkstraPathfinder
@@ -60,18 +47,15 @@ def check_graph_connectivity(navmesh: Dict) -> Tuple[bool, str]:
     nodes = navmesh['nodes']
     edges = navmesh['edges']
     
-    # Build adjacency list
     adj = {n['id']: [] for n in nodes}
     for e in edges:
         adj[e['from']].append(e['to'])
     
-    # Find all destination nodes (rooms + entrance)
     destinations = [n for n in nodes if n.get('is_destination', False)]
     
     if len(destinations) < 2:
         return False, f"Only {len(destinations)} destination nodes found"
     
-    # Check if all destinations are reachable from first destination
     start = destinations[0]['id']
     visited = set()
     stack = [start]
@@ -112,11 +96,9 @@ def check_edge_validity(navmesh: Dict, geometry: Dict, sample_points: int = 25) 
         if not from_node or not to_node:
             continue
         
-        # Skip room-to-door edges (allowed to start in room)
         if from_node['type'] == 'room' or to_node['type'] == 'room':
             continue
         
-        # Sample along edge
         fx, fy = from_node['position']['x'], from_node['position']['y']
         tx, ty = to_node['position']['x'], to_node['position']['y']
         
@@ -125,10 +107,7 @@ def check_edge_validity(navmesh: Dict, geometry: Dict, sample_points: int = 25) 
             x = fx + (tx - fx) * t
             y = fy + (ty - fy) * t
             
-            # Check if in corridor
             in_corridor = any(point_in_poly(x, y, poly) for poly in corridor_polys)
-            
-            # Check if in hall
             in_hall = any(point_in_poly(x, y, poly) for poly in hall_polys)
             
             if not in_corridor or in_hall:
@@ -137,7 +116,7 @@ def check_edge_validity(navmesh: Dict, geometry: Dict, sample_points: int = 25) 
                     'point': [x, y],
                     'reason': 'not in corridor' if not in_corridor else 'in hall'
                 })
-                break  # Only report once per edge
+                break
     
     return len(violations), violations
 
@@ -155,7 +134,6 @@ def test_specific_paths(navmesh: Dict, test_cases: List[Tuple[str, str, str]]) -
     nodes = navmesh['nodes']
     pathfinder = DijkstraPathfinder(nodes, navmesh['edges'])
     
-    # Map room names to IDs
     name_to_id = {}
     for n in nodes:
         if n.get('type') == 'room':
@@ -207,7 +185,6 @@ def print_validation_report(geometry: Dict, navmesh: Dict):
     print("NAVIGATION MESH VALIDATION REPORT")
     print("="*70)
     
-    # 1. Basic stats
     print("\n1. BASIC STATISTICS")
     print("-" * 70)
     print(f"  Nodes:          {len(navmesh['nodes'])}")
@@ -218,7 +195,6 @@ def print_validation_report(geometry: Dict, navmesh: Dict):
     print(f"  Edges:          {len(navmesh['edges']) // 2} bidirectional pairs")
     print(f"  Corridors:      {len(geometry['corridors'])} unified polygon(s)")
     
-    # 2. Graph connectivity
     print("\n2. GRAPH CONNECTIVITY")
     print("-" * 70)
     is_connected, msg = check_graph_connectivity(navmesh)
@@ -227,7 +203,6 @@ def print_validation_report(geometry: Dict, navmesh: Dict):
     else:
         print(f"  ✗ {msg}")
     
-    # 3. Edge validity
     print("\n3. EDGE VALIDITY (Sanity Check)")
     print("-" * 70)
     num_violations, violations = check_edge_validity(navmesh, geometry, sample_points=25)
@@ -243,7 +218,6 @@ def print_validation_report(geometry: Dict, navmesh: Dict):
         if len(violations) > 10:
             print(f"     ... and {len(violations) - 10} more")
     
-    # 4. Test specific paths
     print("\n4. PATH VALIDATION (Required Test Cases)")
     print("-" * 70)
     
@@ -269,7 +243,6 @@ def print_validation_report(geometry: Dict, navmesh: Dict):
     
     print(f"\n  Summary: {path_results['passed']}/{path_results['total']} passed")
     
-    # 5. Overall verdict
     print("\n" + "="*70)
     print("OVERALL VERDICT")
     print("="*70)
@@ -316,10 +289,8 @@ def main():
     )
     navmesh = generator.generate()
     
-    # Run validation
     all_pass = print_validation_report(geometry, navmesh)
     
-    # Exit code
     sys.exit(0 if all_pass else 1)
 
 

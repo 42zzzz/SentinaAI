@@ -1,12 +1,12 @@
-// frontend/src/utils/heatmap.js
-// Pure JS helpers for radius-based aggregation + color mapping.
+/**
+ * Utility helpers for heatmap generation, including bounds calculation,
+ * booth hit testing, grid aggregation, normalization, and RGBA color mapping.
+ */
 
 export function clamp01(x) {
   return x < 0 ? 0 : x > 1 ? 1 : x;
 }
 
-// Build a 256-entry RGBA lookup table (Uint8ClampedArray length 1024)
-// using a simple 5-stop ramp.
 export function buildColorLUT(stops = null) {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
@@ -15,21 +15,21 @@ export function buildColorLUT(stops = null) {
 
   const grad = ctx.createLinearGradient(0, 0, 256, 0);
   const defaultStops = [
-    [0.00, '#000000'], // transparent handled separately
-    [0.15, '#1e3a8a'], // blue
-    [0.40, '#06b6d4'], // cyan
-    [0.65, '#f59e0b'], // amber
-    [0.90, '#ef4444'], // red
-    [1.00, '#ffffff'], // white hot
+    [0.00, '#000000'],
+    [0.15, '#1e3a8a'],
+    [0.40, '#06b6d4'],
+    [0.65, '#f59e0b'],
+    [0.90, '#ef4444'],
+    [1.00, '#ffffff'],
   ];
   (stops || defaultStops).forEach(([t, c]) => grad.addColorStop(t, c));
 
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 256, 1);
-  return ctx.getImageData(0, 0, 256, 1).data; // Uint8ClampedArray
+  return ctx.getImageData(0, 0, 256, 1).data;
 }
 
-// Fast point-in-polygon (ray casting). Polygon is [{x,y}, ...]
+// Ray-casting point-in-polygon check. Polygon is [{x,y}, ...]
 export function pointInPolygon(pt, poly) {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -54,21 +54,21 @@ export function getBounds(points, fallback = { minX: 0, minY: 0, maxX: 1, maxY: 
   return { minX, minY, maxX, maxY };
 }
 
-// Radius-based aggregation on a grid.
-//
-// points: [{x,y,value}] value default 1
-// radiusPx: influence radius in *pixels* (world coords)
-// cellSizePx: grid cell size in pixels (smaller = smoother but heavier)
-// bounds: {minX,minY,maxX,maxY}
-//
-// Returns { grid, cols, rows, bounds }
+/*
+  Aggregates point values into a grid using a Gaussian-style radius falloff.
+
+  points: [{x,y,value}] where value defaults to 1
+  radiusPx: influence radius in world pixels
+  cellSizePx: grid cell size in pixels
+  bounds: {minX,minY,maxX,maxY}
+*/
 export function aggregateToGrid(points, radiusPx, cellSizePx, bounds) {
   const cols = Math.max(1, Math.ceil((bounds.maxX - bounds.minX) / cellSizePx));
   const rows = Math.max(1, Math.ceil((bounds.maxY - bounds.minY) / cellSizePx));
   const grid = new Float32Array(cols * rows);
 
   const rCells = Math.max(1, Math.ceil(radiusPx / cellSizePx));
-  const sigma = radiusPx / 3; // heuristic
+  const sigma = radiusPx / 3;
   const twoSigma2 = 2 * sigma * sigma;
 
   for (const p of points) {
@@ -110,12 +110,13 @@ export function normalizeGrid(grid) {
   return { max, norm };
 }
 
-// Convert a normalized grid into an ImageData-like RGBA buffer
+// Converts normalized grid values into an RGBA buffer using the provided color lookup table.
 export function gridToRGBA(normGrid, cols, rows, lut, alphaScale = 1.0, alphaPow = 0.9) {
   const out = new Uint8ClampedArray(cols * rows * 4);
   for (let i = 0; i < normGrid.length; i++) {
     const t = clamp01(normGrid[i]);
-    // treat very low values as transparent
+
+    // Keep near-zero values transparent so the overlay fades out cleanly.
     const a = t <= 0.001 ? 0 : clamp01(Math.pow(t, alphaPow) * alphaScale);
     const idx = Math.min(255, Math.max(0, Math.floor(t * 255)));
 

@@ -1,8 +1,6 @@
 """
-IoT Telemetry Processor
-
-Processes real-time IoT sensor data (JSONL stream) and aggregates it for navigation routing.
-Converts hall-level occupancy rates into crowd density values for navmesh edge weighting.
+Processes IoT sensor telemetry from a JSONL stream and aggregates hall
+occupancy data for navigation routing updates.
 """
 
 from __future__ import annotations
@@ -23,27 +21,23 @@ class TelemetryProcessor:
         self.last_update: Optional[datetime] = None
     
     def load_jsonl_stream(self, filepath: str | Path, max_records: int = 10000) -> None:
-        """Load telemetry from JSONL file (most recent records)."""
+        """Load telemetry from a JSONL file using the most recent records."""
         filepath = Path(filepath)
         
         if not filepath.exists():
             raise FileNotFoundError(f"Telemetry file not found: {filepath}")
         
-        # Read all lines, process most recent
         with open(filepath, 'r') as f:
             lines = f.readlines()
         
-        # Take last N records (most recent)
         recent_lines = lines[-max_records:] if len(lines) > max_records else lines
         
-        # Parse and aggregate
         hall_readings: Dict[str, List[float]] = defaultdict(list)
         
         for line in recent_lines:
             try:
                 record = json.loads(line.strip())
                 
-                # We only care about occupancy readings for routing
                 if record.get('readingType') != 'occupancy':
                     continue
                 
@@ -55,7 +49,6 @@ class TelemetryProcessor:
                 if occupancy_rate is not None:
                     hall_readings[hall_id].append(float(occupancy_rate))
                 
-                # Track timestamp
                 ts_str = record.get('timestamp')
                 if ts_str:
                     try:
@@ -66,7 +59,6 @@ class TelemetryProcessor:
             except json.JSONDecodeError:
                 continue
         
-        # Average multiple readings per hall
         for hall_id, rates in hall_readings.items():
             self.latest_occupancy[hall_id] = sum(rates) / len(rates)
         
@@ -77,11 +69,6 @@ class TelemetryProcessor:
     def map_hall_ids_to_rooms(self, rooms_metadata: List[Dict]) -> None:
         """
         Create mapping from telemetry hall IDs (like HZA01) to room node IDs (like room_0).
-        
-        Strategy:
-        1. Try exact name match
-        2. Try fuzzy match (contains hall ID)
-        3. Extract zone letter and hall number for pattern matching
         """
         self.hall_id_to_room_id.clear()
 
@@ -89,24 +76,19 @@ class TelemetryProcessor:
             return "".join(ch for ch in (s or "").lower() if ch.isalnum())
 
         def hall_id_to_expected_name(hall_id: str) -> Optional[str]:
-            """Best-effort mapping from telemetry hall IDs to human-readable hall names.
+            """
+            Best-effort mapping from telemetry hall IDs to human-readable hall names.
 
             Telemetry uses 26 hall codes:
-              - HZA01..HZA06 (6)
-              - HZB01..HZB08 (8)
-              - HZC01..HZC06 (6)
-              - HZD01..HZD06 (6)
+              - HZA01..HZA06
+              - HZB01..HZB08
+              - HZC01..HZC06
+              - HZD01..HZD06
 
-            The SVG map contains 26 halls:
-              North Hall 1..6 (6)
-              South Hall 1..6 (6)
-              East Hall 1..4 (4)
-              Hall 1..10      (10)
-
-            Default mapping (can be adjusted if your telemetry zones are different):
+            Default mapping:
               - HZA## -> North Hall ##
               - HZC## -> South Hall ##
-              - HZB## -> Hall ## (1..8)
+              - HZB## -> Hall ##
               - HZD01..04 -> East Hall 1..4
               - HZD05..06 -> Hall 9..10
             """
@@ -125,16 +107,14 @@ class TelemetryProcessor:
             if zone == "D":
                 if num <= 4:
                     return f"East Hall {num}"
-                return f"Hall {num + 4}"  # D05->Hall 9, D06->Hall 10
+                return f"Hall {num + 4}"
             return None
 
-        # Build a fast lookup for room names
         room_name_to_id = {}
         for room in rooms_metadata:
             rn = (room.get("name") or "").strip()
             room_name_to_id[normalize_name(rn)] = room["id"]
         
-        # 1) Deterministic mapping (telemetry codes -> map hall names)
         for hall_id in list(self.latest_occupancy.keys()):
             expected = hall_id_to_expected_name(hall_id)
             if expected:
@@ -142,19 +122,16 @@ class TelemetryProcessor:
                 if rid:
                     self.hall_id_to_room_id[hall_id] = rid
 
-        # 2) Fallbacks: exact match (case-insensitive) and fuzzy name containment
         for hall_id in list(self.latest_occupancy.keys()):
             if hall_id in self.hall_id_to_room_id:
                 continue
             hall_norm = normalize_name(hall_id)
-            # Exact-ish: allow matching against normalized room name
             for rn_norm, rid in room_name_to_id.items():
                 if hall_norm == rn_norm:
                     self.hall_id_to_room_id[hall_id] = rid
                     break
             if hall_id in self.hall_id_to_room_id:
                 continue
-            # Containment: room name contains hall id or vice-versa
             for rn_norm, rid in room_name_to_id.items():
                 if hall_norm and (hall_norm in rn_norm or rn_norm in hall_norm):
                     self.hall_id_to_room_id[hall_id] = rid
@@ -162,22 +139,16 @@ class TelemetryProcessor:
         
         print(f"Mapped {len(self.hall_id_to_room_id)} hall IDs to rooms")
         
-        # Show unmapped halls
         unmapped = set(self.latest_occupancy.keys()) - set(self.hall_id_to_room_id.keys())
         if unmapped:
             print(f"  Warning: {len(unmapped)} halls not mapped: {sorted(list(unmapped))[:5]}...")
     
     def get_sensor_data_for_navmesh(self) -> Dict[str, float]:
         """
-        Get sensor data in format expected by navmesh_generator.update_edge_weights_from_iot().
-        
-        Returns dict with:
-        - Keys: room IDs (room_0, room_1, ...) or room names
-        - Values: crowd density 0.0-1.0 (occupancy rate)
+        Get sensor data in the format expected by navmesh_generator.update_edge_weights_from_iot().
         """
         sensor_data: Dict[str, float] = {}
         
-        # Map telemetry hall IDs to room IDs
         for hall_id, occupancy_rate in self.latest_occupancy.items():
             room_id = self.hall_id_to_room_id.get(hall_id)
             if room_id:
@@ -200,7 +171,6 @@ class TelemetryProcessor:
         avg_occ = sum(occupancy_values) / len(occupancy_values)
         max_occ = max(occupancy_values)
         
-        # Find crowded halls (>50% occupancy)
         crowded = [
             {'hallId': hid, 'occupancy': occ}
             for hid, occ in self.latest_occupancy.items()
@@ -213,16 +183,14 @@ class TelemetryProcessor:
             'mapped_halls': len(self.hall_id_to_room_id),
             'avg_occupancy': round(avg_occ, 3),
             'max_occupancy': round(max_occ, 3),
-            'crowded_halls': crowded[:5],  # Top 5 most crowded
+            'crowded_halls': crowded[:5],
             'last_update': self.last_update.isoformat() if self.last_update else None
         }
 
 
 if __name__ == '__main__':
-    # Test the processor
     processor = TelemetryProcessor()
     
-    # Load from test file
     test_file = Path('../telemetry_stream_hall_v3__1_.jsonl')
     if test_file.exists():
         processor.load_jsonl_stream(test_file)

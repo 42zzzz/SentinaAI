@@ -1,7 +1,8 @@
-// frontend/src/layers/HeatmapLayer.js
-// PixiJS heatmap overlay supporting:
-// 1) radius-based aggregation (Gaussian splat to grid)
-// 2) booth-scoped overlay (mask to selected booth polygon)
+/**
+ * Renders and updates a PixiJS heatmap overlay using telemetry points.
+ * Supports venue-wide and booth-scoped views, grid-based aggregation,
+ * and masking the overlay to a selected booth polygon when needed.
+ */
 
 import * as PIXI from 'pixi.js';
 import {
@@ -38,7 +39,7 @@ export default class HeatmapLayer {
     this.world.addChild(this.container);
 
     this.enabled = true;
-    this.mode = 'global'; // 'global' | 'booth'
+    this.mode = 'global';
     this.radiusPx = 55;
     this.cellSizePx = 12;
     this.alphaScale = 1.0;
@@ -50,7 +51,7 @@ export default class HeatmapLayer {
     this._ctx = this._canvas.getContext('2d');
 
     this._lastKey = '';
-    this._booths = []; // [{id, polygon:[{x,y}], bounds}]
+    this._booths = [];
   }
 
   destroy() {
@@ -80,7 +81,6 @@ export default class HeatmapLayer {
   }
 
   setBooths(booths) {
-    // booths: [{id, polygon:[{x,y}] or [[x,y]]}]
     this._booths = (booths || []).map(b => {
       const polygon = (b.polygon || []).map(p => (Array.isArray(p) ? { x: p[0], y: p[1] } : p));
       return {
@@ -96,7 +96,7 @@ export default class HeatmapLayer {
   }
 
   // telemetryPoints: [{x,y,value?, boothId?}]
-  // If boothId missing, we can compute when mode === 'booth' (costly but ok for moderate points)
+  // If boothId is missing, compute booth membership from the polygon when needed.
   update(telemetryPoints) {
     if (!this.enabled) return;
 
@@ -105,28 +105,28 @@ export default class HeatmapLayer {
       ? this._booths.find(b => String(b.id) === String(this.selectedBoothId))
       : null;
 
-    // Filter points based on mode
+    // In booth mode, only keep points that belong to the selected booth.
     let scopedPoints = points;
     if (this.mode === 'booth') {
       if (!booth) {
-        // no booth selected -> hide heatmap
+        // Hide the overlay until a booth is selected.
         this.sprite.visible = false;
         this.maskGfx.clear();
         this.sprite.mask = null;
         return;
       }
 
-      // Prefer server/client pre-tagged boothId; otherwise compute point-in-poly
+      // Prefer pre-tagged booth IDs first. Fall back to point-in-polygon when needed.
       scopedPoints = points.filter(p => {
         if (p.boothId != null) return String(p.boothId) === String(booth.id);
         return pointInPolygon({ x: p.x, y: p.y }, booth.polygon);
       });
     }
 
-    // bounds for aggregation: for booth mode, keep it booth bounds; else use points bounds
+    // Booth mode stays locked to booth bounds. Global mode uses the current point bounds.
     const bounds = booth ? booth.bounds : getBounds(scopedPoints, { minX: 0, minY: 0, maxX: 1, maxY: 1 });
 
-    // small hash to avoid rebuilding texture if nothing changed materially
+    // Skip rebuilding the texture if the visible output would be the same.
     const key = `${this.mode}|${this.selectedBoothId}|${this.radiusPx}|${this.cellSizePx}|${this.alphaScale}|${scopedPoints.length}|${bounds.minX.toFixed(1)},${bounds.minY.toFixed(1)},${bounds.maxX.toFixed(1)},${bounds.maxY.toFixed(1)}`;
     if (key === this._lastKey) {
       this.sprite.visible = true;
@@ -135,7 +135,6 @@ export default class HeatmapLayer {
     }
     this._lastKey = key;
 
-    // If no points, hide.
     if (scopedPoints.length === 0) {
       this.sprite.visible = false;
       this.maskGfx.clear();
@@ -151,10 +150,8 @@ export default class HeatmapLayer {
     );
 
     const { norm } = normalizeGrid(grid);
-
     const rgba = gridToRGBA(norm, cols, rows, this.lut, this.alphaScale);
 
-    // Build texture from canvas
     this._canvas.width = cols;
     this._canvas.height = rows;
 
@@ -163,13 +160,13 @@ export default class HeatmapLayer {
     this._ctx.putImageData(imgData, 0, 0);
 
     const tex = PIXI.Texture.from(this._canvas);
-    // Dispose previous
+
     if (this.sprite.texture) this.sprite.texture.destroy(true);
 
     this.sprite.texture = tex;
     this.sprite.visible = true;
 
-    // Position + scale sprite so each pixel == cellSizePx world pixels
+    // Scale the texture back into world space using the grid cell size.
     this.sprite.x = bounds.minX;
     this.sprite.y = bounds.minY;
     this.sprite.width = cols * cellSizePx;

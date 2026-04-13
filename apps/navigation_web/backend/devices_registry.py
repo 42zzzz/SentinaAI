@@ -1,11 +1,7 @@
-# IoT Device Registry — mirrors devicesLayout.js in the frontend.
-# This is the single source of truth for device definitions on the backend.
-#
-# Future upgrade: replace this static list with a database query or
-# load from a JSON config file that the frontend also reads.
+# Device registry used by the backend navigation and device status endpoints.
 
 DEVICES_REGISTRY = [
-    # ── NORTH ZONE ──────────────────────────────────────────────────────────────
+    # North Zone
     {"id": "PC_NH1_01",    "type": "people_counter",  "label": "Entry Counter",    "hallId": "NorthHall1", "svgX": 810,  "svgY": 400, "telemetryKey": "HZA01_PC01",  "status": "online"},
     {"id": "ENV_NH1_01",   "type": "environmental",   "label": "Env Sensor A",     "hallId": "NorthHall1", "svgX": 845,  "svgY": 440, "telemetryKey": "HZA01_ENV01", "status": "online"},
     {"id": "PC_NH2_01",    "type": "people_counter",  "label": "North Entry",      "hallId": "NorthHall2", "svgX": 812,  "svgY": 520, "telemetryKey": "HZA02_PC01",  "status": "online"},
@@ -19,7 +15,8 @@ DEVICES_REGISTRY = [
     {"id": "GW_NH5_01",    "type": "gateway",         "label": "West Gateway",     "hallId": "NorthHall5", "svgX": 675,  "svgY": 510, "telemetryKey": "HZA05_GW01",  "status": "online"},
     {"id": "PC_NH6_01",    "type": "people_counter",  "label": "Lobby Counter",    "hallId": "NorthHall6", "svgX": 800,  "svgY": 282, "telemetryKey": "HZA06_PC01",  "status": "online"},
     {"id": "ENV_NH6_01",   "type": "environmental",   "label": "Lobby Env",        "hallId": "NorthHall6", "svgX": 870,  "svgY": 282, "telemetryKey": "HZA06_ENV01", "status": "offline"},
-    # ── EAST ZONE ───────────────────────────────────────────────────────────────
+
+    # East Zone
     {"id": "PC_EH1_01",    "type": "people_counter",  "label": "E1 Entry",         "hallId": "EastHall1",  "svgX": 1025, "svgY": 265, "telemetryKey": "HZB01_PC01",  "status": "online"},
     {"id": "ENV_EH1_01",   "type": "environmental",   "label": "E1 Air Quality",   "hallId": "EastHall1",  "svgX": 1055, "svgY": 305, "telemetryKey": "HZB01_ENV01", "status": "online"},
     {"id": "PC_EH2_01",    "type": "people_counter",  "label": "E2 Counter",       "hallId": "EastHall2",  "svgX": 1115, "svgY": 265, "telemetryKey": "HZB02_PC01",  "status": "online"},
@@ -39,7 +36,8 @@ DEVICES_REGISTRY = [
     {"id": "CROWD_H9_01",  "type": "crowd_sensor",    "label": "H9 Crowd",         "hallId": "Hall9",      "svgX": 1390, "svgY": 450, "telemetryKey": "HZB07_CS01",  "status": "online"},
     {"id": "PC_H10_01",    "type": "people_counter",  "label": "H10 Counter",      "hallId": "Hall10",     "svgX": 1468, "svgY": 408, "telemetryKey": "HZB08_PC01",  "status": "online"},
     {"id": "ENV_H10_01",   "type": "environmental",   "label": "H10 CO2",          "hallId": "Hall10",     "svgX": 1510, "svgY": 448, "telemetryKey": "HZB08_ENV01", "status": "online"},
-    # ── SOUTH ZONE ──────────────────────────────────────────────────────────────
+
+    # South Zone
     {"id": "PC_SH1_01",    "type": "people_counter",  "label": "S1 Counter",       "hallId": "SouthHall1", "svgX": 1475, "svgY": 560, "telemetryKey": "HZC01_PC01",  "status": "online"},
     {"id": "ENV_SH1_01",   "type": "environmental",   "label": "S1 Env",           "hallId": "SouthHall1", "svgX": 1530, "svgY": 600, "telemetryKey": "HZC01_ENV01", "status": "online"},
     {"id": "PC_SH2_01",    "type": "people_counter",  "label": "S2 Entry A",       "hallId": "SouthHall2", "svgX": 1630, "svgY": 600, "telemetryKey": "HZC02_PC01",  "status": "online"},
@@ -54,7 +52,8 @@ DEVICES_REGISTRY = [
     {"id": "ENV_SH5_01",   "type": "environmental",   "label": "S5 Air Quality",   "hallId": "SouthHall5", "svgX": 1730, "svgY": 810, "telemetryKey": "HZC05_ENV01", "status": "online"},
     {"id": "GW_SH6_01",    "type": "gateway",         "label": "SE Gateway",       "hallId": "SouthHall6", "svgX": 1800, "svgY": 790, "telemetryKey": "HZC06_GW01",  "status": "online"},
     {"id": "PC_SH6_01",    "type": "people_counter",  "label": "S6 Counter",       "hallId": "SouthHall6", "svgX": 1840, "svgY": 835, "telemetryKey": "HZC06_PC01",  "status": "offline"},
-    # ── CENTRAL ZONE ────────────────────────────────────────────────────────────
+
+    # Central Zone
     {"id": "PC_H1_01",     "type": "people_counter",  "label": "Central Counter",  "hallId": "Hall1",      "svgX": 968,  "svgY": 740, "telemetryKey": "HZD01_PC01",  "status": "online"},
     {"id": "ENV_H1_01",    "type": "environmental",   "label": "Central Env",      "hallId": "Hall1",      "svgX": 1015, "svgY": 780, "telemetryKey": "HZD01_ENV01", "status": "online"},
     {"id": "GW_H2_01",     "type": "gateway",         "label": "Central Gateway",  "hallId": "Hall2",      "svgX": 1072, "svgY": 610, "telemetryKey": "HZD02_GW01",  "status": "online"},
@@ -67,7 +66,6 @@ DEVICES_REGISTRY = [
     {"id": "GW_H6_01",     "type": "gateway",         "label": "Hub Gateway",      "hallId": "Hall6",      "svgX": 1015, "svgY": 385, "telemetryKey": "HZD06_GW01",  "status": "online"},
 ]
 
-# In-memory device telemetry store.
-# Populated by a paho-mqtt subscriber when EMQX integration is active.
-# Keys are device IDs; values are { status, value, unit, lastSeen }.
+# Populated at runtime when MQTT integration is active.
+# Keys are device IDs and values contain the latest device telemetry snapshot.
 device_telemetry: dict = {}

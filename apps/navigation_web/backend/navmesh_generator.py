@@ -1,18 +1,7 @@
 """
-backend.navmesh_generator (FIXED VERSION)
-
-CRITICAL FIXES:
-1. PROPER corridor polygon union BEFORE rasterization (using Shapely)
-2. Hall entrance detection via ray-intersection with corridor boundaries
-3. Corridor centerline node placement via skeletonization
-4. Edge validation that prevents wall/hall penetration
-5. Guaranteed connected graph via proper geometry handling
-
-Key changes from broken version:
-- Line ~100: Added shapely-based polygon union
-- Line ~200: Added hall entrance detection via line intersection  
-- Line ~400: Improved edge walkability validation
-- Line ~500: Fixed component connection logic
+Generates a navigation mesh from room and corridor geometry by building a
+walkable spine graph, connecting rooms and entrances, and supporting IoT-based
+edge weight updates.
 """
 
 from __future__ import annotations
@@ -24,7 +13,6 @@ from typing import Dict, List, Optional, Tuple, Set
 
 import numpy as np
 
-# CRITICAL: Import Shapely for proper polygon operations
 try:
     from shapely.geometry import Polygon, Point, LineString, MultiPolygon
     from shapely.ops import unary_union
@@ -33,10 +21,6 @@ except ImportError:
     HAS_SHAPELY = False
     print("WARNING: Shapely not installed - corridor unioning will be degraded")
 
-
-# -------------------------
-# Basic geometry helpers
-# -------------------------
 
 def _dist(a: Dict[str, float], b: Dict[str, float]) -> float:
     return math.hypot(float(a["x"]) - float(b["x"]), float(a["y"]) - float(b["y"]))
@@ -71,24 +55,16 @@ def _shapely_to_poly(geom: Polygon) -> List[List[float]]:
     if geom.is_empty:
         return []
     coords = list(geom.exterior.coords)
-    return [[float(x), float(y)] for x, y in coords[:-1]]  # Remove duplicate last point
+    return [[float(x), float(y)] for x, y in coords[:-1]]
 
-
-# -------------------------
-# Corridor Union (CRITICAL FIX)
-# -------------------------
 
 def union_corridor_polygons(corridor_dicts: List[Dict]) -> List[List[float]]:
     """
     Union all corridor polygons into a single unified polygon.
-    
-    CRITICAL: This fixes the fragmentation issue where 4 separate corridor
-    polygons had 400-950 pixel gaps that couldn't be bridged by morphological
-    operations.
-    
+
     Args:
         corridor_dicts: List of corridor dicts with 'polygon' key
-    
+
     Returns:
         Single unified polygon as list of [x,y] coordinates
     """
@@ -96,30 +72,25 @@ def union_corridor_polygons(corridor_dicts: List[Dict]) -> List[List[float]]:
         print("WARNING: Shapely not available - returning largest corridor fragment")
         if not corridor_dicts:
             return []
-        # Fallback: return largest polygon
         largest = max(corridor_dicts, key=lambda c: len(c.get('polygon', [])))
         return largest.get('polygon', [])
-    
-    # Convert to Shapely polygons
+
     shapely_polys = []
     for c in corridor_dicts:
         poly = c.get('polygon', [])
         sp = _poly_to_shapely(poly)
         if sp and sp.is_valid and not sp.is_empty:
             shapely_polys.append(sp)
-    
+
     if not shapely_polys:
         return []
-    
-    # Union all polygons
+
     try:
         unified = unary_union(shapely_polys)
-        
-        # Handle MultiPolygon result (take largest)
+
         if isinstance(unified, MultiPolygon):
             unified = max(unified.geoms, key=lambda p: p.area)
-        
-        # Convert back to list
+
         if unified.is_valid and not unified.is_empty:
             result = _shapely_to_poly(unified)
             print(f"Corridor union: {len(corridor_dicts)} fragments → 1 unified polygon ({len(result)} vertices)")
@@ -129,81 +100,67 @@ def union_corridor_polygons(corridor_dicts: List[Dict]) -> List[List[float]]:
             return []
     except Exception as e:
         print(f"WARNING: Corridor union failed: {e}")
-        # Fallback
         largest = max(corridor_dicts, key=lambda c: len(c.get('polygon', [])))
         return largest.get('polygon', [])
 
 
-# -------------------------
-# Hall Entrance Detection (NEW)
-# -------------------------
-
 def find_hall_entrances_via_intersection(
-    hall_poly: List[List[float]], 
+    hall_poly: List[List[float]],
     corridor_poly: List[List[float]],
     num_rays: int = 16
 ) -> List[Tuple[float, float]]:
     """
     Find hall entrance points by detecting where hall boundary intersects corridor.
-    
-    CRITICAL FIX: Previous version used bounding box overlap which was imprecise.
-    This uses proper geometric intersection.
-    
+
     Args:
         hall_poly: Hall polygon vertices
-        corridor_poly: Unified corridor polygon vertices  
+        corridor_poly: Unified corridor polygon vertices
         num_rays: Number of rays to cast from hall center
-    
+
     Returns:
         List of (x, y) entrance point coordinates
     """
     if not HAS_SHAPELY or not hall_poly or not corridor_poly:
-        # Fallback: return hall centroid
         cx = sum(p[0] for p in hall_poly) / len(hall_poly)
         cy = sum(p[1] for p in hall_poly) / len(hall_poly)
         return [(cx, cy)]
-    
+
     try:
         hall_geom = Polygon([(p[0], p[1]) for p in hall_poly])
         corridor_geom = Polygon([(p[0], p[1]) for p in corridor_poly])
-        
+
         if not hall_geom.is_valid or not corridor_geom.is_valid:
             cx = sum(p[0] for p in hall_poly) / len(hall_poly)
             cy = sum(p[1] for p in hall_poly) / len(hall_poly)
             return [(cx, cy)]
-        
-        # Get hall centroid
+
         centroid = hall_geom.centroid
         cx, cy = centroid.x, centroid.y
-        
-        # Cast rays from centroid outward
+
         entrances = []
         for i in range(num_rays):
             angle = 2.0 * math.pi * i / num_rays
             dx = math.cos(angle)
             dy = math.sin(angle)
-            
-            # Cast ray until outside hall
+
             step = 5.0
             x, y = cx, cy
             for _ in range(200):
                 x += dx * step
                 y += dy * step
                 pt = Point(x, y)
-                
-                # Once outside hall, check if in corridor
+
                 if not hall_geom.contains(pt):
                     if corridor_geom.contains(pt):
                         entrances.append((x, y))
                     break
-        
+
         if entrances:
             return entrances
         else:
-            # Fallback: boundary points
             boundary = hall_geom.boundary
             intersection = boundary.intersection(corridor_geom)
-            
+
             if not intersection.is_empty:
                 if hasattr(intersection, 'coords'):
                     return list(intersection.coords)
@@ -214,20 +171,15 @@ def find_hall_entrances_via_intersection(
                             points.extend(list(geom.coords))
                     if points:
                         return points
-            
-            # Ultimate fallback
+
             return [(cx, cy)]
-    
+
     except Exception as e:
         print(f"Warning: Hall entrance detection failed: {e}")
         cx = sum(p[0] for p in hall_poly) / len(hall_poly)
         cy = sum(p[1] for p in hall_poly) / len(hall_poly)
         return [(cx, cy)]
 
-
-# -------------------------
-# Skeletonization (Zhang–Suen) - UNCHANGED
-# -------------------------
 
 def _neighbors_8(img: np.ndarray, r: int, c: int) -> List[Tuple[int, int]]:
     return [
@@ -254,7 +206,6 @@ def _zs_thin(binary: np.ndarray, max_iters: int = 250) -> np.ndarray:
         it += 1
         to_remove: List[Tuple[int, int]] = []
 
-        # step 1
         for r in range(1, h - 1):
             for c in range(1, w - 1):
                 if img[r, c] != 1:
@@ -279,7 +230,6 @@ def _zs_thin(binary: np.ndarray, max_iters: int = 250) -> np.ndarray:
 
         to_remove = []
 
-        # step 2
         for r in range(1, h - 1):
             for c in range(1, w - 1):
                 if img[r, c] != 1:
@@ -368,10 +318,6 @@ def _prune_spurs(skel: np.ndarray, min_len_px: float, cell_px: float) -> np.ndar
     return sk
 
 
-# -------------------------
-# Graph compression
-# -------------------------
-
 @dataclass(frozen=True)
 class Pixel:
     r: int
@@ -414,7 +360,6 @@ def _compress_skeleton_to_graph(
     def neigh(p: Pixel) -> List[Pixel]:
         return _pixel_neighbors(sk, p)
 
-    # Add periodic split nodes
     for _round in range(12):
         added: Set[Pixel] = set()
         for u in list(nodes):
@@ -442,7 +387,6 @@ def _compress_skeleton_to_graph(
     nodes_list = sorted(list(nodes), key=lambda p: (p.r, p.c))
     node_set = set(nodes_list)
 
-    # Build edges
     edges: List[Tuple[Pixel, Pixel, float]] = []
     seen_dir: Set[Tuple[Pixel, Pixel]] = set()
 
@@ -474,7 +418,6 @@ def _compress_skeleton_to_graph(
                 a, b = (u, cur) if (u.r, u.c) < (cur.r, cur.c) else (cur, u)
                 edges.append((a, b, float(dacc)))
 
-    # de-dup edges
     uniq = {}
     for a, b, d in edges:
         key = (a, b)
@@ -482,10 +425,6 @@ def _compress_skeleton_to_graph(
             uniq[key] = d
     return nodes_list, [(k[0], k[1], v) for k, v in uniq.items()]
 
-
-# -------------------------
-# NavMeshGenerator (FIXED)
-# -------------------------
 
 class NavMeshGenerator:
     def __init__(
@@ -510,11 +449,10 @@ class NavMeshGenerator:
         self.nodes: List[Dict] = []
         self.edges: List[Dict] = []
 
-        # CRITICAL FIX: Union corridor polygons FIRST
         print("Unifying corridor polygons...")
         self._unified_corridor_poly = union_corridor_polygons(self.corridors)
         self._corridor_polys: List[List[List[float]]] = [self._unified_corridor_poly] if self._unified_corridor_poly else []
-        
+
         self._hall_polys: List[List[List[float]]] = []
 
         self._walkable_raster: Optional[np.ndarray] = None
@@ -532,11 +470,7 @@ class NavMeshGenerator:
         self._hall_polys = [n["polygon"] for n in self.nodes if n["type"] == "room"]
 
         self._create_spine_corridor_graph()
-
-        # Connect rooms via proper entrance detection
         self._connect_rooms_via_entrances()
-
-        # Entrance
         self._create_or_connect_entrance()
 
         print(f"Generated {len(self.nodes)} nodes and {len(self.edges)} edges")
@@ -547,10 +481,6 @@ class NavMeshGenerator:
             "rooms_metadata": self._extract_room_metadata(),
             "corridor_polygons": self.corridors,
         }
-
-    # -------------------------
-    # Rooms
-    # -------------------------
 
     def _create_room_nodes(self) -> None:
         for idx, room in enumerate(self.rooms):
@@ -574,10 +504,6 @@ class NavMeshGenerator:
                     {"id": n["id"], "name": n.get("name", n["id"]), "bounds": n.get("bounds"), "center": n.get("position")}
                 )
         return rooms
-
-    # -------------------------
-    # Walkability
-    # -------------------------
 
     def _in_any_corridor(self, x: float, y: float) -> bool:
         for poly in self._corridor_polys:
@@ -605,10 +531,6 @@ class NavMeshGenerator:
                 return False
         return True
 
-    # -------------------------
-    # Raster helpers
-    # -------------------------
-
     def _world_to_cell(self, x: float, y: float) -> Tuple[int, int]:
         c = int((x - self._raster_min_x) / self._raster_cell)
         r = int((y - self._raster_min_y) / self._raster_cell)
@@ -619,18 +541,13 @@ class NavMeshGenerator:
         y = self._raster_min_y + (r + 0.5) * self._raster_cell
         return {"x": float(x), "y": float(y)}
 
-    # -------------------------
-    # Spine graph generation (FIXED)
-    # -------------------------
-
     def _create_spine_corridor_graph(self) -> None:
         if not self._corridor_polys or not self._unified_corridor_poly:
             print("WARNING: No unified corridor polygon")
             return
 
         poly = self._unified_corridor_poly
-        
-        # Get bounds
+
         xs = [p[0] for p in poly]
         ys = [p[1] for p in poly]
         min_x, max_x = min(xs), max(xs)
@@ -646,14 +563,12 @@ class NavMeshGenerator:
         w = int(math.ceil((max_x - min_x) / cell))
         h = int(math.ceil((max_y - min_y) / cell))
 
-        # Safety cap
         if w * h > 1_200_000:
             scale = math.sqrt((w * h) / 1_200_000.0)
             cell *= max(1.0, scale)
             w = int(math.ceil((max_x - min_x) / cell))
             h = int(math.ceil((max_y - min_y) / cell))
 
-        # Rasterize unified walkable space
         binary = np.zeros((h, w), dtype=np.uint8)
         for rr in range(h):
             y = min_y + (rr + 0.5) * cell
@@ -671,7 +586,6 @@ class NavMeshGenerator:
             print("WARNING: walkable raster empty")
             return
 
-        # Skeletonize
         skel = _zs_thin(binary)
         if self.spur_prune_px > 0:
             skel = _prune_spurs(skel, min_len_px=self.spur_prune_px, cell_px=cell)
@@ -680,10 +594,8 @@ class NavMeshGenerator:
             print("WARNING: skeleton empty")
             return
 
-        # Compress to graph
         node_pix, edge_pix = _compress_skeleton_to_graph(skel, cell_px=cell, split_every_steps=6)
 
-        # Create nodes
         pix_to_nodeid: Dict[Pixel, str] = {}
         corridor_nodes: List[Dict] = []
 
@@ -708,7 +620,6 @@ class NavMeshGenerator:
         self.nodes.extend(corridor_nodes)
         node_by_id = {n["id"]: n for n in self.nodes}
 
-        # Create edges with validation
         added_pairs = 0
         seen_pairs = set()
         for a_pix, b_pix, d in edge_pix:
@@ -724,7 +635,6 @@ class NavMeshGenerator:
             pa = node_by_id[a_id]["position"]
             pb = node_by_id[b_id]["position"]
 
-            # CRITICAL: Validate edge doesn't cut through halls
             if not self._segment_walkable_corridor_only(pa, pb, samples=25):
                 continue
 
@@ -732,10 +642,6 @@ class NavMeshGenerator:
             added_pairs += 1
 
         print(f"Spine corridor graph: {len(corridor_nodes)} nodes, {added_pairs} edge pairs")
-
-    # -------------------------
-    # Room connections via entrance detection (FIXED)
-    # -------------------------
 
     def _connect_rooms_via_entrances(self) -> None:
         """Connect rooms to corridor using proper entrance detection."""
@@ -753,30 +659,25 @@ class NavMeshGenerator:
             if not room_poly:
                 continue
 
-            # Find entrance points using geometric intersection
             entrances = find_hall_entrances_via_intersection(
-                room_poly, 
+                room_poly,
                 self._unified_corridor_poly,
                 num_rays=16
             )
 
             if not entrances:
-                # Fallback
                 cx, cy = float(room["position"]["x"]), float(room["position"]["y"])
                 entrances = [(cx, cy)]
 
-            # Pick best entrance and connect to nearest corridor node
             best_conn = None
             min_dist = float('inf')
 
             for ex, ey in entrances:
-                # Find nearest corridor node
                 for corr in corridor_nodes:
                     cx, cy = corr["position"]["x"], corr["position"]["y"]
                     d = math.hypot(ex - cx, ey - cy)
-                    
+
                     if d < min_dist:
-                        # Validate walkability
                         a = {"x": ex, "y": ey}
                         b = {"x": cx, "y": cy}
                         if self._segment_walkable_corridor_only(a, b, samples=25):
@@ -785,8 +686,7 @@ class NavMeshGenerator:
 
             if best_conn:
                 door_x, door_y, spine_id, dist = best_conn
-                
-                # Create door node
+
                 door_id = f"door_{room['id']}"
                 seg_i = int(door_x // float(self.segment_size_px))
                 seg_j = int(door_y // float(self.segment_size_px))
@@ -801,24 +701,18 @@ class NavMeshGenerator:
                 self.nodes.append(door_node)
                 node_by_id[door_id] = door_node
 
-                # Connect room -> door -> spine
                 room_cx = room["position"]["x"]
                 room_cy = room["position"]["y"]
                 self._add_edge_bidir(room["id"], door_id, math.hypot(room_cx - door_x, room_cy - door_y))
                 self._add_edge_bidir(door_id, spine_id, dist)
             else:
-                # Fallback: connect directly to nearest corridor node
                 nearest = min(corridor_nodes, key=lambda c: _dist(room["position"], c["position"]))
                 self._add_edge_bidir(room["id"], nearest["id"], _dist(room["position"], nearest["position"]))
-
-    # -------------------------
-    # Entrance
-    # -------------------------
 
     def _create_or_connect_entrance(self) -> None:
         entrance_id = "entrance_0"
         existing = next((n for n in self.nodes if n["id"] == entrance_id), None)
-        
+
         if existing:
             entrance_node = existing
         else:
@@ -840,10 +734,9 @@ class NavMeshGenerator:
         if not corridor_nodes:
             return
 
-        # Connect to nearest corridor nodes
         dists = [(float(_dist(entrance_node["position"], c["position"])), c) for c in corridor_nodes]
         dists.sort(key=lambda t: t[0])
-        
+
         added = 0
         for d, corr in dists[:25]:
             if self._segment_walkable_corridor_only(entrance_node["position"], corr["position"], samples=31):
@@ -851,14 +744,10 @@ class NavMeshGenerator:
                 added += 1
             if added >= 4:
                 break
-        
+
         if added == 0 and dists:
             d, corr = dists[0]
             self._add_edge_bidir(entrance_node["id"], corr["id"], float(d))
-
-    # -------------------------
-    # IoT multipliers
-    # -------------------------
 
     def update_edge_weights_from_iot(self, sensor_data: Dict[str, float]) -> None:
         if not sensor_data:
@@ -888,10 +777,6 @@ class NavMeshGenerator:
             e["base_weight"] = base
             e["weight"] = base * mult
             e["effective_weight"] = base * mult
-
-    # -------------------------
-    # Edge helper
-    # -------------------------
 
     def _add_edge_bidir(self, a: str, b: str, weight: float) -> None:
         w = float(weight)
