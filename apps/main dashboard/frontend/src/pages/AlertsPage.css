@@ -204,6 +204,19 @@
   background: #d4d8db;
 }
 
+.opsTheme .alertsPage .filterPill,
+.sustTheme .alertsPage .filterPill,
+.alertsPage .filterPill{
+  min-width: 0;
+  max-width: 100%;
+}
+
+.opsTheme .alertsControlsCard,
+.sustTheme .alertsControlsCard,
+.alertsControlsCard{
+  overflow: hidden;
+}
+
 /* ===== bottom row ===== */
 .opsTheme .alertsControlsBottomRow,
 .sustTheme .alertsControlsBottomRow,
@@ -405,6 +418,7 @@
 .tdRuleClickable{
   text-decoration: underline;
   text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 .opsTheme .tdMono,
@@ -574,75 +588,14 @@
   color: #E8486F !important;
 }
 
-/* =========================
-   Alerts: force filters into one line (your existing layout)
-   ========================= */
-.opsTheme .alertsFiltersRow,
-.sustTheme .alertsFiltersRow,
-.alertsFiltersRow{
-  flex-wrap: nowrap;
-  align-items: center;
-}
-
-.opsTheme .alertsPage .pillSearch,
-.sustTheme .alertsPage .pillSearch,
-.alertsPage .pillSearch{
-  flex: 0 0 240px;
-  width: 240px;
-  min-width: 240px;
-}
-
-.opsTheme .alertsFiltersRow2,
-.sustTheme .alertsFiltersRow2,
-.alertsFiltersRow2{
-  display: none;
-}
-
-.opsTheme .alertsPage .pillRule,
-.sustTheme .alertsPage .pillRule,
-.alertsPage .pillRule{
-  width: 190px;
-  min-width: 190px;
-  flex: 0 0 190px;
-}
-
-.opsTheme .alertsPage .pillSelect,
-.sustTheme .alertsPage .pillSelect,
-.alertsPage .pillSelect{
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.opsTheme .alertsControlsBottomRow,
-.sustTheme .alertsControlsBottomRow,
-.alertsControlsBottomRow{
-  margin-top: 12px;
-  justify-content: space-between;
-}
-
-.opsTheme .alertsBottomLeft,
-.sustTheme .alertsBottomLeft,
-.alertsBottomLeft{
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.opsTheme .alertsBottomRight,
-.sustTheme .alertsBottomRight,
-.alertsBottomRight{
-  padding-right: 6px;
-}
-
 /* ===== refined top layout ===== */
 .opsTheme .alertsControlsTopRow,
 .sustTheme .alertsControlsTopRow,
 .alertsControlsTopRow{
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   gap:12px;
-  flex-wrap:nowrap;
+  flex-wrap:wrap;
 }
 
 .opsTheme .alertsTopActions,
@@ -652,7 +605,9 @@
   display:flex;
   align-items:center;
   gap:12px;
-  flex:0 0 auto;
+  flex:0 1 auto;
+  flex-wrap:wrap;
+  max-width:100%;
 }
 
 .opsTheme .alertsFiltersSecondary,
@@ -662,15 +617,17 @@
   padding-top:12px;
   border-top:1px solid #eef0f2;
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   gap:12px;
+  flex-wrap:wrap;
 }
 
 .opsTheme .alertsPage .pillSearch,
 .sustTheme .alertsPage .pillSearch,
 .alertsPage .pillSearch{
-  flex:1 1 500px;
-  min-width:360px;
+  flex:1 1 420px;
+  min-width:240px;
+  max-width:100%;
 }
 
 .opsTheme .alertsPage .pillSeverity,
@@ -685,7 +642,7 @@
 .opsTheme .alertsPage .pillHall,
 .sustTheme .alertsPage .pillHall,
 .alertsPage .pillHall{
-  flex:0 0 auto;
+  flex:0 1 auto;
 }
 
 .opsTheme .alertsPage .pillHall,
@@ -698,7 +655,8 @@
 .sustTheme .alertsPage .pillRule,
 .alertsPage .pillRule{
   flex:1 1 320px;
-  min-width:280px;
+  min-width:240px;
+  max-width:100%;
 }
 
 .opsTheme .alertsPage .pillSort,
@@ -737,24 +695,56 @@
 .sustTheme .alertsFiltersSecondary .secondaryRowsControl,
 .alertsFiltersSecondary .secondaryRowsControl{
   margin-left:auto;
-  flex:0 0 auto;
+  flex:0 1 auto;
+  max-width:100%;
 }
 
 @media (max-width: 1380px){
-  .opsTheme .alertsControlsTopRow,
-  .sustTheme .alertsControlsTopRow,
-  .alertsControlsTopRow,
-  .opsTheme .alertsFiltersSecondary,
-  .sustTheme .alertsFiltersSecondary,
-  .alertsFiltersSecondary{
-    flex-wrap:wrap;
-  }
-
   .opsTheme .alertsTopActions,
   .sustTheme .alertsTopActions,
   .alertsTopActions{
     margin-left:0;
     width:100%;
-    justify-content:flex-end;
+    justify-content:flex-start;
+  }
+
+  .opsTheme .alertsFiltersSecondary .secondaryRowsControl,
+  .sustTheme .alertsFiltersSecondary .secondaryRowsControl,
+  .alertsFiltersSecondary .secondaryRowsControl{
+    margin-left:0;
+  }
+}
+
+@media (max-width: 900px){
+  .opsTheme .alertsPage .pillSeverity,
+  .sustTheme .alertsPage .pillSeverity,
+  .alertsPage .pillSeverity,
+  .opsTheme .alertsPage .pillAlertStatus,
+  .sustTheme .alertsPage .pillAlertStatus,
+  .alertsPage .pillAlertStatus,
+  .opsTheme .alertsPage .pillZone,
+  .sustTheme .alertsPage .pillZone,
+  .alertsPage .pillZone,
+  .opsTheme .alertsPage .pillHall,
+  .sustTheme .alertsPage .pillHall,
+  .alertsPage .pillHall,
+  .opsTheme .alertsPage .pillSort,
+  .sustTheme .alertsPage .pillSort,
+  .alertsPage .pillSort,
+  .opsTheme .alertsPage .pillRows,
+  .sustTheme .alertsPage .pillRows,
+  .alertsPage .pillRows{
+    width: 100%;
+  }
+
+  .opsTheme .alertsPage .pillRule,
+  .sustTheme .alertsPage .pillRule,
+  .alertsPage .pillRule,
+  .opsTheme .alertsPage .pillSearch,
+  .sustTheme .alertsPage .pillSearch,
+  .alertsPage .pillSearch{
+    flex-basis: 100%;
+    width: 100%;
+    min-width: 0;
   }
 }
