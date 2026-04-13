@@ -400,6 +400,13 @@
 
 .opsTheme .tdStrong, .sustTheme .tdStrong, .tdStrong{ font-weight: 800; }
 
+.opsTheme .tdRuleClickable,
+.sustTheme .tdRuleClickable,
+.tdRuleClickable{
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .opsTheme .tdMono,
 .sustTheme .tdMono,
 .tdMono{

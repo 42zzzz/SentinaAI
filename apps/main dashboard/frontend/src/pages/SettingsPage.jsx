@@ -422,7 +422,7 @@ export default function SettingsPage({ section = "operations", onClose }) {
     }
   };
 
-  
+
   const displayedEmail = accountState.email || "User";
   const displayedRole = accountState.role || meta.roleLabel;
   const displayedLastActivity = formatLastActivity(accountState.last_active_at);
@@ -471,100 +471,105 @@ export default function SettingsPage({ section = "operations", onClose }) {
               <button
                 type="button"
                 className="settingsPrimaryButton"
-                onClick={handleSave}
+                onClick={() => {
+                  handleSave();
+                  onClose?.();
+                }}
               >
                 Save preferences
               </button>
             </div>
           </div>
 
-
-          <div className="settingsGrid settingsGrid--top">
-            <SectionCard
-              title="General"
-              description="Control general dashboard preferences for this workspace."
-            >
-              <div className="settingsFieldsGrid settingsFieldsGrid--tight">
-                <SelectField
-                  label="Live refresh cadence"
-                  value={settings.refreshInterval}
-                  options={[
-                    { value: "5", label: "Every 5 seconds" },
-                    { value: "15", label: "Every 15 seconds" },
-                    { value: "30", label: "Every 30 seconds" },
-                    { value: "60", label: "Every 60 seconds" },
-                  ]}
-                  onChange={(value) => updateSetting("refreshInterval", value)}
-                />
-                <SelectField
-                  label="Preferred report export format"
-                  value={settings.exportFormat || "xlsx"}
-                  options={[
-                    { value: "xlsx", label: "XLSX workbook" },
-                    { value: "pdf", label: "PDF summary" },
-                  ]}
-                  onChange={(value) => updateSetting("exportFormat", value)}
-                />
-              </div>
-            </SectionCard>
-
-            <SectionCard
-              title="Account & session"
-              description="Cloud-linked account details for the current session."
-            >
-              <div className="settingsActionRow" style={{ marginBottom: 14 }}>
-                <button
-                  type="button"
-                  className="settingsGhostButton"
-                  onClick={openPasswordModal}
-                >
-                  Change Password
-                </button>
-                <button
-                  type="button"
-                  className="settingsGhostButton"
-                  onClick={openMfaModal}
-                >
-                  Two-Factor Authentication
-                </button>
-                {accountState.status === "loading" ? (
-                  <span className="settingsInlineStatus">Loading account…</span>
-                ) : null}
-              </div>
-              <div className="settingsFieldsGrid">
-                <ReadonlyField label="Signed in as" value={displayedEmail} />
-                <ReadonlyField label="Role" value={formatRole(displayedRole)} />
-                <ReadonlyField label="Last activity" value={displayedLastActivity} />
-                <ReadonlyField
-                  label="Session timeout"
-                  value="20 minutes of inactivity"
-                  hint="After timeout, re-authentication is required."
-                />
-              </div>
-            </SectionCard>
-          </div>
-
-          <div className="settingsGrid">
-            <SectionCard
-              title="Security preferences"
-              description="Reference-only security information for this session."
-              aside={<span className="settingsCardBadge">Role based</span>}
-            >
-              <div className="settingsSecuritySummary">
-                <div>
-                  <span className="settingsMiniLabel">Authentication</span>
-                  <strong>Secure dashboard session</strong>
+          <div className="settingsTopLayout">
+            <div className="settingsLeftColumn">
+              <SectionCard
+                title="General"
+                description="Control general dashboard preferences for this workspace."
+              >
+                <div className="settingsFieldsGrid settingsFieldsGrid--tight">
+                  <SelectField
+                    label="Live refresh cadence"
+                    value={settings.refreshInterval}
+                    options={[
+                      { value: "5", label: "Every 5 seconds" },
+                      { value: "15", label: "Every 15 seconds" },
+                      { value: "30", label: "Every 30 seconds" },
+                      { value: "60", label: "Every 60 seconds" },
+                    ]}
+                    onChange={(value) => updateSetting("refreshInterval", value)}
+                  />
+                  <SelectField
+                    label="Preferred report export format"
+                    value={settings.exportFormat || "xlsx"}
+                    options={[
+                      { value: "xlsx", label: "XLSX workbook" },
+                      { value: "pdf", label: "PDF summary" },
+                    ]}
+                    onChange={(value) => updateSetting("exportFormat", value)}
+                  />
                 </div>
-                <div>
-                  <span className="settingsMiniLabel">Browser storage</span>
-                  <strong>Preferences stored locally</strong>
+              </SectionCard>
+
+              <SectionCard
+                title="Security preferences"
+                description="Reference-only security information for this session."
+                aside={<span className="settingsCardBadge">Role based</span>}
+              >
+                <div className="settingsSecuritySummary">
+                  <div>
+                    <span className="settingsMiniLabel">Authentication</span>
+                    <strong>Secure dashboard session</strong>
+                  </div>
+                  <div>
+                    <span className="settingsMiniLabel">Browser storage</span>
+                    <strong>Preferences stored locally</strong>
+                  </div>
+                  <div>
+                    <span className="settingsMiniLabel">Access model</span>
+                    <strong>{formatRole(displayedRole)}</strong>
+                  </div>
                 </div>
-                <div>
-                  <span className="settingsMiniLabel">Access model</span>
-                  <strong>{formatRole(displayedRole)}</strong>
+              </SectionCard>
+            </div>
+
+            <div className="settingsRightColumn">
+              <SectionCard
+                title="Account & session"
+                description="Cloud-linked account details for the current session."
+              >
+                <div className="settingsActionRow" style={{ marginBottom: 14 }}>
+                  <button
+                    type="button"
+                    className="settingsGhostButton"
+                    onClick={openPasswordModal}
+                  >
+                    Change Password
+                  </button>
+                  <button
+                    type="button"
+                    className="settingsGhostButton"
+                    onClick={openMfaModal}
+                  >
+                    Two-Factor Authentication
+                  </button>
+                  {accountState.status === "loading" ? (
+                    <span className="settingsInlineStatus">Loading account…</span>
+                  ) : null}
                 </div>
-              </div>
-            </SectionCard>
+
+                <div className="settingsFieldsGrid settingsFieldsGrid--tight">
+                  <ReadonlyField label="Signed in as" value={displayedEmail} />
+                  <ReadonlyField label="Role" value={formatRole(displayedRole)} />
+                  <ReadonlyField label="Last activity" value={displayedLastActivity} />
+                  <ReadonlyField
+                    label="Session timeout"
+                    value="20 minutes of inactivity"
+                    hint="After timeout, re-authentication is required."
+                  />
+                </div>
+              </SectionCard>
+            </div>
           </div>
         </div>
       </div>

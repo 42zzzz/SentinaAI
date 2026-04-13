@@ -125,12 +125,18 @@
   display: block;
 }
 
-.settingsPage,
-.settingsModal,
-.settingsSubModal {
+.settingsPage {
   padding: 4px 20px 22px;
   max-height: calc(88vh - 56px);
   overflow-y: auto;
+}
+
+.settingsModal {
+  padding: 0;
+}
+
+.settingsSubModal {
+  padding: 4px 20px 22px;
 }
 
 .settingsHero {
@@ -533,12 +539,33 @@
   gap: 12px;
 }
 
-.settingsSecuritySummary > div,
+.settingsSecuritySummary>div,
 .settingsPasswordRules {
   padding: 14px 16px;
   border-radius: 16px;
   border: 1px solid #d1d5db;
   background: #f3f4f6;
+}
+
+
+.settingsTopLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  margin-bottom: 18px;
+  align-items: stretch;
+}
+
+.settingsLeftColumn,
+.settingsRightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.settingsRightColumn .settingsCard {
+  flex: 1;
 }
 
 .settingsSecuritySummary strong {
@@ -589,6 +616,12 @@
 }
 
 @media (max-width: 1120px) {
+
+
+  .settingsTopLayout {
+    grid-template-columns: 1fr;
+  }
+
   .settingsGrid,
   .settingsGrid--top {
     grid-template-columns: 1fr;
@@ -600,6 +633,7 @@
 }
 
 @media (max-width: 760px) {
+
   .settingsModalOverlay,
   .settingsSubModalOverlay {
     padding: 16px;
@@ -609,18 +643,19 @@
     width: 100%;
     max-height: calc(100vh - 32px);
     border-radius: 22px;
+    padding: 0;
   }
 
   .settingsSubModal {
     width: 100%;
     border-radius: 22px;
+    padding: 4px 14px 18px;
   }
 
-  .settingsPage,
-.settingsModal,
-.settingsSubModal {
+  .settingsPage {
     padding: 4px 14px 18px;
     max-height: calc(100vh - 72px);
+    overflow-y: auto;
   }
 
   .settingsHero,
@@ -646,4 +681,3 @@
     grid-template-columns: 1fr;
   }
 }
-

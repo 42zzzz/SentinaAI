@@ -108,6 +108,160 @@ function isComparisonType(analysisType) {
   return ['time_comparison', 'sus_time_comparison', 'exh_comparison'].includes(analysisType);
 }
 
+
+function ensureAssistantDialogStyles() {
+  if (document.getElementById('assistantDialogStyles')) return;
+
+  const style = document.createElement('style');
+  style.id = 'assistantDialogStyles';
+  style.textContent = `
+    .assistant-dialog-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.42);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 99999;
+    }
+    .assistant-dialog {
+      width: min(100%, 420px);
+      background: #ffffff;
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
+      padding: 22px;
+      color: #0f172a;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    .assistant-dialog h3 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .assistant-dialog p {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      color: #334155;
+    }
+    .assistant-dialog__actions {
+      margin-top: 18px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .assistant-dialog__btn {
+      appearance: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+    }
+    .assistant-dialog__btn:hover {
+      transform: translateY(-1px);
+    }
+    .assistant-dialog__btn--ghost {
+      background: #eef2ff;
+      color: #334155;
+    }
+    .assistant-dialog__btn--confirm {
+      background: var(--accent, #3659d9);
+      color: #ffffff;
+      box-shadow: 0 10px 24px rgba(54, 89, 217, 0.24);
+    }
+    .assistant-dialog__btn--danger {
+      background: #dc2626;
+      color: #ffffff;
+      box-shadow: 0 10px 24px rgba(220, 38, 38, 0.22);
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function openAssistantDialog({ title, message, confirmText = 'OK', cancelText = '', destructive = false }) {
+  ensureAssistantDialogStyles();
+
+  return new Promise(resolve => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'assistant-dialog-backdrop';
+
+    const dialog = document.createElement('div');
+    dialog.className = 'assistant-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.innerHTML = `
+      <h3>${title}</h3>
+      <p>${message}</p>
+      <div class="assistant-dialog__actions"></div>
+    `;
+
+    const actions = dialog.querySelector('.assistant-dialog__actions');
+
+    const closeDialog = value => {
+      backdrop.remove();
+      document.removeEventListener('keydown', onKeyDown);
+      resolve(value);
+    };
+
+    const onKeyDown = event => {
+      if (event.key === 'Escape') {
+        closeDialog(Boolean(!cancelText));
+      }
+    };
+
+    if (cancelText) {
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'assistant-dialog__btn assistant-dialog__btn--ghost';
+      cancelBtn.textContent = cancelText;
+      cancelBtn.onclick = () => closeDialog(false);
+      actions.appendChild(cancelBtn);
+    }
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.type = 'button';
+    confirmBtn.className = `assistant-dialog__btn ${destructive ? 'assistant-dialog__btn--danger' : 'assistant-dialog__btn--confirm'}`;
+    confirmBtn.textContent = confirmText;
+    confirmBtn.onclick = () => closeDialog(true);
+    actions.appendChild(confirmBtn);
+
+    backdrop.addEventListener('click', event => {
+      if (event.target === backdrop) {
+        closeDialog(Boolean(!cancelText));
+      }
+    });
+
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+    document.addEventListener('keydown', onKeyDown);
+    confirmBtn.focus();
+  });
+}
+
+async function showSaveWarning() {
+  await openAssistantDialog({
+    title: 'Warning',
+    message: 'Please select a query before saving',
+    confirmText: 'OK',
+  });
+}
+
+async function confirmDeleteSavedView() {
+  return openAssistantDialog({
+    title: 'Delete saved view',
+    message: 'Are you sure you want to delete this view?',
+    cancelText: 'Cancel',
+    confirmText: 'Delete',
+    destructive: true,
+  });
+}
+
 // This keeps the launcher, header, and page copy aligned with the active module.
 function applyRoleBranding() {
   const meta = getRoleMeta();
@@ -333,6 +487,9 @@ function loadSavedView(view) {
 }
 
 async function deleteSavedView(viewId) {
+  const confirmed = await confirmDeleteSavedView();
+  if (!confirmed) return;
+
   await api(`/assistant/widget/saved-views/${viewId}?user_id=${encodeURIComponent(state.userId)}`, { method: 'DELETE' });
   delete state.analysisByTab[viewId];
   await refreshSavedViews();
@@ -360,7 +517,7 @@ async function saveCurrentView() {
   const view = getActiveAnalysis();
   if (!canSaveCurrentView()) {
     state.saveIntent = 'error';
-    state.validationMessage = 'Run analysis first.';
+    state.validationMessage = 'Please select a query before saving';
     el.saveViewName.classList.add('error-state');
     render();
     return;
@@ -1283,12 +1440,13 @@ function renderQuickControls() {
   const save = document.createElement('button');
   save.className = `primary-btn ${canSaveCurrentView() ? 'success-btn' : 'danger-btn'}`;
   save.textContent = 'Save this view';
-  save.onclick = () => {
+  save.onclick = async () => {
     if (!canSaveCurrentView()) {
       state.saveIntent = 'error';
-      state.validationMessage = 'Run analysis first.';
+      state.validationMessage = 'Please select a query before saving';
       render();
       scrollToForm();
+      await showSaveWarning();
       return;
     }
     showSaveViewBar();
@@ -1844,12 +2002,13 @@ function renderQuickControls() {
   const save = document.createElement('button');
   save.className = `primary-btn ${canSaveCurrentView() ? 'success-btn' : 'danger-btn'}`;
   save.textContent = 'Save this view';
-  save.onclick = () => {
+  save.onclick = async () => {
     if (!canSaveCurrentView()) {
       state.saveIntent = 'error';
-      state.validationMessage = 'Run analysis first.';
+      state.validationMessage = 'Please select a query before saving';
       render();
       scrollToForm();
+      await showSaveWarning();
       return;
     }
     showSaveViewBar();
@@ -2041,33 +2200,6 @@ function renderResultCard(result, runIndex) {
   return card;
 }
 
-function applySaveButtonVisualState(save) {
-  if (!save) return;
-
-  const canSave = canSaveCurrentView();
-
-  save.className = `primary-btn ${canSave ? 'danger-btn' : 'danger-btn danger-btn--muted'}`;
-  save.disabled = !canSave;
-  save.title = canSave ? 'Save this view' : 'Run an analysis before saving this view';
-  save.dataset.saveState = canSave ? 'ready' : 'empty';
-
-  if (canSave) {
-    save.style.background = '';
-    save.style.color = '';
-    save.style.border = '';
-    save.style.boxShadow = '';
-    save.style.opacity = '';
-    save.style.cursor = '';
-  } else {
-    save.style.background = '#f6d6da';
-    save.style.color = '#b96a74';
-    save.style.border = 'none';
-    save.style.boxShadow = 'none';
-    save.style.opacity = '1';
-    save.style.cursor = 'not-allowed';
-  }
-}
-
 function buildQuickActionsCard() {
   const box = document.createElement('div');
   box.className = 'card quick-card';
@@ -2094,11 +2226,15 @@ function buildQuickActionsCard() {
   const save = document.createElement('button');
   save.dataset.action = 'save-view';
   save.textContent = 'Save this view';
-
-  applySaveButtonVisualState(save);
-
-  save.onclick = () => {
-    if (!canSaveCurrentView()) return;
+  save.onclick = async () => {
+    if (!canSaveCurrentView()) {
+      state.saveIntent = 'error';
+      state.validationMessage = 'Please select a query before saving';
+      render();
+      scrollToForm();
+      await showSaveWarning();
+      return;
+    }
     showSaveViewBar();
   };
 
@@ -2143,7 +2279,7 @@ function syncQuickActionsCard() {
   }
 
   if (save) {
-    applySaveButtonVisualState(save);
+    save.className = `primary-btn ${canSaveCurrentView() ? 'success-btn' : 'danger-btn'}`;
   }
 }
 
