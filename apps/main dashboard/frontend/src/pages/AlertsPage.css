@@ -214,7 +214,9 @@
 .opsTheme .alertsControlsCard,
 .sustTheme .alertsControlsCard,
 .alertsControlsCard{
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
+  z-index: 20;
 }
 
 /* ===== bottom row ===== */
@@ -747,4 +749,36 @@
     width: 100%;
     min-width: 0;
   }
+}
+
+
+.opsTheme .alertsControlsTopRow,
+.sustTheme .alertsControlsTopRow,
+.alertsControlsTopRow,
+.opsTheme .alertsFiltersSecondary,
+.sustTheme .alertsFiltersSecondary,
+.alertsFiltersSecondary{
+  position: relative;
+  z-index: 21;
+  overflow: visible;
+}
+
+.opsTheme .alertsPage .pillSelectWrap,
+.sustTheme .alertsPage .pillSelectWrap,
+.alertsPage .pillSelectWrap{
+  position: relative;
+  z-index: 22;
+}
+
+.opsTheme .alertsPage .pillSelectWrap.isOpen,
+.sustTheme .alertsPage .pillSelectWrap.isOpen,
+.alertsPage .pillSelectWrap.isOpen{
+  z-index: 30;
+}
+
+.opsTheme .alertsTableCard,
+.sustTheme .alertsTableCard,
+.alertsTableCard{
+  position: relative;
+  z-index: 1;
 }
