@@ -130,7 +130,15 @@ Open **http://localhost:5173** in your browser.
 > pip install -r requirements.txt
 > uvicorn app:app --host 0.0.0.0 --port 8000
 > ```
-> Then retry. This can happen if `py`/`python` wasn't on PATH when `npm run dev` started the background process.
+
+> **If the Assistant panel doesn't load**, the Assistant service may not have started. Run it manually in a separate terminal:
+> ```bash
+> cd "services/sentina_operations_html_widget_updated 5"
+> pip install -r requirements.txt
+> uvicorn main:app --reload --port 8002
+> ```
+
+> Both issues can happen if `py`/`python` wasn't on PATH when `npm run dev` launched the background processes.
 
 ---
 
