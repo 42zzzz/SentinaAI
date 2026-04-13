@@ -434,3 +434,91 @@
   opacity:0.85;
   pointer-events:none;
 }
+
+.sustTheme .energyPage .energyInner{
+  padding: 22px 26px;
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sustTheme .energyPage .energyFiltersRow{
+  display: grid;
+  grid-template-columns: minmax(260px, 1.35fr) repeat(3, minmax(210px, 1fr)) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.sustTheme .energyPage .filterPill{
+  height: 34px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: #d9d9d9;
+  border: 1px solid #d2d7dc;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 1px 0 rgba(15,23,42,0.04);
+}
+
+.sustTheme .energyPage .pillSearch{
+  width: 100%;
+  min-width: 0;
+}
+
+.sustTheme .energyPage .pillSelectWrap{
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.sustTheme .energyPage .downloadBtn{
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--green);
+  background: var(--green);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  justify-self: end;
+  white-space: nowrap;
+}
+
+@media (max-width: 1240px){
+  .sustTheme .energyPage .energyFiltersRow{
+    grid-template-columns: minmax(220px, 1.2fr) repeat(3, minmax(180px, 1fr)) auto;
+  }
+}
+
+@media (max-width: 980px){
+  .sustTheme .energyPage .energyFiltersRow{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sustTheme .energyPage .pillSearch{
+    grid-column: 1 / -1;
+  }
+
+  .sustTheme .energyPage .downloadBtn{
+    justify-self: end;
+  }
+}
+
+@media (max-width: 640px){
+  .sustTheme .energyPage .energyFiltersRow{
+    grid-template-columns: 1fr;
+  }
+
+  .sustTheme .energyPage .pillSearch{
+    grid-column: auto;
+  }
+
+  .sustTheme .energyPage .downloadBtn{
+    justify-self: start;
+  }
+}

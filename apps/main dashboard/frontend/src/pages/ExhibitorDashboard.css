@@ -1592,3 +1592,22 @@
 .exhibitorTheme.sidebarCollapsed .exhBrandShort {
   display: inline-flex;
 }
+
+/* --- Exhibitor Analytics: make content text more visible --- */
+.exhPageWrap .exhDataTable tbody td {
+  font-size: 15px;
+}
+
+.exhPageWrap .exhDataTable td strong {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.exhPageWrap .exhDataTable td p {
+  font-size: 13px;
+}
+
+.exhPageWrap .exhInsightItem p {
+  font-size: 15px;
+  line-height: 1.6;
+}

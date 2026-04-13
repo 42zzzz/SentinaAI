@@ -123,7 +123,6 @@ export default function ExhibitorAnalyticsPage() {
               <p>Expanded insights derived from the same live exhibitor AI responses already powering the portal.</p>
             </div>
           </div>
-          <div className="exhHint">Runtime analytics only</div>
         </div>
 
         <div className="exhCardBody">
@@ -256,7 +255,7 @@ export default function ExhibitorAnalyticsPage() {
                   Snapshot summary
                   <InfoTooltip text={tooltipText.snapshotSummary} color="#64748b" />
                 </strong>
-                <span>Current runtime view</span>
+                <span>Current view</span>
               </div>
               <div className="exhSummaryStack">
                 <div className="exhSummaryItem">
