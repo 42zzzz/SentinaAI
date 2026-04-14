@@ -13,6 +13,8 @@
 
 There are two ways to access the project:
 
+**IMPORTANT NOTE: The data used for simulation ranges between 24/12/2025 and 25/01/2026. Features like the reports will generate insights within these ranges only.**
+
 ### Option 1: Live Hosted Demo (no setup required)
 
 The platform is deployed on GCP Cloud Run and accessible directly in a browser:
