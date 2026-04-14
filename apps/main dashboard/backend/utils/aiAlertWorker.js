@@ -429,81 +429,77 @@ async function processSustainability(ts) {
   const hallIds = [];
 
   for (const hall of halls) {
-    try {
-      hallIds.push(String(hall.hall_id));
-      const ai = aiRowsByHall.get(String(hall.hall_id));
-      const sustainabilityStatus = ai?.sustainabilityStatus || hall.sustainabilityStatusRaw || "unknown";
+    hallIds.push(String(hall.hall_id));
+    const ai = aiRowsByHall.get(String(hall.hall_id));
+    const sustainabilityStatus = ai?.sustainabilityStatus || hall.sustainabilityStatusRaw || "unknown";
 
-      const thresholdHit =
-        hall.energyEfficiencyScore < 65 ||
-        hall.hvacEnergyKWh > 50 ||
-        hall.carbonKgCO2 > 60;
+    const thresholdHit =
+      hall.energyEfficiencyScore < 65 ||
+      hall.hvacEnergyKWh > 50 ||
+      hall.carbonKgCO2 > 60;
 
-      const aiAction =
-        ai?.aiAction ||
-        (thresholdHit
-          ? (String(sustainabilityStatus).toLowerCase() === "red"
-            ? "reduceHVACLoad"
-            : "optimizeHVAC")
-          : "none");
+    const aiAction =
+      ai?.aiAction ||
+      (thresholdHit
+        ? (String(sustainabilityStatus).toLowerCase() === "red"
+          ? "reduceHVACLoad"
+          : "optimizeHVAC")
+        : "none");
 
-      const isAnomaly =
-        (typeof ai?.isAnomaly === "boolean" ? ai.isAnomaly : false)
-        || thresholdHit;
+    const isAnomaly =
+      (typeof ai?.isAnomaly === "boolean" ? ai.isAnomaly : false) || thresholdHit;
 
-      if (!isAnomaly || String(aiAction || "").toLowerCase() === "none") {
-        continue;
-      }
-
-      const mergedHall = {
-        ...hall,
-        sustainabilityStatus,
-        aiAction,
-      };
-
-      const ruleInfo = selectSustainabilityRule(mergedHall);
-      const severity = computeSustainabilitySeverity(mergedHall);
-      const payload = {
-        rule_key: ruleInfo.rule_key,
-        domain: "SUSTAINABILITY",
-        severity,
-        device_id: hall.envDeviceId || null,
-        zone_id: hall.zone_id || null,
-        hall_id: hall.hall_id || null,
-        event_timestamp: ts,
-        detected_at: nowIso(),
-        trigger_value: ruleInfo.metric_value,
-        threshold_value: ruleInfo.threshold_value,
-        message: buildSustainabilityMessage(mergedHall, ruleInfo, severity),
-        metadata: {
-          source: "AI_ENGINE",
-          worker: "SUS_AI_PRIMARY",
-          ai_action: aiAction,
-          sustainability_status: sustainabilityStatus,
-          hvac_energy_kwh: hall.hvacEnergyKWh,
-          carbon_kg_co2: hall.carbonKgCO2,
-          energy_efficiency_score: hall.energyEfficiencyScore,
-          comfort_index: hall.comfortIndex,
-          occupancy_ratio: hall.occupancyRatio,
-          env_device_id: hall.envDeviceId || null,
-        },
-      };
-
-      const out = await upsertAlert(payload);
-
-      activeEntityKeys.add(buildEntityKey(payload));
-      alerts.push({
-        hall_id: hall.hall_id,
-        alert_id: out.alert_id,
-        severity,
-        rule_key: ruleInfo.rule_key,
-        action: out.action
-      });
-
-      if (out.action === "inserted") inserted += 1;
-      if (out.action === "updated") updated += 1;
-    } catch (error) {
+    if (!isAnomaly || String(aiAction || "").toLowerCase() === "none") {
+      continue;
     }
+
+    const mergedHall = {
+      ...hall,
+      sustainabilityStatus,
+      aiAction,
+    };
+
+    const ruleInfo = selectSustainabilityRule(mergedHall);
+    const severity = computeSustainabilitySeverity(mergedHall);
+    const payload = {
+      rule_key: ruleInfo.rule_key,
+      domain: "SUSTAINABILITY",
+      severity,
+      device_id: null,
+      zone_id: hall.zone_id || null,
+      hall_id: hall.hall_id || null,
+      event_timestamp: ts,
+      detected_at: nowIso(),
+      trigger_value: ruleInfo.metric_value,
+      threshold_value: ruleInfo.threshold_value,
+      message: buildSustainabilityMessage(mergedHall, ruleInfo, severity),
+      metadata: {
+        source: "AI_ENGINE",
+        worker: "SUS_AI_PRIMARY",
+        ai_action: aiAction,
+        sustainability_status: sustainabilityStatus,
+        hvac_energy_kwh: hall.hvacEnergyKWh,
+        carbon_kg_co2: hall.carbonKgCO2,
+        energy_efficiency_score: hall.energyEfficiencyScore,
+        comfort_index: hall.comfortIndex,
+        occupancy_ratio: hall.occupancyRatio,
+        env_device_id: hall.envDeviceId || null,
+      },
+    };
+
+    const out = await upsertAlert(payload);
+
+    activeEntityKeys.add(buildEntityKey(payload));
+    alerts.push({
+      hall_id: hall.hall_id,
+      alert_id: out.alert_id,
+      severity,
+      rule_key: ruleInfo.rule_key,
+      action: out.action
+    });
+
+    if (out.action === "inserted") inserted += 1;
+    if (out.action === "updated") updated += 1;
   }
 
   const resolvedResult = await resolveStaleAiAlerts({
