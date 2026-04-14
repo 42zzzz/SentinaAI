@@ -336,29 +336,31 @@ async function processSustainability(ts) {
   const result = await analyticsDb.query(
     `
   SELECT
-  zone_id,
-  hall_id,
-  hall_name,
-  day_of_week,
-  hour_of_day,
-  venue_role,
-  occupancy_ratio,
-  comfort_index,
-  indoor_temp_c,
-  outdoor_temp_c,
-  humidity_pct,
-  hvac_energy_kwh,
-  carbon_kg_co2,
-  energy_efficiency_score,
-  sustainability_status,
-  env_device_id
+    zone_id,
+    hall_id,
+    hall_name,
+    day_of_week,
+    hour_of_day,
+    venue_role,
+    occupancy_ratio,
+    comfort_index,
+    indoor_temp_c,
+    outdoor_temp_c,
+    humidity_pct,
+    hvac_energy_kwh,
+    carbon_kg_co2,
+    energy_efficiency_score,
+    sustainability_status,
+    env_device_id
   FROM interval_metrics
   WHERE ts = (
       SELECT MAX(ts)
       FROM interval_metrics
       WHERE hall_id IS NOT NULL
+        AND env_device_id IS NOT NULL
     )
     AND hall_id IS NOT NULL
+    AND env_device_id IS NOT NULL
   ORDER BY hall_id ASC
   `
   );
@@ -577,10 +579,15 @@ async function runOnce() {
       };
     }
 
-    const [operations, sustainability] = await Promise.all([
-      processOperations(ts),
-      processSustainability(ts),
-    ]);
+    const operations = await processOperations(ts);
+
+    const sustainability = {
+      halls: 0,
+      inserted: 0,
+      updated: 0,
+      resolved: 0,
+      alerts: [],
+    };
 
     return {
       startedAt,
