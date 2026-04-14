@@ -829,9 +829,6 @@ export default function AppLayout() {
           <Outlet />
         </div>
 
-        {(section === "operations" || section === "sustainability" || section === "soc") ? (
-          <LiveAlertOverlay section={section} />
-        ) : null}
         {section === "soc" ? (
           <style>{`
               .socLayout .devicesPage.opsTheme,
