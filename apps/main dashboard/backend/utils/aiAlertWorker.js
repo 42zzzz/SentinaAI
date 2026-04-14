@@ -332,7 +332,7 @@ function buildSustainabilityMessage(row, ruleInfo, severity) {
     `${ruleInfo.metric_label} is ${Number(ruleInfo.metric_value).toFixed(2)} and AI classified this as ${severity.toLowerCase()} priority.`;
 }
 
-async function processSustainability(ts) {
+/* async function processSustainability(ts) {
   const result = await analyticsDb.query(
     `
   SELECT
@@ -518,7 +518,7 @@ async function processSustainability(ts) {
     resolved: resolvedResult.resolved,
     alerts,
   };
-}
+} */
 
 async function runOnce() {
   const lockId = 321654987;
